@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retrieve Ticket - Prince Alex Travel Services</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* Re-use CSS from dashboard/booking-success for consistency */
+        :root {
+            --primary-color: #002d6b;
+            --accent-color: #c69214;
+            --light-bg: #f5f7fa;
+            --text-dark: #1a1a1a;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .navbar {
+            background-color: var(--primary-color);
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .navbar-container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            background-color: white;
+            padding: 10px 15px;
+            border-radius: 12px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+        }
+        .logo img {
+            height: 80px;
+            display: block;
+            height: 80px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 25px;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            position: relative;
+        }
+        .nav-links a::after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 2px;
+            background: var(--accent-color);
+            transition: width 0.3s;
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+        }
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+        .nav-links a:hover {
+            color: var(--accent-color);
+        }
+
+        .container {
+            flex: 1;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 40px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: var(--primary-color);
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .input-group input[type="text"] {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 70%;
+            max-width: 300px;
+            box-sizing: border-box;
+        }
+        .input-group button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+        .input-group button:hover {
+            background-color: #001c44;
+        }
+        .booking-summary {
+            background-color: var(--light-bg);
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 30px 0;
+            text-align: left;
+            display: none; /* Hidden by default */
+        }
+        .booking-summary p {
+            margin: 8px 0;
+            font-size: 1em;
+            color: var(--text-dark);
+        }
+        .booking-summary strong {
+            color: var(--primary-color);
+        }
+        .action-buttons {
+            margin-top: 20px;
+            display: none; /* Hidden by default */
+            justify-content: center; /* Center buttons */
+            gap: 20px; /* Space between buttons */
+        }
+        .action-buttons button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease, transform 0.1s ease;
+            margin: 0 10px;
+            min-width: 180px;
+        }
+        .action-buttons button:hover {
+            background-color: #001c44;
+            transform: translateY(-2px);
+        }
+        .action-buttons button:active {
+            transform: translateY(0);
+        }
+        .message {
+            margin-top: 20px;
+            font-weight: bold;
+            color: red; /* Default for error messages */
+        }
+        .footer {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            margin-top: auto;
+        }
+        .footer-content {
+            max-width: 1000px;
+            margin: auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px;
+            text-align: left;
+        }
+        .footer-section {
+            flex: 1;
+            min-width: 200px;
+        }
+        .footer-section h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+        .footer-section a,
+        .footer-section p {
+            display: block;
+            color: white;
+            margin: 4px 0;
+            text-decoration: none;
+        }
+        .footer-section a:hover {
+            text-decoration: underline;
+        }
+        .footer-bottom {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .navbar-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .container {
+                margin: 30px 20px;
+                padding: 25px;
+            }
+            h1 {
+                font-size: 28px;
+            }
+            .input-group input[type="text"] {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            .input-group {
+                flex-direction: column;
+            }
+            .input-group button {
+                width: 100%;
+            }
+            .action-buttons {
+                flex-direction: column;
+            }
+            .action-buttons button {
+                margin: 10px 0;
+                width: 100%;
+            }
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            .footer-section a, .footer-section p {
+                display: inline-block;
+                margin: 0 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="logo">
+                <img src="Mylogo.png" alt="Prince Alex Logo" />
+            </div>
+            <nav class="nav-links">
+                <a href="dashboard.html">Home</a>
+                <a href="#">About Us</a>
+                <a href="#">Contact</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="admin.html">Admin Login</a>
+                <a href="#">Login / Register</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>Retrieve Your Ticket</h1>
+        <div class="input-group">
+            <input type="text" id="bookingIdInput" placeholder="Enter your Booking ID (e.g., BOOK-1678888888888)" />
+            <button onclick="retrieveTicket()">Retrieve Ticket</button>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <div class="booking-summary" id="bookingSummary">
+            <p><strong>Booking ID:</strong> <span id="summaryBookingId"></span></p>
+            <p><strong>Passenger Name:</strong> <span id="summaryPassengerName"></span></p>
+            <p><strong>Route:</strong> <span id="summaryBusRoute"></span></p>
+            <p><strong>Travel Date:</strong> <span id="summaryTravelDate"></span></p>
+            <p><strong>Departure Time:</strong> <span id="summaryBusTime"></span></p>
+            <p><strong>Seat Number:</strong> <span id="summarySeatNumber"></span></p>
+            <p><strong>Total Price:</strong> <span id="summaryPrice"></span></p>
+            <p><strong>Status:</strong> <span id="summaryStatus"></span></p>
+        </div>
+
+        <div class="action-buttons">
+            <button id="payNowTicketLookupButton" style="display: none;">Pay now</button>
+            <button id="downloadTicketButton">Download Ticket</button>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Contact Us</h4>
+                <p>Email: senerwaalex@gmail.com</p>
+                <p>Phone: +254 717 384 875</p>
+                <p>Location: Nairobi, Kenya</p>
+            </div>
+            <div class="footer-section">
+                <h4>Follow Us</h4>
+                <a href="#">Facebook</a>
+                <a href="#">Instagram</a>
+                <a href="#">Twitter</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Prince Alex Digital. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        // LocalStorage Utility Functions (copied from dashboard.html for consistency)
+        function getStoredBookings() {
+            const bookings = localStorage.getItem('bookings');
+            return bookings ? JSON.parse(bookings) : [];
+        }
+
+        let retrievedBooking = null; // To hold the retrieved booking object
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const payNowButton = document.getElementById('payNowTicketLookupButton');
+            const downloadTicketButton = document.getElementById('downloadTicketButton');
+            const actionButtonsContainer = document.querySelector('.action-buttons');
+
+            payNowButton.addEventListener('click', () => {
+                if (!retrievedBooking) {
+                    showMessage("Please retrieve a booking first to pay.", "red");
+                    return;
+                }
+
+                if (retrievedBooking.status === 'pending') {
+                    const mpesaNumber = prompt("Please enter your M-PESA number for the STK Push:");
+                    if (mpesaNumber) {
+                        // In a real application, you would send this number to your backend
+                        // to initiate the M-Pesa STK Push. For this simulation, we'll
+                        // just confirm the request and mark as paid.
+                        alert(`STK Push request sent to ${mpesaNumber}. Please enter your M-PESA PIN to complete the payment.`);
+
+                        // Update status to 'paid' in localStorage after simulating STK Push
+                        let bookings = getStoredBookings();
+                        let bookingIndex = bookings.findIndex(b => b.id === retrievedBooking.id);
+                        if (bookingIndex !== -1) {
+                            bookings[bookingIndex].status = 'paid';
+                            localStorage.setItem('bookings', JSON.stringify(bookings));
+                            retrievedBooking.status = 'paid'; // Update local object too
+                            displayBookingSummary(retrievedBooking); // Re-render to show new status
+                            showMessage("Payment simulated successfully! Your booking is now PAID.", "green");
+                            // Hide Pay Now, Show Download
+                            payNowButton.style.display = 'none';
+                            downloadTicketButton.style.display = 'inline-block';
+                        }
+                    } else {
+                        showMessage("M-PESA number is required to proceed with payment.", "red");
+                    }
+                } else {
+                    showMessage("This booking is already " + retrievedBooking.status.toUpperCase() + ".", "orange");
+                }
+            });
+
+
+            downloadTicketButton.addEventListener('click', () => {
+                if (!retrievedBooking) {
+                    showMessage("Please retrieve a booking first.", "red");
+                    return;
+                }
+
+                if (retrievedBooking.status === 'pending') {
+                    showMessage("Your booking is pending payment. Please pay first to download your ticket.", "orange");
+                } else if (retrievedBooking.status === 'paid') {
+                    downloadTicketPDF(retrievedBooking);
+                } else if (retrievedBooking.status === 'cancelled') {
+                    showMessage("This booking has been cancelled and cannot be downloaded.", "red");
+                }
+            });
+        });
+
+        function retrieveTicket() {
+            const bookingId = document.getElementById('bookingIdInput').value.trim();
+            const messageElement = document.getElementById('message');
+            const summaryContainer = document.getElementById('bookingSummary');
+            const payNowButton = document.getElementById('payNowTicketLookupButton');
+            const downloadTicketButton = document.getElementById('downloadTicketButton');
+            const actionButtonsContainer = document.querySelector('.action-buttons');
+
+
+            messageElement.textContent = ''; // Clear previous messages
+            summaryContainer.style.display = 'none'; // Hide summary
+            actionButtonsContainer.style.display = 'none'; // Hide all action buttons initially
+
+
+            if (!bookingId) {
+                showMessage("Please enter a Booking ID.", "red");
+                return;
+            }
+
+            const bookings = getStoredBookings();
+            retrievedBooking = bookings.find(b => b.id === bookingId);
+
+            if (retrievedBooking) {
+                displayBookingSummary(retrievedBooking);
+                summaryContainer.style.display = 'block'; // Show summary
+                actionButtonsContainer.style.display = 'flex'; // Show action buttons container
+
+                if (retrievedBooking.status === 'pending') {
+                    payNowButton.style.display = 'inline-block'; // Show Pay Now button
+                    downloadTicketButton.style.display = 'none'; // Hide Download Ticket button
+                    showMessage("Booking found! Payment is pending.", "orange");
+                } else if (retrievedBooking.status === 'paid') {
+                    payNowButton.style.display = 'none'; // Hide Pay Now button
+                    downloadTicketButton.style.display = 'inline-block'; // Show Download Ticket button
+                    showMessage("Booking found! Payment is complete.", "green");
+                } else {
+                    // For 'cancelled' or other statuses, show only download if applicable or just message
+                    payNowButton.style.display = 'none';
+                    downloadTicketButton.style.display = 'inline-block'; // Or 'none' depending on desired behavior for cancelled
+                    showMessage(`Booking found! Status: ${retrievedBooking.status.toUpperCase()}`, "blue");
+                }
+
+            } else {
+                showMessage("Booking ID not found. Please check and try again.", "red");
+            }
+        }
+
+        function displayBookingSummary(booking) {
+            document.getElementById('summaryBookingId').textContent = booking.id;
+            document.getElementById('summaryPassengerName').textContent = booking.passengerName;
+            document.getElementById('summaryBusRoute').textContent = booking.busRoute;
+            document.getElementById('summaryTravelDate').textContent = booking.travelDate;
+            document.getElementById('summaryBusTime').textContent = booking.busTime;
+            document.getElementById('summarySeatNumber').textContent = booking.seatNumber;
+            document.getElementById('summaryPrice').textContent = `Ksh ${booking.price}`;
+            document.getElementById('summaryStatus').textContent = booking.status.toUpperCase();
+            document.getElementById('summaryStatus').style.color = (booking.status === 'paid' ? 'green' : (booking.status === 'pending' ? 'orange' : 'red'));
+        }
+
+        function showMessage(msg, color) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = msg;
+            messageElement.style.color = color;
+        }
+
+        // Function to download PDF ticket using jsPDF (identical to booking-success.html)
+        function downloadTicketPDF(booking) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFontSize(22);
+            doc.setTextColor(0, 45, 107); // Primary color
+            doc.text("Prince Alex Travel Services", 105, 20, null, null, "center");
+
+            doc.setDrawColor(198, 146, 20); // Accent color
+            doc.setLineWidth(1.5);
+            doc.line(20, 28, 190, 28); // Horizontal line
+
+            doc.setFontSize(16);
+            doc.setTextColor(50, 50, 50); // Dark text
+            doc.text("Electronic Ticket / Booking Confirmation", 105, 40, null, null, "center");
+
+            doc.setFontSize(12);
+            doc.text(`Booking ID: ${booking.id}`, 20, 60);
+            doc.text(`Booking Date: ${booking.bookingDate || 'N/A'}`, 150, 60);
+
+            doc.setDrawColor(200);
+            doc.setLineWidth(0.5);
+            doc.line(20, 65, 190, 65);
+
+            let y = 75;
+            doc.setFontSize(14);
+            doc.text("Passenger Details:", 20, y);
+            y += 10;
+            doc.setFontSize(12);
+            doc.text(`Name: ${booking.passengerName}`, 20, y); y += 7;
+            doc.text(`ID Number: ${booking.passengerID}`, 20, y); y += 7;
+            doc.text(`Gender: ${booking.passengerGender}`, 20, y); y += 7;
+            doc.text(`Phone: ${booking.passengerPhone}`, 20, y); y += 7;
+            doc.text(`Email: ${booking.passengerEmail}`, 20, y); y += 15;
+
+            doc.setFontSize(14);
+            doc.text("Trip Details:", 20, y);
+            y += 10;
+            doc.setFontSize(12);
+            doc.text(`Route: ${booking.busRoute}`, 20, y); y += 7;
+            doc.text(`Travel Date: ${booking.travelDate}`, 20, y); y += 7;
+            doc.text(`Departure Time: ${booking.busTime}`, 20, y); y += 7;
+            doc.text(`Bus ID: ${booking.busId}`, 20, y); y += 7;
+            doc.text(`Seat Number: ${booking.seatNumber}`, 20, y); y += 15;
+
+            doc.setFontSize(14);
+            doc.text("Payment Summary:", 20, y);
+            y += 10;
+            doc.setFontSize(12);
+            doc.text(`Amount: Ksh ${booking.price}`, 20, y); y += 7;
+            doc.text(`Status: ${booking.status.toUpperCase()}`, 20, y);
+            doc.setTextColor(booking.status === 'paid' ? 0 : 255, booking.status === 'paid' ? 128 : 0, booking.status === 'paid' ? 0 : 0); // Green for paid, red/orange for pending
+            doc.text(`(${booking.status.toUpperCase()})`, 50, y); // Small status text for emphasis
+            doc.setTextColor(50, 50, 50); // Reset color
+
+            if (booking.status === 'pending') {
+                y += 15;
+                doc.setFontSize(10);
+                doc.setTextColor(200, 0, 0); // Red
+                doc.text("NOTE: This ticket is PENDING PAYMENT. Please complete your payment.", 20, y);
+            }
+
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("Thank you for choosing Prince Alex Travel Services!", 105, doc.internal.pageSize.height - 20, null, null, "center");
+
+            doc.save(`ticket_${booking.id}.pdf`);
+        }
+    </script>
+</body>
+</html>
