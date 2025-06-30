@@ -5,12 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Admin Panel - Prince Alex Travel</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        const SUPABASE_URL = 'https://numnzxrnrlxvkjwlusbe.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bW56eHJucmx4dmtqd2x1c2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMTgxNzgsImV4cCI6MjA2Njc5NDQ1OH0.03mPw9Y7tuWne5SNpsag7lYhQSZ6HqA8YmDSxVMVMFg';
-
-        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -170,7 +164,7 @@
             </div>
             <div class="form-group">
                 <label for="adminPassword">Password:</label>
-                <input type="password" id="adminPassword" value="admin" required>
+                <input type="password" id="adminPassword" value="Godcaring@2025" required>
             </div>
             <button type="submit">Login</button>
             <p id="adminLoginMessage" class="message" style="display: none;"></p>
@@ -276,7 +270,10 @@
     </div>
 
     <script>
-        // Supabase client already initialized in head
+        // Supabase client initialization (MOVED HERE)
+        const SUPABASE_URL = 'https://numnzxrnrlxvkjwlusbe.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bW56eHJucmx4dmtqd2x1c2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMTgxNzgsImV4cCI6MjA2Njc5NDQ1OH0.03mPw9Y7tuWne5SNpsag7lYhQSZ6HqA8YmDSxVMVMFg';
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const adminLoginContainer = document.getElementById('adminLoginContainer');
         const adminPanel = document.getElementById('adminPanel');
@@ -503,6 +500,8 @@
             // Change the Add Bus button to an Update Bus button
             const addButton = addBusForm.querySelector('button[type="submit"]');
             addButton.textContent = 'Update Bus';
+            // Store the original event listener function before reassigning
+            const originalAddBusSubmit = addBusForm.onsubmit;
             addButton.onclick = (e) => submitUpdateBus(e, bus.id); // Set new click handler
             currentEditingBusId = bus.id; // Store ID for update
 
@@ -537,7 +536,16 @@
                 // Reset the button back to "Add Bus"
                 const addButton = addBusForm.querySelector('button[type="submit"]');
                 addButton.textContent = 'Add Bus';
-                addButton.onclick = (e) => addBusForm.dispatchEvent(new Event('submit')); // Restore original handler
+                // Re-attach the original submit event listener for "Add Bus"
+                addButton.onclick = null; // Clear the specific onclick
+                addBusForm.addEventListener('submit', (e) => { // Re-add the listener
+                    // This is a bit tricky; normally you'd use a single submit handler
+                    // that checks currentEditingBusId or button text.
+                    // For simplicity, we just reset to the original form's submit behavior.
+                    if (!currentEditingBusId) { // Only call if not in editing mode
+                        addBusForm.dispatchEvent(new Event('submit')); // Trigger original form submit
+                    }
+                }, { once: true }); // Ensure it only fires once or manage properly
                 currentEditingBusId = null; // Clear editing state
             } catch (error) {
                 console.error('Error updating bus:', error.message);
