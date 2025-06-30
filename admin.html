@@ -5,807 +5,780 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Admin Panel - Prince Alex Travel</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script>
+        const SUPABASE_URL = 'https://numnzxrnrlxvkjwlusbe.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bW56eHJucmx4dmtqd2x1c2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMTgxNzgsImV4cCI6MjA2Njc5NDQ1OH0.03mPw9Y7tuWne5SNpsag7lYhQSZ6HqA8YmDSxVMVMFg';
+
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
             background: #f0f2f5;
             margin: 0;
             padding: 20px;
+        }
+        .header-brand {
             display: flex;
-            justify-content: center;
             align-items: center;
-            min-height: 100vh; /* Ensure it takes full viewport height */
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
         }
-        .container {
-            background: #fff;
-            padding: 30px;
+        .header-brand img {
+            height: 60px;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 900px;
-            display: none; /* Hidden by default until admin logs in */
         }
-        .admin-login-container {
-            background: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
+        .header-brand h1 {
+            font-size: 24px;
+            color: #002d6b;
+            margin: 0;
         }
-        h1, h2 {
-            color: #333;
+        .login, .admin-panel {
+            max-width: 95%; /* Wider to accommodate more columns */
+            margin: auto;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .hidden {
+            display: none;
+        }
+        h2 {
+            color: #002d6b;
             text-align: center;
+            margin-bottom: 25px;
+        }
+        input[type="email"],
+        input[type="password"],
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #002d6b;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #001f4e;
+        }
+        button.logout {
+            background-color: #dc3545;
+        }
+        button.logout:hover {
+            background-color: #c82333;
+        }
+        button.download-csv {
+            background-color: #28a745;
+        }
+        button.download-csv:hover {
+            background-color: #218838;
+        }
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .success-message {
+            color: #28a745;
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .admin-section {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .admin-section h3 {
+            color: #002d6b;
             margin-bottom: 20px;
+            text-align: center;
+        }
+        .bus-form, .booking-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .bus-form div, .booking-form div {
+            display: flex;
+            flex-direction: column;
+        }
+        .bus-form button, .booking-form button {
+            grid-column: span 2;
+            width: auto;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #002d6b;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .action-buttons button {
+            padding: 8px 12px;
+            font-size: 0.9em;
+            margin-right: 0;
+        }
+        .action-buttons .delete-btn {
+            background-color: #dc3545;
+        }
+        .action-buttons .delete-btn:hover {
+            background-color: #c82333;
+        }
+        .action-buttons .edit-btn {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .action-buttons .edit-btn:hover {
+            background-color: #e0a800;
         }
         .tab-buttons {
             display: flex;
             justify-content: center;
             margin-bottom: 20px;
-            border-bottom: 1px solid #eee;
+            gap: 10px;
         }
-        .tab-button {
-            padding: 10px 20px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-size: 16px;
-            color: #555;
-            position: relative;
-            outline: none;
+        .tab-buttons button {
+            flex: 1;
+            max-width: 200px;
+            background-color: #e2e6ea;
+            color: #333;
+            border: 1px solid #ced4da;
         }
-        .tab-button.active {
-            color: #007bff;
-            font-weight: bold;
-        }
-        .tab-button.active::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            bottom: -1px;
-            width: 100%;
-            height: 2px;
-            background: #007bff;
-        }
-        .tab-content {
-            display: none;
-            padding: 20px 0;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-        }
-        th {
-            background: #f2f2f2;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        .form-group input[type="text"],
-        .form-group input[type="number"],
-        .form-group input[type="time"],
-        .form-group select,
-        .form-group input[type="email"], /* For admin login */
-        .form-group input[type="password"] /* For admin login */
-        {
-            width: calc(100% - 22px);
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-        button {
-            background: #007bff;
+        .tab-buttons button.active {
+            background-color: #002d6b;
             color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 10px;
         }
-        button:hover {
-            background: #0056b3;
-        }
-        .logout-button {
-            background: #dc3545;
-            margin-left: 20px;
-        }
-        .logout-button:hover {
-            background: #c82333;
-        }
-        .message {
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 4px;
-            text-align: center;
-        }
-        .success-message {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .error-message {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .download-btn {
-            background: #28a745;
-            margin-top: 20px;
-        }
-        .download-btn:hover {
-            background: #218838;
+        .tab-buttons button:hover:not(.active) {
+            background-color: #d1d4d7;
         }
     </style>
 </head>
 <body>
+    <header class="header-brand">
+        <img src="Mylogo.png" alt="Prince Alex Logo">
+        <h1>Admin Panel</h1>
+    </header>
 
-    <div class="admin-login-container" id="adminLoginContainer">
+    <div id="loginForm" class="login">
         <h2>Admin Login</h2>
-        <form id="adminLoginForm">
-            <div class="form-group">
-                <label for="adminEmail">Email:</label>
-                <input type="email" id="adminEmail" value="senerwaalex@gmail.com" required>
-            </div>
-            <div class="form-group">
-                <label for="adminPassword">Password:</label>
-                <input type="password" id="adminPassword" value="Godcaring@2025" required>
-            </div>
-            <button type="submit">Login</button>
-            <p id="adminLoginMessage" class="message" style="display: none;"></p>
-        </form>
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <p id="loginErrorMessage" class="error-message"></p>
+        <button onclick="login()">Login</button>
     </div>
 
-    <div class="container" id="adminPanel">
+    <div id="adminPanel" class="admin-panel hidden">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h1>Admin Dashboard</h1>
-            <button class="logout-button" onclick="adminLogout()">Logout</button>
+            <h2 style="margin: 0;">Welcome, Admin!</h2>
+            <button class="logout" onclick="logout()">Logout</button>
         </div>
 
         <div class="tab-buttons">
-            <button class="tab-button active" data-tab="busesTab" onclick="openTab(event, 'busesTab')">Manage Buses</button>
-            <button class="tab-button" data-tab="bookingsTab" onclick="openTab(event, 'bookingsTab')">Manage Bookings</button>
-            <button class="tab-button" data-tab="usersTab" onclick="openTab(event, 'usersTab')">Manage Users</button>
+            <button id="busesTabBtn" class="active" onclick="showTab('buses')">Manage Buses</button>
+            <button id="bookingsTabBtn" onclick="showTab('bookings')">Manage Bookings</button>
         </div>
 
-        <div id="busesTab" class="tab-content active">
-            <h2>Bus Management</h2>
-            <p id="busesTabMessage" class="message" style="display: none;"></p>
-
+        <div id="busesTab" class="admin-section">
             <h3>Add New Bus</h3>
-            <form id="addBusForm">
-                <div class="form-group">
+            <div class="bus-form">
+                <div>
                     <label for="busRoute">Route:</label>
-                    <input type="text" id="busRoute" required>
+                    <input type="text" id="busRoute" placeholder="e.g., Nairobi - Mombasa" required>
                 </div>
-                <div class="form-group">
+                <div>
+                    <label for="busOrigin">Origin:</label>
+                    <input type="text" id="busOrigin" placeholder="e.g., Nairobi" required>
+                </div>
+                <div>
+                    <label for="busDestination">Destination:</label>
+                    <input type="text" id="busDestination" placeholder="e.g., Mombasa" required>    
+                </div>
+                <div>
                     <label for="busTime">Departure Time:</label>
                     <input type="time" id="busTime" required>
                 </div>
-                <div class="form-group">
+                <div>
                     <label for="busPrice">Price (Ksh):</label>
-                    <input type="number" id="busPrice" step="0.01" required>
+                    <input type="number" id="busPrice" step="0.01" min="0" placeholder="e.g., 2500" required>
                 </div>
-                <div class="form-group">
-                    <label for="busCapacity">Capacity:</label>
-                    <input type="number" id="busCapacity" required>
+                <div>
+                    <label for="busTotalSeats">Total Seats:</label>
+                    <input type="number" id="busTotalSeats" min="1" placeholder="e.g., 50" required>
                 </div>
-                <button type="submit">Add Bus</button>
-            </form>
+                <div>
+                    <label for="busTravelDate">Travel Date:</label>
+                    <input type="date" id="busTravelDate" required>
+                </div>
+                <p id="busErrorMessage" class="error-message"></p>
+                <p id="busSuccessMessage" class="success-message"></p>
+                <button onclick="addBus()">Add Bus</button>
+            </div>
 
-            <h3>Existing Buses</h3>
-            <table id="busesTable">
+            <h3>Current Buses</h3>
+            <table>
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Route</th>
+                        <th>Origin</th> <!-- New Column -->
+                        <th>Destination</th> <!-- New Column -->
                         <th>Time</th>
                         <th>Price</th>
-                        <th>Capacity</th>
+                        <th>Total Seats</th>
+                        <th>Available Seats</th>
+                        <th>Travel Date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="busesTableBody">
                     </tbody>
             </table>
         </div>
 
-        <div id="bookingsTab" class="tab-content">
-            <h2>Booking Management</h2>
-            <p id="bookingsTabMessage" class="message" style="display: none;"></p>
-            <button class="download-btn" onclick="downloadBookingsCSV()">Download Bookings CSV</button>
-            <table id="bookingsTable">
+        <div id="bookingsTab" class="admin-section hidden">
+            <h3>All Bookings</h3>
+            <div style="text-align: right; margin-bottom: 15px;">
+                <button class="download-csv" onclick="downloadBookingsCSV()">Download Bookings CSV</button>
+            </div>
+            <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th>Booking ID</th>
                         <th>Passenger Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
                         <th>Route</th>
-                        <th>Date</th>
+                        <th>Travel Date</th>
                         <th>Time</th>
                         <th>Seat</th>
                         <th>Price</th>
                         <th>Status</th>
+                        <th>Booking Date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    </tbody>
-            </table>
-        </div>
-
-        <div id="usersTab" class="tab-content">
-            <h2>User Management</h2>
-            <p id="usersTabMessage" class="message" style="display: none;"></p>
-            <table id="usersTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Email</th>
-                        <th>Full Name</th>
-                        <th>Phone Number</th>
-                        <th>Created At</th>
-                        <th>Last Sign In</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
+                <tbody id="bookingsTableBody">
                     </tbody>
             </table>
         </div>
     </div>
 
     <script>
-        // Supabase client initialization (MOVED HERE)
         const SUPABASE_URL = 'https://numnzxrnrlxvkjwlusbe.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bW56eHJucmx4dmtqd2x1c2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMTgxNzgsImV4cCI6MjA2Njc5NDQ1OH0.03mPw9Y7tuWne5SNpsag7lYhQSZ6HqA8YmDSxVMVMFg';
+
         const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const adminLoginContainer = document.getElementById('adminLoginContainer');
-        const adminPanel = document.getElementById('adminPanel');
-        const adminLoginForm = document.getElementById('adminLoginForm');
-        const adminLoginMessage = document.getElementById('adminLoginMessage');
-
-        const addBusForm = document.getElementById('addBusForm');
-        const busesTableBody = document.querySelector('#busesTable tbody');
-        const bookingsTableBody = document.querySelector('#bookingsTable tbody');
-        const usersTableBody = document.querySelector('#usersTable tbody');
-
-        // Message display functions
-        function showMessage(tabId, message, type) {
-            const messageElement = document.getElementById(tabId + 'Message');
-            if (messageElement) {
-                messageElement.textContent = message;
-                messageElement.className = `message ${type}-message`;
-                messageElement.style.display = 'block';
-                setTimeout(() => {
-                    messageElement.style.display = 'none';
-                }, 5000); // Hide after 5 seconds
-            }
+        // --- Helper functions for messages ---
+        function showErrorMessage(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+            setTimeout(() => element.style.display = 'none', 5000);
         }
 
-        function showSuccessMessage(tabId, message) {
-            showMessage(tabId, message, 'success');
+        function showSuccessMessage(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+            setTimeout(() => element.style.display = 'none', 5000);
         }
 
-        function showErrorMessage(tabId, message) {
-            showMessage(tabId, message, 'error');
-        }
+        // --- Authentication ---
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginErrorMessage = document.getElementById('loginErrorMessage');
 
-        // Admin Login Logic
-        adminLoginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('adminEmail').value;
-            const password = document.getElementById('adminPassword').value;
-
-            adminLoginMessage.style.display = 'none';
+            loginErrorMessage.style.display = 'none'; // Hide previous error
 
             try {
-                console.log('Attempting admin login for:', email);
-                const { data, error } = await supabase.auth.signInWithPassword({
+                const { data, error: signInError } = await supabase.auth.signInWithPassword({
                     email: email,
                     password: password,
                 });
 
-                if (error) {
-                    throw error;
+                if (signInError) {
+                    throw signInError;
                 }
 
                 if (data.user) {
-                    console.log('Admin login successful:', data.user);
-                    // Check if the user is truly an admin (e.g., via RLS or custom claims/metadata)
-                    // For now, we just proceed if login is successful.
-                    // In a real app, you'd verify admin role here.
-                    adminLoginContainer.style.display = 'none';
-                    adminPanel.style.display = 'block';
-                    loadBuses();
-                    loadBookings();
-                    loadUsers();
-                    openTab(null, 'busesTab'); // Open default tab
+                    // Check if the logged-in user's ID exists in the 'admins' table
+                    const { data: adminData, error: adminError } = await supabase
+                        .from('admins')
+                        .select('admin_user_id')
+                        .eq('admin_user_id', data.user.id)
+                        .single(); // Expecting one or zero results
+
+                    if (adminError && adminError.code !== 'PGRST116') { // PGRST116 is "No rows found"
+                        throw adminError; // Other errors while checking admin table
+                    }
+
+                    if (adminData) { // If adminData exists, the user is an admin
+                        document.getElementById('loginForm').classList.add('hidden');
+                        document.getElementById('adminPanel').classList.remove('hidden');
+                        loadBuses();
+                        loadBookings();
+                        showSuccessMessage('loginErrorMessage', 'Admin login successful!'); // Using loginErrorMessage for general messages
+                    } else {
+                        // User logged in but is not an admin
+                        await supabase.auth.signOut(); // Immediately sign out non-admin users
+                        showErrorMessage('loginErrorMessage', 'Access Denied: You do not have admin privileges.');
+                    }
                 } else {
-                    console.error('Admin Login Error: data.user is null after signInWithPassword.');
-                    adminLoginMessage.textContent = 'An unexpected error occurred during login.';
-                    adminLoginMessage.className = 'message error-message';
-                    adminLoginMessage.style.display = 'block';
+                    showErrorMessage('loginErrorMessage', 'Login failed: Invalid credentials.');
                 }
 
             } catch (error) {
-                console.error('Admin login error caught:', error.message);
-                adminLoginMessage.textContent = 'Login failed: ' + error.message;
-                adminLoginMessage.className = 'message error-message';
-                adminLoginMessage.style.display = 'block';
+                console.error('Login error:', error.message);
+                showErrorMessage('loginErrorMessage', 'Login failed: ' + error.message);
             }
-        });
+        }
 
-        // Admin Logout
-        async function adminLogout() {
-            console.log('Attempting admin logout...');
+        async function logout() {
             const { error } = await supabase.auth.signOut();
             if (error) {
                 console.error('Logout error:', error.message);
+                // Replace alert with custom modal or message display
+                // alert('Failed to logout: ' + error.message);
+                showErrorMessage('loginErrorMessage', 'Failed to logout: ' + error.message);
             } else {
-                console.log('Admin logged out successfully.');
-                adminPanel.style.display = 'none';
-                adminLoginContainer.style.display = 'block';
-                // Clear tables if desired
-                busesTableBody.innerHTML = '';
-                bookingsTableBody.innerHTML = '';
-                usersTableBody.innerHTML = '';
-                adminLoginForm.reset(); // Clear login form fields
-                adminLoginMessage.style.display = 'none';
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('adminPanel').classList.add('hidden');
+                // Clear tables
+                document.getElementById('busesTableBody').innerHTML = '';
+                document.getElementById('bookingsTableBody').innerHTML = '';
             }
         }
 
-        // Function to check initial session and show panel or login
-        async function checkAdminSession() {
-            console.log('Checking admin session...');
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error('Error getting session:', error.message);
-            }
-
+        // Check auth state on page load
+        supabase.auth.getSession().then(async ({ data: { session } }) => { // Made async
             if (session) {
-                // In a real app, you'd also check user roles here
-                // For now, if a session exists, assume they can access admin.
-                console.log('Active admin session found.');
-                adminLoginContainer.style.display = 'none';
-                adminPanel.style.display = 'block';
-                loadBuses();
-                loadBookings();
-                loadUsers();
-                openTab(null, 'busesTab'); // Open default tab
-            } else {
-                console.log('No active admin session. Showing login form.');
-                adminLoginContainer.style.display = 'block';
-                adminPanel.style.display = 'none';
-            }
-        }
+                // On page load, verify admin status
+                const { data: adminData, error: adminError } = await supabase
+                    .from('admins')
+                    .select('admin_user_id')
+                    .eq('admin_user_id', session.user.id)
+                    .single();
 
-
-        // Tab switching logic
-        function openTab(evt, tabName) {
-            const tabContents = document.getElementsByClassName('tab-content');
-            for (let i = 0; i < tabContents.length; i++) {
-                tabContents[i].style.display = 'none';
-            }
-            const tabButtons = document.getElementsByClassName('tab-button');
-            for (let i = 0; i < tabButtons.length; i++) {
-                tabButtons[i].classList.remove('active');
-            }
-            document.getElementById(tabName).style.display = 'block';
-            if (evt) {
-                evt.currentTarget.classList.add('active');
-            } else { // For initial load via JS
-                document.querySelector(`.tab-button[data-tab="${tabName}"]`).classList.add('active');
-            }
-        }
-
-        // --- Bus Management Functions ---
-
-        // Load Buses
-        async function loadBuses() {
-            console.log('Loading buses...');
-            const { data, error } = await supabase
-                .from('buses')
-                .select('*')
-                .order('id', { ascending: true }); // Order by ID for consistent display
-
-            if (error) {
-                console.error('Error loading buses:', error.message);
-                showErrorMessage('busesTab', 'Failed to load buses: ' + error.message);
-                return;
-            }
-
-            busesTableBody.innerHTML = ''; // Clear existing rows
-            data.forEach(bus => {
-                const row = busesTableBody.insertRow();
-                row.insertCell().textContent = bus.id;
-                row.insertCell().textContent = bus.route;
-                row.insertCell().textContent = bus.time;
-                row.insertCell().textContent = bus.price;
-                row.insertCell().textContent = bus.capacity;
-                const actionsCell = row.insertCell();
-
-                // Add Update Button
-                const updateBtn = document.createElement('button');
-                updateBtn.textContent = 'Edit';
-                updateBtn.onclick = () => editBus(bus);
-                actionsCell.appendChild(updateBtn);
-
-                // Add Delete Button
-                const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = 'Delete';
-                deleteBtn.style.backgroundColor = '#f44336';
-                deleteBtn.style.marginLeft = '5px';
-                deleteBtn.onclick = () => deleteBus(bus.id);
-                actionsCell.appendChild(deleteBtn);
-            });
-            console.log('Buses loaded successfully:', data);
-        }
-
-        // Add Bus
-        addBusForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const route = document.getElementById('busRoute').value;
-            const time = document.getElementById('busTime').value;
-            const price = parseFloat(document.getElementById('busPrice').value);
-            const capacity = parseInt(document.getElementById('busCapacity').value);
-
-            console.log('Adding new bus:', { route, time, price, capacity });
-
-            try {
-                const { data, error } = await supabase
-                    .from('buses')
-                    .insert([{ route, time, price, capacity }]);
-
-                if (error) {
-                    throw error;
+                if (adminData) {
+                    document.getElementById('loginForm').classList.add('hidden');
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    loadBuses();
+                    loadBookings();
+                } else {
+                    // If session exists but not an admin, sign them out
+                    await supabase.auth.signOut();
+                    document.getElementById('loginForm').classList.remove('hidden');
+                    document.getElementById('adminPanel').classList.add('hidden');
+                    showErrorMessage('loginErrorMessage', 'Access Denied: You do not have admin privileges.');
                 }
-
-                console.log('Bus added successfully:', data);
-                showSuccessMessage('busesTab', 'Bus added successfully!');
-                addBusForm.reset();
-                loadBuses(); // Reload list to show new bus
-            } catch (error) {
-                console.error('Error adding bus:', error.message);
-                showErrorMessage('busesTab', 'Failed to add bus: ' + error.message);
             }
         });
 
-        // Edit/Update Bus (New Functionality)
-        let currentEditingBusId = null; // To store the ID of the bus being edited
+        // Listen for auth state changes (e.g., if session expires)
+        supabase.auth.onAuthStateChange(async (event, session) => { // Made async
+            if (event === 'SIGNED_OUT') {
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('adminPanel').classList.add('hidden');
+                document.getElementById('busesTableBody').innerHTML = '';
+                document.getElementById('bookingsTableBody').innerHTML = '';
+            } else if (event === 'SIGNED_IN' && session) {
+                // On sign in, verify admin status
+                const { data: adminData, error: adminError } = await supabase
+                    .from('admins')
+                    .select('admin_user_id')
+                    .eq('admin_user_id', session.user.id)
+                    .single();
 
-        function editBus(bus) {
-            console.log('Editing bus:', bus);
-            // Populate the "Add New Bus" form with current bus data for editing
-            document.getElementById('busRoute').value = bus.route;
-            document.getElementById('busTime').value = bus.time;
-            document.getElementById('busPrice').value = bus.price;
-            document.getElementById('busCapacity').value = bus.capacity;
+                if (adminData) {
+                    document.getElementById('loginForm').classList.add('hidden');
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    loadBuses();
+                    loadBookings();
+                } else {
+                    // If session exists but not an admin, sign them out
+                    await supabase.auth.signOut();
+                    document.getElementById('loginForm').classList.remove('hidden');
+                    document.getElementById('adminPanel').classList.add('hidden');
+                    showErrorMessage('loginErrorMessage', 'Access Denied: You do not have admin privileges.');
+                }
+            }
+        });
 
-            // Change the Add Bus button to an Update Bus button
-            const addButton = addBusForm.querySelector('button[type="submit"]');
-            addButton.textContent = 'Update Bus';
-            // Store the original event listener function before reassigning
-            const originalAddBusSubmit = addBusForm.onsubmit;
-            addButton.onclick = (e) => submitUpdateBus(e, bus.id); // Set new click handler
-            currentEditingBusId = bus.id; // Store ID for update
 
-            showSuccessMessage('busesTab', 'Form loaded for editing. Click "Update Bus" to save changes.');
+        // --- Tab Management ---
+        function showTab(tabName) {
+            document.getElementById('busesTab').classList.add('hidden');
+            document.getElementById('bookingsTab').classList.add('hidden');
+
+            document.getElementById('busesTabBtn').classList.remove('active');
+            document.getElementById('bookingsTabBtn').classList.remove('active');
+
+            document.getElementById(`${tabName}Tab`).classList.remove('hidden');
+            document.getElementById(`${tabName}TabBtn`).classList.add('active');
+
+            // Reload data for the active tab
+            if (tabName === 'buses') {
+                loadBuses();
+            } else if (tabName === 'bookings') {
+                loadBookings();
+            }
         }
 
-        async function submitUpdateBus(e, busId) {
-            e.preventDefault(); // Prevent form default submission
 
+        // --- Bus Management ---
+        async function addBus() {
             const route = document.getElementById('busRoute').value;
+            const origin = document.getElementById('busOrigin').value; // Get origin
+            const destination = document.getElementById('busDestination').value; // Get destination
             const time = document.getElementById('busTime').value;
             const price = parseFloat(document.getElementById('busPrice').value);
-            const capacity = parseInt(document.getElementById('busCapacity').value);
+            const totalSeats = parseInt(document.getElementById('busTotalSeats').value);
+            const travelDate = document.getElementById('busTravelDate').value;
 
-            console.log('Updating bus ID:', busId, 'with data:', { route, time, price, capacity });
+
+            if (!route || !origin || !destination || !time || isNaN(price) || isNaN(totalSeats) || !travelDate) {
+                showErrorMessage('busErrorMessage', 'Please fill in all bus details correctly, including Origin and Destination.');
+                return;
+            }
 
             try {
-                const { data, error } = await supabase
+                const { error } = await supabase
                     .from('buses')
-                    .update({ route, time, price, capacity })
-                    .eq('id', busId); // Specify which row to update
+                    .insert([
+                        {
+                            route: route,
+                            origin: origin,       // Insert origin
+                            destination: destination, // Insert destination
+                            time: time,
+                            price: price,
+                            totalSeats: totalSeats,
+                            available_seats: totalSeats, // Initially available seats = total seats
+                            travelDate: travelDate
+                        }
+                    ]);
 
                 if (error) {
                     throw error;
                 }
 
-                console.log('Bus updated successfully:', data);
-                showSuccessMessage('busesTab', 'Bus updated successfully!');
-                addBusForm.reset(); // Clear the form
-                loadBuses(); // Reload list to show updated bus
-
-                // Reset the button back to "Add Bus"
-                const addButton = addBusForm.querySelector('button[type="submit"]');
-                addButton.textContent = 'Add Bus';
-                // Re-attach the original submit event listener for "Add Bus"
-                addButton.onclick = null; // Clear the specific onclick
-                addBusForm.addEventListener('submit', (e) => { // Re-add the listener
-                    // This is a bit tricky; normally you'd use a single submit handler
-                    // that checks currentEditingBusId or button text.
-                    // For simplicity, we just reset to the original form's submit behavior.
-                    if (!currentEditingBusId) { // Only call if not in editing mode
-                        addBusForm.dispatchEvent(new Event('submit')); // Trigger original form submit
-                    }
-                }, { once: true }); // Ensure it only fires once or manage properly
-                currentEditingBusId = null; // Clear editing state
+                showSuccessMessage('busSuccessMessage', 'Bus added successfully!');
+                document.getElementById('busRoute').value = '';
+                document.getElementById('busOrigin').value = ''; // Clear origin
+                document.getElementById('busDestination').value = ''; // Clear destination
+                document.getElementById('busTime').value = '';
+                document.getElementById('busPrice').value = '';
+                document.getElementById('busTotalSeats').value = '';
+                document.getElementById('busTravelDate').value = '';
+                loadBuses(); // Reload bus list
             } catch (error) {
-                console.error('Error updating bus:', error.message);
-                showErrorMessage('busesTab', 'Failed to update bus: ' + error.message);
+                console.error('Error adding bus:', error.message);
+                showErrorMessage('busErrorMessage', 'Error adding bus: ' + error.message);
             }
         }
 
+        async function loadBuses() {
+            const busesTableBody = document.getElementById('busesTableBody');
+            busesTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Loading buses...</td></tr>'; // Increased colspan
 
-        // Delete Bus
-        async function deleteBus(busId) {
-            if (!confirm('Are you sure you want to delete this bus?')) {
+            try {
+                const { data: buses, error } = await supabase
+                    .from('buses')
+                    .select('*')
+                    .order('travelDate', { ascending: true })
+                    .order('time', { ascending: true });
+
+                if (error) {
+                    throw error;
+                }
+
+                busesTableBody.innerHTML = ''; // Clear loading message
+                if (buses.length === 0) {
+                    busesTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">No buses found.</td></tr>'; // Increased colspan
+                    return;
+                }
+
+                buses.forEach(bus => {
+                    const row = busesTableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${bus.id}</td>
+                        <td>${bus.route}</td>
+                        <td>${bus.origin}</td>       <!-- Display origin -->
+                        <td>${bus.destination}</td>  <!-- Display destination -->
+                        <td>${bus.time}</td>
+                        <td>Ksh ${bus.price.toFixed(2)}</td>
+                        <td>${bus.totalSeats}</td>
+                        <td>${bus.available_seats}</td>
+                        <td>${bus.travelDate}</td>
+                        <td class="action-buttons">
+                            <button class="edit-btn" onclick="editBus('${bus.id}')">Edit</button>
+                            <button class="delete-btn" onclick="deleteBus('${bus.id}')">Delete</button>
+                        </td>
+                    `;
+                });
+            } catch (error) {
+                console.error('Error loading buses:', error.message);
+                busesTableBody.innerHTML = `<tr><td colspan="10" style="color:red; text-align: center;">Error loading buses: ${error.message}</td></tr>`; // Increased colspan
+            }
+        }
+
+        async function editBus(busId) {
+            // Fetch current bus data to pre-fill prompts
+            const { data: currentBus, error: fetchError } = await supabase
+                .from('buses')
+                .select('*')
+                .eq('id', busId)
+                .single();
+
+            if (fetchError || !currentBus) {
+                console.error('Error fetching bus for edit:', fetchError ? fetchError.message : 'Bus not found.');
+                showErrorMessage('busErrorMessage', 'Could not load bus details for editing.');
                 return;
             }
-            console.log('Deleting bus ID:', busId);
+
+            const newRoute = prompt("Enter new route:", currentBus.route);
+            const newOrigin = prompt("Enter new origin:", currentBus.origin);
+            const newDestination = prompt("Enter new destination:", currentBus.destination);
+            const newTime = prompt("Enter new departure time:", currentBus.time);
+            const newPrice = prompt("Enter new price (Ksh):", currentBus.price);
+            const newTotalSeats = prompt("Enter new total seats:", currentBus.totalSeats);
+            const newAvailableSeats = prompt("Enter new available seats:", currentBus.available_seats);
+            const newTravelDate = prompt("Enter new travel date (YYYY-MM-DD):", currentBus.travelDate);
+
+
+            if (newRoute === null || newOrigin === null || newDestination === null || newTime === null || newPrice === null || newTotalSeats === null || newAvailableSeats === null || newTravelDate === null) {
+                // User cancelled one of the prompts
+                return;
+            }
+
+            // Basic validation
+            if (newRoute.trim() === "" || newOrigin.trim() === "" || newDestination.trim() === "" || newTime.trim() === "" || isNaN(parseFloat(newPrice)) || isNaN(parseInt(newTotalSeats)) || isNaN(parseInt(newAvailableSeats)) || newTravelDate.trim() === "") {
+                showErrorMessage('busErrorMessage', 'Invalid input. Please fill all fields correctly.');
+                return;
+            }
+
             try {
                 const { error } = await supabase
                     .from('buses')
-                    .delete()
+                    .update({
+                        route: newRoute,
+                        origin: newOrigin,
+                        destination: newDestination,
+                        time: newTime,
+                        price: parseFloat(newPrice),
+                        totalSeats: parseInt(newTotalSeats),
+                        available_seats: parseInt(newAvailableSeats),
+                        travelDate: newTravelDate
+                    })
                     .eq('id', busId);
 
                 if (error) {
                     throw error;
                 }
-
-                console.log('Bus deleted successfully:', busId);
-                showSuccessMessage('busesTab', 'Bus deleted successfully!');
-                loadBuses(); // Reload list
+                showSuccessMessage('busSuccessMessage', 'Bus updated successfully!');
+                loadBuses();
             } catch (error) {
-                console.error('Error deleting bus:', error.message);
-                showErrorMessage('busesTab', 'Failed to delete bus: ' + error.message);
+                console.error('Error updating bus:', error.message);
+                showErrorMessage('busErrorMessage', 'Error updating bus: ' + error.message);
             }
         }
 
-        // --- Booking Management Functions ---
+        async function deleteBus(busId) {
+            // Replace confirm with a custom modal for better UX
+            if (confirm('Are you sure you want to delete this bus? This will also affect associated bookings if not handled by RLS cascade rules.')) {
+                try {
+                    const { error } = await supabase
+                        .from('buses')
+                        .delete()
+                        .eq('id', busId);
 
+                    if (error) {
+                        throw error;
+                    }
+                    // Replace alert with custom modal or message display
+                    // alert('Bus deleted successfully!');
+                    showSuccessMessage('busSuccessMessage', 'Bus deleted successfully!');
+                    loadBuses(); // Reload bus list
+                } catch (error) {
+                    console.error('Error deleting bus:', error.message);
+                    // Replace alert with custom modal or message display
+                    // alert('Error deleting bus: ' + error.message);
+                    showErrorMessage('busErrorMessage', 'Error deleting bus: ' + error.message);
+                }
+            }
+        }
+
+        // --- Booking Management ---
         async function loadBookings() {
-            console.log('Loading bookings...');
-            const { data, error } = await supabase
-                .from('bookings')
-                .select('*')
-                .order('id', { ascending: false }); // Latest bookings first
+            const bookingsTableBody = document.getElementById('bookingsTableBody');
+            bookingsTableBody.innerHTML = '<tr><td colspan="12" style="text-align: center;">Loading bookings...</td></tr>';
 
-            if (error) {
-                console.error('Error loading bookings:', error.message);
-                showErrorMessage('bookingsTab', 'Failed to load bookings: ' + error.message);
-                return;
-            }
-
-            bookingsTableBody.innerHTML = '';
-            data.forEach(booking => {
-                const row = bookingsTableBody.insertRow();
-                row.insertCell().textContent = booking.id;
-                row.insertCell().textContent = booking.passengerName;
-                row.insertCell().textContent = booking.busRoute;
-                row.insertCell().textContent = booking.travelDate;
-                row.insertCell().textContent = booking.busTime;
-                row.insertCell().textContent = booking.seatNumber;
-                row.insertCell().textContent = booking.price;
-                row.insertCell().textContent = booking.status;
-                const actionsCell = row.insertCell();
-
-                // Add actions like 'Confirm Payment', 'Cancel Booking', etc.
-                const confirmBtn = document.createElement('button');
-                confirmBtn.textContent = 'Confirm Payment';
-                confirmBtn.style.backgroundColor = '#007bff';
-                confirmBtn.style.fontSize = '0.8em';
-                confirmBtn.onclick = () => updateBookingStatus(booking.id, 'paid');
-                actionsCell.appendChild(confirmBtn);
-
-                const cancelBtn = document.createElement('button');
-                cancelBtn.textContent = 'Cancel';
-                cancelBtn.style.backgroundColor = '#f44336';
-                cancelBtn.style.fontSize = '0.8em';
-                cancelBtn.style.marginLeft = '5px';
-                cancelBtn.onclick = () => updateBookingStatus(booking.id, 'cancelled');
-                actionsCell.appendChild(cancelBtn);
-            });
-            console.log('Bookings loaded successfully:', data);
-        }
-
-        async function updateBookingStatus(bookingId, newStatus) {
-            console.log(`Updating booking ${bookingId} to status: ${newStatus}...`);
             try {
-                const { data, error } = await supabase
+                const { data: bookings, error } = await supabase
                     .from('bookings')
-                    .update({ status: newStatus })
-                    .eq('id', bookingId);
-
-                if (error) {
-                    throw error;
-                }
-                console.log('Booking status updated successfully:', data);
-                showSuccessMessage('bookingsTab', `Booking ${bookingId} status updated to ${newStatus.toUpperCase()}!`);
-                loadBookings(); // Reload to show changes
-            } catch (error) {
-                console.error('Error updating booking status:', error.message);
-                showErrorMessage('bookingsTab', `Failed to update booking status: ${error.message}`);
-            }
-        }
-
-
-        // --- User Management Functions ---
-
-        async function loadUsers() {
-            console.log('Loading users...');
-            try {
-                // Fetch users from auth.users (requires service role key for full details, or RLS)
-                // For simplicity here, we'll try to join with the 'profiles' table
-                // This assumes your RLS allows admin to read profiles or you're using a service key
-                const { data: users, error: authError } = await supabase.auth.admin.listUsers(); // Requires service_role key to be able to list users for security
-
-                if (authError) {
-                    // Fallback if listUsers is not accessible (e.g. only anon key is used)
-                    console.warn('Could not list users via auth.admin.listUsers, likely due to anonymous key. Attempting to load from profiles table only.');
-                    const { data: profiles, error: profileError } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .order('created_at', { ascending: false });
-
-                    if (profileError) {
-                        throw profileError;
-                    }
-
-                    usersTableBody.innerHTML = '';
-                    profiles.forEach(profile => {
-                        const row = usersTableBody.insertRow();
-                        row.insertCell().textContent = profile.id;
-                        row.insertCell().textContent = profile.email || 'N/A';
-                        row.insertCell().textContent = profile.full_name || 'N/A';
-                        row.insertCell().textContent = profile.phone_number || 'N/A';
-                        row.insertCell().textContent = new Date(profile.created_at).toLocaleString() || 'N/A';
-                        row.insertCell().textContent = 'N/A (from profiles)'; // Last sign-in not in profiles
-                        const actionsCell = row.insertCell();
-                        // Add delete button for user profiles
-                        const deleteBtn = document.createElement('button');
-                        deleteBtn.textContent = 'Delete Profile';
-                        deleteBtn.style.backgroundColor = '#f44336';
-                        deleteBtn.style.fontSize = '0.8em';
-                        deleteBtn.onclick = () => deleteUserProfile(profile.id);
-                        actionsCell.appendChild(deleteBtn);
-                    });
-                    console.log('Users loaded from profiles table:', profiles);
-                } else {
-                    // If auth.admin.listUsers worked (e.g. using service key on backend)
-                    usersTableBody.innerHTML = '';
-                    for (const user of users.users) {
-                        const { data: profile, error: profileFetchError } = await supabase
-                            .from('profiles')
-                            .select('full_name, phone_number')
-                            .eq('id', user.id)
-                            .single();
-
-                        const row = usersTableBody.insertRow();
-                        row.insertCell().textContent = user.id;
-                        row.insertCell().textContent = user.email;
-                        row.insertCell().textContent = profile ? profile.full_name : 'N/A';
-                        row.insertCell().textContent = profile ? profile.phone_number : 'N/A';
-                        row.insertCell().textContent = new Date(user.created_at).toLocaleString();
-                        row.insertCell().textContent = user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Never';
-                        const actionsCell = row.insertCell();
-                        // Add delete button
-                        const deleteBtn = document.createElement('button');
-                        deleteBtn.textContent = 'Delete User';
-                        deleteBtn.style.backgroundColor = '#f44336';
-                        deleteBtn.style.fontSize = '0.8em';
-                        deleteBtn.onclick = () => deleteUser(user.id, user.email);
-                        actionsCell.appendChild(deleteBtn);
-                    }
-                    console.log('Users loaded from auth.users:', users);
-                }
-
-            } catch (error) {
-                console.error('Error loading users:', error.message);
-                showErrorMessage('usersTab', 'Failed to load users: ' + error.message);
-            }
-        }
-
-        // Deleting a user (from auth.users and profiles table)
-        async function deleteUser(userId, userEmail) {
-            if (!confirm(`Are you sure you want to delete user ${userEmail} (ID: ${userId})? This will also delete their profile.`)) {
-                return;
-            }
-            console.log('Deleting user ID:', userId);
-            try {
-                // First, delete from profiles table
-                const { error: profileError } = await supabase
-                    .from('profiles')
-                    .delete()
-                    .eq('id', userId);
-
-                if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "No rows found" which is fine if profile doesn't exist
-                    console.warn('Could not delete profile (might not exist):', profileError.message);
-                }
-
-                // Then delete from auth.users (requires service_role key)
-                // This operation typically requires a service role key on the backend
-                // or specific RLS policies, which might not be set up for anon key.
-                // If you get an error here, it's likely an RLS/auth policy issue.
-                const { error: authUserError } = await supabase.auth.admin.deleteUser(userId);
-
-                if (authUserError) {
-                    throw authUserError;
-                }
-
-                console.log('User deleted successfully:', userId);
-                showSuccessMessage('usersTab', `User ${userEmail} deleted successfully!`);
-                loadUsers(); // Reload list
-            } catch (error) {
-                console.error('Error deleting user:', error.message);
-                showErrorMessage('usersTab', 'Failed to delete user: ' + error.message + '. Check Supabase RLS for auth.users or try with service role key.');
-            }
-        }
-
-        // Delete user profile only (if auth.admin.deleteUser is not accessible)
-        async function deleteUserProfile(profileId) {
-            if (!confirm('Are you sure you want to delete this user\'s profile? This will NOT delete their authentication account.')) {
-                return;
-            }
-            console.log('Deleting user profile ID:', profileId);
-            try {
-                const { error } = await supabase
-                    .from('profiles')
-                    .delete()
-                    .eq('id', profileId);
+                    .select('*')
+                    .order('bookingDate', { ascending: false }); // Order by newest bookings first
 
                 if (error) {
                     throw error;
                 }
 
-                console.log('User profile deleted successfully:', profileId);
-                showSuccessMessage('usersTab', 'User profile deleted successfully!');
-                loadUsers(); // Reload list
+                bookingsTableBody.innerHTML = ''; // Clear loading message
+                if (bookings.length === 0) {
+                    bookingsTableBody.innerHTML = '<tr><td colspan="12" style="text-align: center;">No bookings found.</td></tr>';
+                    return;
+                }
+
+                bookings.forEach(booking => {
+                    const row = bookingsTableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${booking.id}</td>
+                        <td>${booking.passengerName}</td>
+                        <td>${booking.passengerPhone}</td>
+                        <td>${booking.passengerEmail || 'N/A'}</td>
+                        <td>${booking.busRoute}</td>
+                        <td>${booking.travelDate}</td>
+                        <td>${booking.busTime}</td>
+                        <td>${booking.seatNumber}</td>
+                        <td>Ksh ${booking.price.toFixed(2)}</td>
+                        <td><span style="color: ${booking.status === 'paid' ? 'green' : 'orange'}; font-weight: bold;">${booking.status ? booking.status.toUpperCase() : 'UNKNOWN'}</span></td>
+                        <td>${booking.bookingDate}</td>
+                        <td class="action-buttons">
+                            <button class="edit-btn" onclick="editBookingStatus('${booking.id}', '${booking.status}')">Update Status</button>
+                            <button class="delete-btn" onclick="deleteBooking('${booking.id}')">Delete</button>
+                        </td>
+                    `;
+                });
             } catch (error) {
-                console.error('Error deleting user profile:', error.message);
-                showErrorMessage('usersTab', 'Failed to delete user profile: ' + error.message);
+                console.error('Error loading bookings:', error.message);
+                bookingsTableBody.innerHTML = `<tr><td colspan="12" style="color:red; text-align: center;">Error loading bookings: ${error.message}</td></tr>`;
             }
         }
 
-        // Download bookings as CSV
+        async function editBookingStatus(bookingId, currentStatus) {
+            // Replace prompt with a custom modal for better UX
+            const newStatus = prompt(`Current status for ${bookingId} is '${currentStatus}'. Enter new status (e.g., 'paid', 'cancelled', 'pending'):`);
+
+            if (newStatus !== null && newStatus.trim() !== '') {
+                try {
+                    const { error } = await supabase
+                        .from('bookings')
+                        .update({ status: newStatus.toLowerCase() })
+                        .eq('id', bookingId);
+
+                    if (error) {
+                        throw error;
+                    }
+                    // Replace alert with custom modal or message display
+                    // alert('Booking status updated successfully!');
+                    showSuccessMessage('bookingsTab', 'Booking status updated successfully!'); // Using bookingsTab for general messages
+                    loadBookings();
+                    // Potentially, if status changes to cancelled, you might want to increment available_seats
+                    // This would require another Supabase Function/Trigger on update.
+                } catch (error) {
+                    console.error('Error updating booking status:', error.message);
+                    // Replace alert with custom modal or message display
+                    // alert('Error updating booking status: ' + error.message);
+                    showErrorMessage('bookingsTab', 'Error updating booking status: ' + error.message);
+                }
+            }
+        }
+
+        async function deleteBooking(bookingId) {
+            // Replace confirm with a custom modal for better UX
+            if (confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
+                try {
+                    const { error } = await supabase
+                        .from('bookings')
+                        .delete()
+                        .eq('id', bookingId);
+
+                    if (error) {
+                        throw error;
+                    }
+                    // Replace alert with custom modal or message display
+                    // alert('Booking deleted successfully!');
+                    showSuccessMessage('bookingsTab', 'Booking deleted successfully!'); // Using bookingsTab for general messages
+                    loadBookings(); // Reload booking list
+                    // If a booking is deleted, you should also increment available_seats for the corresponding bus.
+                    // This would require a Supabase Function/Trigger on delete of a booking.
+                } catch (error) {
+                    console.error('Error deleting booking:', error.message);
+                    // Replace alert with custom modal or message display
+                    // alert('Error deleting booking: ' + error.message);
+                    showErrorMessage('bookingsTab', 'Error deleting booking: ' + error.message);
+                }
+            }
+        }
+
         function downloadBookingsCSV() {
-            const table = document.getElementById('bookingsTable');
-            const rows = table.querySelectorAll('tr');
+            const table = document.getElementById('bookingsTableBody');
+            if (!table || table.rows.length === 0 || table.rows[0].cells.length === 1) { // Check for "No bookings found" or loading message
+                // Replace alert with custom modal or message display
+                // alert("No booking data to download. Please load bookings first.");
+                showErrorMessage('bookingsTab', "No booking data to download. Please load bookings first.");
+                return;
+            }
+
             let csvRows = [];
+            // Get headers
+            const headerRow = document.getElementById('bookingsTableBody').closest('table').querySelector('thead').outerHTML;
+            const headers = Array.from(new DOMParser().parseFromString(headerRow, 'text/html').querySelectorAll('th'))
+                               .map(th => `"${th.textContent.trim().replace(/"/g, '""')}"`) // Escape quotes
+                               .filter(header => !header.includes("Actions")); // Exclude Actions column
+            csvRows.push(headers.join(','));
 
-            // Add header row
-            const header = Array.from(rows[0].querySelectorAll('th')).map(th => `"${th.textContent.trim().replace(/"/g, '""')}"`);
-            csvRows.push(header.join(','));
-
-            // Add data rows, excluding the last column (Actions)
-            for (let i = 1; i < rows.length; i++) {
-                const row = rows[i];
-                const rowData = Array.from(row.querySelectorAll('td')).map((cell, index) => {
-                    if (index === row.cells.length - 1) { // If it's the last column (Actions)
-                        return null; // Exclude actions column
+            // Get data rows
+            Array.from(table.rows).forEach(row => {
+                const rowData = Array.from(row.cells).map((cell, index) => {
+                    // Exclude the last cell (Actions column)
+                    if (index === row.cells.length - 1) {
+                        return null; // Skip the actions column
                     }
                     return `"${cell.textContent.trim().replace(/"/g, '""')}"`; // Escape double quotes within data
                 }).filter(cell => cell !== null); // Filter out the null for the actions column
 
                 csvRows.push(rowData.join(','));
-            }
+            });
 
             const csvString = csvRows.join('\n');
             const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
@@ -818,35 +791,16 @@
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url); // Clean up
+            // Replace alert with custom modal or message display
+            // alert("Bookings data downloaded successfully as CSV!");
             showSuccessMessage('bookingsTab', "Bookings data downloaded successfully as CSV!");
         }
 
         // Initial load when admin panel is shown or page is refreshed
         document.addEventListener('DOMContentLoaded', () => {
-            checkAdminSession(); // Check if user is already logged in
-        });
-
-        // Listen for Supabase auth changes for persistent login state
-        supabase.auth.onAuthStateChange((event, session) => {
-            console.log('Admin Auth state changed:', event, session);
-            if (event === 'SIGNED_IN') {
-                console.log('User just signed in. Showing admin panel.');
-                adminLoginContainer.style.display = 'none';
-                adminPanel.style.display = 'block';
-                loadBuses();
-                loadBookings();
-                loadUsers();
-                openTab(null, 'busesTab');
-            } else if (event === 'SIGNED_OUT') {
-                console.log('User just signed out. Showing login form.');
-                adminPanel.style.display = 'none';
-                adminLoginContainer.style.display = 'block';
-                adminLoginForm.reset();
-                adminLoginMessage.style.display = 'none';
-                busesTableBody.innerHTML = ''; // Clear tables
-                bookingsTableBody.innerHTML = '';
-                usersTableBody.innerHTML = '';
-            }
+            // The `supabase.auth.getSession()` listener handles initial display
+            // and calls loadBuses/loadBookings if a session exists.
+            // No direct calls here to avoid redundant fetches.
         });
     </script>
 </body>
