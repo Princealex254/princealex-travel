@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login / Register - Prince Alex Travel Services</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://numnzxrnrlxvkjwlusbe.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bW56eHJucmx4dmtqd2x1c2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMTgxNzgsImV4cCI6MjA2Njc5NDQ1OH0.03mPw9Y7tuWne5SNpsag7lYhQSZ6HqA8YmDSxVMVMFg';
+
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+    <style>
+        /* Reusing common styles from your existing index.html */
+        :root {
+            --primary-color: #002d6b;
+            --accent-color: #c69214;
+            --light-bg: #f5f7fa;
+            --text-dark: #1a1a1a;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+        .navbar {
+            background-color: var(--primary-color);
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .navbar-container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            background-color: white;
+            padding: 10px 15px;
+            border-radius: 12px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+        }
+        .logo img {
+            height: 80px;
+            display: block;
+        }
+        .nav-links {
+            display: flex;
+            gap: 25px;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            position: relative;
+        }
+        .nav-links a::after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 2px;
+            background: var(--accent-color);
+            transition: width 0.3s;
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+        }
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+        .nav-links a:hover {
+            color: var(--accent-color);
+        }
+        .footer {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            margin-top: 40px;
+        }
+        .footer-content {
+            max-width: 1000px;
+            margin: auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px;
+            text-align: left;
+        }
+        .footer-section {
+            flex: 1;
+            min-width: 200px;
+        }
+        .footer-section h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+        .footer-section a,
+        .footer-section p {
+            display: block;
+            color: white;
+            margin: 4px 0;
+            text-decoration: none;
+        }
+        .footer-section a:hover {
+            text-decoration: underline;
+        }
+        .footer-bottom {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        /* Specific styles for Login/Register Page */
+        .auth-container {
+            max-width: 500px;
+            margin: 60px auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .auth-container h1 {
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="password"],
+        .form-group input[type="tel"] { /* Added for phone number */
+            width: calc(100% - 22px); /* Account for padding */
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+        .auth-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .auth-buttons button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+        .auth-buttons button:hover {
+            background-color: #b27e0f;
+            transform: translateY(-2px);
+        }
+        .auth-buttons button:active {
+            transform: translateY(0);
+        }
+        .toggle-form {
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        .toggle-form a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .toggle-form a:hover {
+            text-decoration: underline;
+        }
+        #registerForm {
+            display: none; /* Initially hide register form */
+        }
+        .error-message {
+            color: red;
+            margin-top: 10px;
+            text-align: left;
+        }
+        .success-message {
+            color: green;
+            margin-top: 10px;
+            text-align: left;
+        }
+
+
+        @media (max-width: 768px) {
+            .navbar-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .auth-container {
+                margin: 30px 20px;
+                padding: 20px;
+            }
+            .auth-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .auth-buttons button {
+                width: 100%;
+            }
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            .footer-section a,
+            .footer-section p {
+                display: inline-block;
+                margin: 0 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="logo">
+                <img src="Mylogo.png" alt="Prince Alex Logo">
+            </div>
+            <nav class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="about-us.html">About Us</a>
+                <a href="#contact-us">Contact</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="admin.html">Admin Login</a>
+                <a href="login-register.html" id="loginRegisterLink">Login / Register</a>
+                <a href="#" id="logoutLink" style="display: none;" onclick="logout()">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="auth-container">
+        <h1>Welcome</h1>
+
+        <div id="loginForm">
+            <h2>Login</h2>
+            <form id="loginUserForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email:</label>
+                    <input type="email" id="loginEmail" name="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password:</label>
+                    <input type="password" id="loginPassword" name="loginPassword" required>
+                </div>
+                <div class="auth-buttons">
+                    <button type="submit">Login</button>
+                </div>
+                <p id="loginErrorMessage" class="error-message" style="display: none;"></p>
+            </form>
+            <p class="toggle-form">Don't have an account? <a href="#" onclick="showRegisterForm()">Register here</a></p>
+        </div>
+
+        <div id="registerForm">
+            <h2>Register</h2>
+            <form id="registerUserForm">
+                <div class="form-group">
+                    <label for="registerName">Full Name:</label>
+                    <input type="text" id="registerName" name="registerName" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email:</label>
+                    <input type="email" id="registerEmail" name="registerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPhone">Phone Number:</label>
+                    <input type="tel" id="registerPhone" name="registerPhone" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Password:</label>
+                    <input type="password" id="registerPassword" name="registerPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password:</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                </div>
+                <div class="auth-buttons">
+                    <button type="submit">Register</button>
+                </div>
+                <p id="registerErrorMessage" class="error-message" style="display: none;"></p>
+                <p id="registerSuccessMessage" class="success-message" style="display: none;"></p>
+            </form>
+            <p class="toggle-form">Already have an account? <a href="#" onclick="showLoginForm()">Login here</a></p>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section" id="contact-us">
+                <h4>Contact Us</h4>
+                <p>Email: senerwaalex@gmail.com</p>
+                <p>Phone: +254 717 384 875</p>
+                <p>Location: Nairobi, Kenya</p>
+            </div>
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <a href="index.html">Home</a>
+                <a href="about-us.html">About Us</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="admin.html">Admin Login</a>
+            </div>
+            <div class="footer-section">
+                <h4>Follow Us</h4>
+                <a href="#">Facebook</a>
+                <a href="#">Instagram</a>
+                <a href="#">Twitter</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Prince Alex Digital. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        function showRegisterForm() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('loginErrorMessage').style.display = 'none';
+            document.getElementById('registerErrorMessage').style.display = 'none';
+            document.getElementById('registerSuccessMessage').style.display = 'none';
+        }
+
+        function showLoginForm() {
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('loginErrorMessage').style.display = 'none';
+            document.getElementById('registerErrorMessage').style.display = 'none';
+            document.getElementById('registerSuccessMessage').style.display = 'none';
+        }
+
+        const registerUserForm = document.getElementById('registerUserForm');
+        const loginUserForm = document.getElementById('loginUserForm');
+        const registerErrorMessage = document.getElementById('registerErrorMessage');
+        const registerSuccessMessage = document.getElementById('registerSuccessMessage');
+        const loginErrorMessage = document.getElementById('loginErrorMessage');
+        const loginRegisterLink = document.getElementById('loginRegisterLink');
+        const logoutLink = document.getElementById('logoutLink');
+
+        registerUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const phone = document.getElementById('registerPhone').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            registerErrorMessage.style.display = 'none';
+            registerSuccessMessage.style.display = 'none';
+
+            if (password !== confirmPassword) {
+                registerErrorMessage.textContent = 'Passwords do not match.';
+                registerErrorMessage.style.display = 'block';
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                });
+
+                if (error) {
+                    throw error;
+                }
+
+                if (data.user) {
+                    const { error: profileError } = await supabase.from('profiles').insert([
+                        {
+                            id: data.user.id,
+                            full_name: fullName,
+                            phone_number: phone,
+                            email: email // Storing email in profiles table for easier access
+                        }
+                    ]);
+
+                    if (profileError) {
+                        // If profile insertion fails, consider rolling back the user creation or logging it
+                        console.error('Error inserting profile:', profileError.message);
+                        registerErrorMessage.textContent = 'Registration successful, but failed to save profile information. Please contact support.';
+                        registerErrorMessage.style.display = 'block';
+                        // Optionally, you might want to delete the user created by auth.signUp if profile creation fails.
+                        // However, this would require admin privileges or a more complex setup.
+                    } else {
+                        registerSuccessMessage.textContent = 'Registration successful! Please check your email to confirm your account.';
+                        registerSuccessMessage.style.display = 'block';
+                        registerUserForm.reset(); // Clear the form
+                        // Optionally, automatically show login form after successful registration
+                        // showLoginForm();
+                    }
+                } else {
+                    // This case might happen if data.user is null but no explicit error is thrown (unlikely with signUp)
+                    registerErrorMessage.textContent = 'An unexpected error occurred during registration.';
+                    registerErrorMessage.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Registration error:', error.message);
+                registerErrorMessage.textContent = error.message;
+                registerErrorMessage.style.display = 'block';
+            }
+        });
+
+        loginUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            loginErrorMessage.style.display = 'none';
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
+
+                if (error) {
+                    throw error;
+                }
+
+                if (data.user) {
+                    console.log('Login successful:', data.user);
+                    // Redirect to a dashboard or home page after successful login
+                    window.location.href = 'index.html'; // Or a user-specific dashboard
+                } else {
+                    loginErrorMessage.textContent = 'An unexpected error occurred during login.';
+                    loginErrorMessage.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Login error:', error.message);
+                loginErrorMessage.textContent = 'Login failed: ' + error.message;
+                loginErrorMessage.style.display = 'block';
+            }
+        });
+
+        // Logout function
+        async function logout() {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error('Logout error:', error.message);
+            } else {
+                alert('Logged out successfully!');
+                window.location.href = 'login-register.html'; // Redirect to login page
+            }
+        }
+
+        // Function to update navbar links based on auth state
+        function updateAuthLinks(session) {
+            if (session) {
+                loginRegisterLink.style.display = 'none';
+                logoutLink.style.display = 'block';
+            } else {
+                loginRegisterLink.style.display = 'block';
+                logoutLink.style.display = 'none';
+            }
+        }
+
+        // Check for session on page load to update UI
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            updateAuthLinks(session);
+        });
+
+        // Listen for auth state changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log('Auth state changed:', event, session);
+            updateAuthLinks(session);
+            if (event === 'SIGNED_OUT') {
+                console.log('User signed out');
+                // Additional actions on sign out if needed, like clearing forms
+            }
+        });
+
+    </script>
+</body>
+</html>
