@@ -368,16 +368,19 @@
             const password = document.getElementById('registerPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
 
+            // Clear previous messages
             registerErrorMessage.style.display = 'none';
             registerSuccessMessage.style.display = 'none';
 
             if (password !== confirmPassword) {
                 registerErrorMessage.textContent = 'Passwords do not match.';
                 registerErrorMessage.style.display = 'block';
+                console.log('Registration Error: Passwords do not match.');
                 return;
             }
 
             try {
+                console.log('Attempting Supabase signUp...');
                 const { data, error } = await supabase.auth.signUp({
                     email: email,
                     password: password,
@@ -387,13 +390,16 @@
                     throw error;
                 }
 
+                console.log('Supabase signUp successful:', data);
+
                 if (data.user) {
+                    console.log('Attempting to insert profile...');
                     const { error: profileError } = await supabase.from('profiles').insert([
                         {
                             id: data.user.id,
                             full_name: fullName,
                             phone_number: phone,
-                            email: email // Storing email in profiles table for easier access
+                            email: email
                         }
                     ]);
 
@@ -402,17 +408,24 @@
                         registerErrorMessage.textContent = 'Registration successful, but failed to save profile information. Please contact support.';
                         registerErrorMessage.style.display = 'block';
                     } else {
+                        console.log('Profile insertion successful.');
                         registerSuccessMessage.textContent = 'Registration successful! Please check your email to confirm your account.';
                         registerSuccessMessage.style.display = 'block';
-                        registerUserForm.reset();
+                        registerUserForm.reset(); // Clear the form fields
+
+                        // Add a short delay before switching to login form to allow user to see the message
+                        setTimeout(() => {
+                            showLoginForm(); // Switch back to login form
+                        }, 3000); // Display message for 3 seconds
                     }
                 } else {
+                    console.error('Registration Error: data.user is null after signUp.');
                     registerErrorMessage.textContent = 'An unexpected error occurred during registration.';
                     registerErrorMessage.style.display = 'block';
                 }
 
             } catch (error) {
-                console.error('Registration error:', error.message);
+                console.error('Registration error caught:', error.message);
                 registerErrorMessage.textContent = error.message;
                 registerErrorMessage.style.display = 'block';
             }
@@ -426,6 +439,7 @@
             loginErrorMessage.style.display = 'none';
 
             try {
+                console.log('Attempting Supabase signInWithPassword...');
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email: email,
                     password: password,
@@ -439,27 +453,32 @@
                     console.log('Login successful:', data.user);
                     window.location.href = 'index.html';
                 } else {
+                    console.error('Login Error: data.user is null after signInWithPassword.');
                     loginErrorMessage.textContent = 'An unexpected error occurred during login.';
                     loginErrorMessage.style.display = 'block';
                 }
 
             } catch (error) {
-                console.error('Login error:', error.message);
+                console.error('Login error caught:', error.message);
                 loginErrorMessage.textContent = 'Login failed: ' + error.message;
                 loginErrorMessage.style.display = 'block';
             }
         });
 
+        // Logout function
         async function logout() {
+            console.log('Attempting logout...');
             const { error } = await supabase.auth.signOut();
             if (error) {
                 console.error('Logout error:', error.message);
             } else {
+                console.log('Logged out successfully.');
                 alert('Logged out successfully!');
                 window.location.href = 'login-register.html';
             }
         }
 
+        // Function to update navbar links based on auth state
         function updateAuthLinks(session) {
             if (session) {
                 loginRegisterLink.style.display = 'none';
@@ -470,18 +489,27 @@
             }
         }
 
+        // Check for session on page load to update UI
         supabase.auth.getSession().then(({ data: { session } }) => {
             updateAuthLinks(session);
+            console.log('Initial session check:', session);
         });
 
+        // Listen for auth state changes
         supabase.auth.onAuthStateChange((event, session) => {
             console.log('Auth state changed:', event, session);
             updateAuthLinks(session);
             if (event === 'SIGNED_OUT') {
                 console.log('User signed out');
             }
+            if (event === 'SIGNED_IN') {
+                 console.log('User signed in');
+                 // Optionally redirect signed in users away from login/register page
+                 // if (window.location.pathname.includes('login-register.html')) {
+                 //     window.location.href = 'index.html';
+                 // }
+            }
         });
-
     </script>
 </body>
 </html>
