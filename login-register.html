@@ -407,16 +407,16 @@
                         console.error('Error inserting profile:', profileError.message);
                         registerErrorMessage.textContent = 'Registration successful, but failed to save profile information. Please contact support.';
                         registerErrorMessage.style.display = 'block';
+                        alert('Registration successful, but failed to save profile information. Please contact support.'); // Blocking alert
                     } else {
                         console.log('Profile insertion successful.');
                         registerSuccessMessage.textContent = 'Registration successful! Please check your email to confirm your account.';
                         registerSuccessMessage.style.display = 'block';
-                        registerUserForm.reset(); // Clear the form fields
 
-                        // Add a short delay before switching to login form to allow user to see the message
-                        setTimeout(() => {
-                            showLoginForm(); // Switch back to login form
-                        }, 3000); // Display message for 3 seconds
+                        alert('Registration successful! Please check your email to confirm your account.'); // Blocking alert
+
+                        registerUserForm.reset(); // Clear the form fields
+                        window.location.href = 'login-register.html'; // Explicitly redirect to login page
                     }
                 } else {
                     console.error('Registration Error: data.user is null after signUp.');
