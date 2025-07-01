@@ -331,11 +331,10 @@
     </footer>
 
     <script>
-        // Move Supabase initialization here to be in the same scope as other functions
-        const SUPABASE_URL = 'https://numnzxrnrlxvkjwlusbe.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bW56eHJucmx4dmtqd2x1c2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMTgxNzgsImV4cCI6MjA2Njc5NDQ1OH0.03mPw9Y7tuWne5SNpsag7lYhQSZ6HqA8YmDSxVMVMFg';
-        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+  const supabase = createClient(
+    'https://numnzxrnrlxvkjwlusbe.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bW56eHJucmx4dmtqd2x1c2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMTgxNzgsImV4cCI6MjA2Njc5NDQ1OH0.03mPw9Y7tuWne5SNpsag7lYhQSZ6HqA8YmDSxVMVMFg'
+  );
         function showRegisterForm() {
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('registerForm').style.display = 'block';
