@@ -626,7 +626,7 @@
             border-radius: 12px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
             z-index: 9999;
-            display: flex;
+            display: flex; /* Always flex */
             flex-direction: column;
             overflow: hidden;
             transition: all 0.3s ease-in-out;
@@ -913,7 +913,7 @@
         <i class="fas fa-comments"></i>
         </div>
 
-    <div id="aiAssistantChat" style="display: none;">
+    <div id="aiAssistantChat">
         <div class="chat-header">
             <h3>AI Assistant</h3>
             <button class="chat-close-btn" onclick="toggleChat()">&times;</button>
@@ -958,9 +958,10 @@
             document.getElementById("loginChoiceModal").style.display = "none"; 
             
             document.getElementById('aiAssistantButton').addEventListener('click', toggleChat);
-            // Removed aiAssistantChat.classList.add('chat-hidden'); from here
-            // Instead, set initial display to 'none' in HTML style attribute for #aiAssistantChat
-            // and manage visibility via toggleChat.
+            
+            // Set initial state for chat window to hidden using class
+            document.getElementById('aiAssistantChat').classList.add('chat-hidden');
+
 
             // Get references to chat elements
             const chatInput = document.getElementById('chatInput');
@@ -1320,18 +1321,18 @@
 
         function toggleChat() {
             const chatContainer = document.getElementById('aiAssistantChat');
-            // Check current display style to determine if it's visible or hidden
-            const isHidden = chatContainer.style.display === 'none';
+            const isVisible = chatContainer.classList.contains('chat-visible');
 
-            if (isHidden) {
-                chatContainer.style.display = 'flex'; // Make it visible (flex for column layout)
+            if (!isVisible) {
+                chatContainer.style.display = 'flex'; // Ensure it's laid out
                 setTimeout(() => {
                     chatContainer.classList.add('chat-visible'); // Trigger animation
                 }, 10); // Small delay to allow display change to register before animation
             } else {
                 chatContainer.classList.remove('chat-visible'); // Start reverse animation
+                // Hide completely after the transition
                 setTimeout(() => {
-                    chatContainer.style.display = 'none'; // Hide completely after animation
+                    chatContainer.style.display = 'none';
                 }, 300); // Match this with your CSS transition duration
             }
         }
