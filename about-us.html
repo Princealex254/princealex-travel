@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - Prince Alex Travel Services</title>
+    <meta name="description" content="Learn more about Prince Alex Digital Travel Services, our vision for comfortable and safe bus travel, our modern fleet, and our founder Alex Senerwa Keverenge. Discover why we are the leading digital travel service provider in Kenya.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Add specific styles for about-us.html if needed, or reuse styles from index.html */
+        :root {
+            --primary-color: #002d6b;
+            --accent-color: #c69214;
+            --light-bg: #f5f7fa;
+            --text-dark: #1a1a1a;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .founder-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .founder-info img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--accent-color);
+        }
+        .founder-details {
+            max-width: 500px;
+        }
+        .founder-details h3 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+        .bus-info img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .navbar {
+            background-color: var(--primary-color);
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .navbar-container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            background-color: white;
+            padding: 10px 15px;
+            border-radius: 12px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+        }
+        .logo img {
+            height: 80px;
+            display: block;
+        }
+        .nav-links {
+            display: flex;
+            gap: 25px;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            position: relative;
+        }
+        .nav-links a::after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 2px;
+            background: var(--accent-color);
+            transition: width 0.3s;
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+        }
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+        .nav-links a:hover {
+            color: var(--accent-color);
+        }
+        .footer {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            margin-top: 40px;
+        }
+        .footer-content {
+            max-width: 1000px;
+            margin: auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px;
+            text-align: left;
+        }
+        .footer-section {
+            flex: 1;
+            min-width: 200px;
+        }
+        .footer-section h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+        .footer-section a,
+        .footer-section p,
+        .footer-section ul li {
+            display: block;
+            color: white;
+            margin: 4px 0;
+            text-decoration: none;
+        }
+        .footer-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .footer-section a:hover {
+            text-decoration: underline;
+        }
+        .footer-bottom {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        /* Added Styles for new sections */
+        .why-choose-us ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .why-choose-us ul li {
+            background-color: var(--light-bg);
+            /* Increased padding */
+            padding: 20px;
+            border-radius: 8px;
+            /* Enhanced box shadow */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            text-align: left;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            /* Added transition for hover effect */
+            transition: all 0.3s ease;
+        }
+        /* Hover effect for list items */
+        .why-choose-us ul li:hover {
+            transform: translateY(-5px); /* Lift up slightly */
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12); /* More pronounced shadow */
+        }
+        .why-choose-us ul li i {
+            color: var(--primary-color);
+            font-size: 24px;
+            margin-top: 3px;
+        }
+        .testimonial-section {
+            margin-top: 40px;
+            background-color: var(--light-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .testimonial-section blockquote {
+            font-style: italic;
+            margin: 0 auto 15px auto;
+            max-width: 700px;
+            color: var(--text-dark);
+            font-size: 1.1em;
+        }
+        .testimonial-section cite {
+            display: block;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin-top: 10px;
+        }
+        .cta-section {
+            text-align: center;
+            margin-top: 40px;
+            padding: 30px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 12px;
+        }
+        .cta-section h3 {
+            color: var(--accent-color);
+            margin-bottom: 15px;
+        }
+        .cta-section .button {
+            display: inline-block;
+            background-color: var(--accent-color);
+            color: var(--primary-color);
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .cta-section .button:hover {
+            background-color: #e0b03d; /* Lighter shade of accent-color */
+        }
+
+
+        @media (max-width: 768px) {
+            .navbar-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            .footer-section a,
+            .footer-section p,
+            .footer-section ul li {
+                display: inline-block;
+                margin: 0 5px;
+            }
+            .why-choose-us ul {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="logo">
+                <img src="Mylogo.png" alt="Prince Alex Logo">
+            </div>
+            <nav class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="about-us.html">About Us</a>
+                <a href="#contact-us">Contact</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="admin.html">Admin Login</a>
+                <a href="login-register.html">Login / Register</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>About Prince Alex Digital Travel Services</h1>
+
+        <section class="company-overview">
+            <h2>Our Vision & Mission</h2>
+            <p>At Prince Alex Digital Travel Services, we are committed to revolutionizing bus travel by providing a seamless, comfortable, and safe experience for all our passengers. Our vision is to be the leading digital travel service provider, connecting communities with reliable and accessible transportation solutions across Kenya and beyond.</p>
+            <p>Our mission is to offer unparalleled convenience and peace of mind from the moment you plan your journey to your arrival. We achieve this by leveraging cutting-edge technology to simplify your booking process, ensuring transparent pricing, and providing a wide range of routes tailored to your needs. Your comfort and safety are our highest priorities.</p>
+        </section>
+
+        <section class="why-choose-us">
+            <h2>Why Choose Us?</h2>
+            <ul>
+                <li>
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <h3>Reliability You Can Trust</h3>
+                        <p>We pride ourselves on punctuality and consistent service, ensuring you reach your destination on time, every time.</p>
+                    </div>
+                </li>
+                <li>
+                    <i class="fas fa-couch"></i>
+                    <div>
+                        <h3>Unmatched Comfort</h3>
+                        <p>Travel in ergonomically designed seats with ample legroom and fully air-conditioned cabins for a relaxed journey.</p>
+                    </div>
+                </li>
+                <li>
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <h3>Safety First</h3>
+                        <p>Our modern fleet undergoes rigorous maintenance, and our drivers are highly trained professionals dedicated to your security.</p>
+                    </div>
+                </li>
+                <li>
+                    <i class="fas fa-laptop-code"></i>
+                    <div>
+                        <h3>Digital Convenience</h3>
+                        <p>Enjoy effortless online booking, easy ticket lookup, and seamless digital services at your fingertips.</p>
+                    </div>
+                </li>
+                 <li>
+                    <i class="fas fa-headset"></i>
+                    <div>
+                        <h3>Dedicated Customer Support</h3>
+                        <p>Our friendly and knowledgeable team is always ready to assist you with any inquiries or travel needs.</p>
+                    </div>
+                </li>
+                 <li>
+                    <i class="fas fa-route"></i>
+                    <div>
+                        <h3>Extensive Route Network</h3>
+                        <p>Connecting communities across Kenya with a wide array of routes designed to meet diverse travel requirements.</p>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <section class="the-bus">
+            <h2>Our Modern Fleet</h2>
+            <p>Our fleet consists of modern, well-maintained buses designed with passenger comfort and safety in mind. Each bus is equipped with:</p>
+            <ul>
+                <li><strong><i class="fas fa-chair"></i> Comfortable Seating:</strong> Ergonomically designed seats with ample legroom for a relaxed journey.</li>
+                <li><strong><i class="fas fa-snowflake"></i> Air Conditioning:</strong> Fully air-conditioned cabins to ensure a pleasant environment regardless of external weather.</li>
+                <li><strong><i class="fas fa-film"></i> On-board Entertainment:</strong> Some buses may offer entertainment options to make your trip enjoyable.</li>
+                <li><strong><i class="fas fa-road"></i> Safety Features:</strong> All vehicles undergo regular maintenance checks and are fitted with advanced safety features to comply with the highest standards. Our drivers are highly trained and experienced professionals dedicated to your safety.</li>
+            </ul>
+            <p>We are continuously upgrading our fleet to incorporate the latest advancements in travel technology and passenger amenities.</p>
+            <div class="bus-info">
+                <img src="Bus2.png" alt="Prince Alex Modern Bus" style="width: 100%; max-width: 600px; display: block; margin: 20px auto;">
+                <p style="text-align: center; font-style: italic;">A glimpse of our comfortable and modern buses.</p>
+            </div>
+        </section>
+
+        <section class="founder-section">
+            <h2>Meet the Founder: Alex Senerwa Keverenge</h2>
+            <div class="founder-info">
+                <img src="Alex_Senerwa.jpeg" alt="Alex Senerwa Keverenge">
+                <div class="founder-details">
+                    <h3>Alex Senerwa Keverenge</h3>
+                    <p>Prince Alex Digital Travel Services was founded by <strong>Alex Senerwa Keverenge</strong>, a visionary entrepreneur with a passion for transforming the transportation industry. With a deep understanding of customer needs and a commitment to innovation, Alex embarked on this journey to create a travel service that stands for reliability, comfort, and digital convenience.</p>
+                    <p>His dedication to excellence and his belief in harnessing technology to improve everyday lives are the driving forces behind our company's mission. Alex envisioned a future where booking bus tickets is effortless, and every journey is an experience to remember.</p>
+                    <p>Under his leadership, Prince Alex Digital Travel Services continues to grow, striving to exceed passenger expectations and set new benchmarks in the travel sector.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="testimonial-section">
+            <h2>What Our Passengers Say</h2>
+            <blockquote>
+                "Booking with Prince Alex Digital was incredibly easy, and the journey was so comfortable. I highly recommend them for anyone looking for reliable travel!"
+            </blockquote>
+            <cite>- Mary Wanjiku, Frequent Traveler</cite>
+            <blockquote>
+                "The bus was clean, and the driver was professional. It's great to have such a trustworthy service available."
+            </blockquote>
+            <cite>- David Ochieng, Business Commuter</cite>
+        </section>
+
+        <section class="cta-section">
+            <h3>Ready for Your Next Journey?</h3>
+            <p>Experience the comfort, reliability, and convenience of Prince Alex Digital Travel Services.</p>
+            <a href="index.html" class="button">Book Your Ticket Now</a>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section" id="contact-us">
+                <h4>Contact Us</h4>
+                <ul>
+                    <li>Email: senerwaalex@gmail.com</li>
+                    <li>Phone: +254 717 384 875</li>
+                    <li>Location: Nairobi, Kenya</li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Follow Us</h4>
+                <a href="https://www.facebook.com/princealextravel" target="_blank">Facebook</a>
+                <a href="https://www.instagram.com/princealextravel" target="_blank">Instagram</a>
+                <a href="https://twitter.com/princealextravel" target="_blank">Twitter</a>
+            </div>
+             <div class="footer-section">
+                <h4>Quick Links</h4>
+                <a href="index.html">Home</a>
+                <a href="about-us.html">About Us</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="login-register.html">Login / Register</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Prince Alex Digital. All rights reserved.
+        </div>
+    </footer>
+</body>
+</html>

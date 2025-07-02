@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login / Register - Prince Alex Travel Services</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Reusing common styles from your existing index.html */
+        :root {
+            --primary-color: #002d6b;
+            --accent-color: #c69214;
+            --light-bg: #f5f7fa;
+            --text-dark: #1a1a1a;
+            --success-color: #28a745; /* Added for validation feedback */
+            --error-color: #dc3545;   /* Added for validation feedback */
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            margin: 0;
+        }
+        .navbar {
+            background-color: var(--primary-color);
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .navbar-container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            padding: 10px 15px;
+            border-radius: 12px;
+        }
+        .logo img {
+            height: 80px;
+            display: block;
+        }
+        .nav-links {
+            display: flex;
+            gap: 25px;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            position: relative;
+        }
+        .nav-links a::after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 2px;
+            background: var(--accent-color);
+            transition: width 0.3s;
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+        }
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+        .nav-links a:hover {
+            color: var(--accent-color);
+        }
+        .footer {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            margin-top: 40px;
+        }
+        .footer-content {
+            max-width: 1000px;
+            margin: auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px;
+            text-align: left;
+        }
+        .footer-section {
+            flex: 1;
+            min-width: 200px;
+        }
+        .footer-section h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+        .footer-section a,
+        .footer-section p {
+            display: block;
+            color: white;
+            margin: 4px 0;
+            text-decoration: none;
+        }
+        .footer-section a:hover {
+            text-decoration: underline;
+        }
+        .footer-bottom {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        /* Specific styles for Login/Register Page */
+        .auth-container {
+            max-width: 500px;
+            margin: 60px auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .auth-container h1 {
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+            position: relative; /* For validation icons */
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="password"],
+        .form-group input[type="tel"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            padding-right: 40px; /* Space for icon */
+        }
+        .form-group input[type="text"]:focus,
+        .form-group input[type="email"]:focus,
+        .form-group input[type="password"]:focus,
+        .form-group input[type="tel"]:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(198, 146, 20, 0.2);
+            outline: none;
+        }
+        .password-strength {
+            font-size: 12px;
+            margin-top: 5px;
+            text-align: right;
+        }
+        .strength-weak { color: var(--error-color); }
+        .strength-medium { color: orange; }
+        .strength-strong { color: var(--success-color); }
+
+        .message {
+            margin-top: -10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            transition: opacity 0.3s ease, height 0.3s ease, padding 0.3s ease, margin-bottom 0.3s ease;
+        }
+        .message.show {
+            opacity: 1;
+            height: auto;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        .message.error {
+            background-color: #ffe0e0;
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
+        }
+        .message.success {
+            background-color: #e0ffe0;
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+        }
+
+        .auth-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .auth-buttons button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+        .auth-buttons button:hover:not(:disabled) {
+            background-color: #b27e0f;
+            transform: translateY(-2px);
+        }
+        .auth-buttons button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        .auth-buttons button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .toggle-form {
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        .toggle-form a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .toggle-form a:hover {
+            text-decoration: underline;
+        }
+        #registerForm {
+            display: none; /* Initially hide register form */
+        }
+        .error-message {
+            color: var(--error-color);
+            margin-top: 10px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+        .success-message {
+            color: var(--success-color);
+            margin-top: 10px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+        /* Password toggle icon */
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 60%; /* Adjust based on label/input height */
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #888;
+            font-size: 1.1em;
+        }
+        /* Validation icons */
+        .validation-icon {
+            position: absolute;
+            right: 10px;
+            top: 60%; /* Adjust based on label/input height */
+            transform: translateY(-50%);
+            font-size: 1.1em;
+        }
+        .validation-icon.valid {
+            color: var(--success-color);
+        }
+        .validation-icon.invalid {
+            color: var(--error-color);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="logo">Prince Alex Digital Travel Services</a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="about-us.html">About Us</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="profile.html" id="myProfileLink" style="display:none;">My Profile</a> <a href="login-register.html" id="loginRegisterLink">Login / Register</a>
+                <a href="#" id="logoutLink" style="display:none;">Logout</a> </div>
+        </div>
+    </nav>
+
+    <div class="auth-container">
+        <h1>Welcome</h1>
+        <div class="tab-buttons">
+            <button class="tab-button active" id="loginTab">Login</button>
+            <button class="tab-button" id="registerTab">Register</button>
+        </div>
+
+        <form id="loginForm" class="auth-form">
+            <div id="loginMessage" class="message"></div>
+
+            <div class="form-group">
+                <label for="loginEmail">Email:</label>
+                <input type="email" id="loginEmail" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">Password:</label>
+                <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                <span class="password-toggle" data-target="loginPassword"><i class="fas fa-eye"></i></span>
+            </div>
+            <div class="auth-buttons">
+                <button type="submit" id="loginButton">Login</button>
+            </div>
+            <div class="toggle-form">
+                <a href="#" id="forgotPasswordLink">Forgot Password?</a>
+            </div>
+        </form>
+
+        <div id="forgotPasswordSection" class="auth-form" style="display: none;">
+            <h2>Reset Your Password</h2>
+            <div id="resetMessage" class="message"></div>
+            <div class="form-group">
+                <label for="resetEmail">Registered Email:</label>
+                <input type="email" id="resetEmail" placeholder="Enter your email" required>
+            </div>
+            <div class="auth-buttons">
+                <button type="button" id="sendResetLinkButton">Send Reset Link</button>
+            </div>
+            <div class="toggle-form">
+                <a href="#" id="backToLoginLink">Back to Login</a>
+            </div>
+        </div>
+
+        <form id="registerForm" class="auth-form">
+            <div id="registerMessage" class="message"></div>
+
+            <div class="form-group">
+                <label for="registerFullName">Full name:</label>
+                <input type="text" id="registerFullName" placeholder="Enter your full name" required>
+                <span class="validation-icon" id="usernameValidationIcon"></span>
+            </div>
+            <div class="form-group">
+                <label for="registerNationalId">National ID:</label>
+                <input type="text" id="registerNationalId" placeholder="Enter your National ID" required>
+                <span class="validation-icon" id="nationalIdValidationIcon"></span>
+            </div>
+            <div class="form-group">
+                <label for="registerEmail">Email:</label>
+                <input type="email" id="registerEmail" placeholder="Enter your email" required>
+                <span class="validation-icon" id="emailValidationIcon"></span>
+            </div>
+            <div class="form-group">
+                <label for="registerPhone">Phone Number:</label>
+                <input type="tel" id="registerPhone" placeholder="Enter your phone number" required>
+            </div>
+            <div class="form-group">
+                <label for="registerPassword">Password:</label>
+                <input type="password" id="registerPassword" placeholder="Create a password" required>
+                <span class="password-toggle" data-target="registerPassword"><i class="fas fa-eye"></i></span>
+                <div id="passwordStrengthIndicator" class="password-strength"></div>
+            </div>
+            <div class="form-group">
+                <label for="registerConfirmPassword">Confirm Password:</label>
+                <input type="password" id="registerConfirmPassword" placeholder="Confirm your password" required>
+                <span class="password-toggle" data-target="registerConfirmPassword"><i class="fas fa-eye"></i></span>
+                <div id="passwordConfirmStatus" class="password-strength"></div>
+            </div>
+            <div class="auth-buttons">
+                <button type="submit" id="registerButton">Register</button>
+            </div>
+        </form>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Contact Us</h4>
+                <p>Email: senerwaalex@gmail.com</p>
+                <p>Phone: +254 717 384 875</p>
+                <p>Location: Nairobi, Kenya</p>
+            </div>
+            <div class="footer-section">
+                <h4>Follow Us</h4>
+                <a href="#">Facebook</a>
+                <a href="#">Instagram</a>
+                <a href="#">Twitter</a>
+            </div>
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <a href="index.html">Home</a>
+                <a href="about-us.html">About Us</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="login-register.html">Login / Register</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Prince Alex Digital. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        // Global variables for navbar links
+        let currentUser = null; // Will be set on DOMContentLoaded
+        const myProfileLink = document.getElementById('myProfileLink');
+        const loginRegisterLink = document.getElementById('loginRegisterLink');
+        const logoutLink = document.getElementById('logoutLink');
+
+        // Form elements
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const loginTab = document.getElementById('loginTab');
+        const registerTab = document.getElementById('registerTab');
+        const loginEmailInput = document.getElementById('loginEmail');
+        const loginPasswordInput = document.getElementById('loginPassword');
+        const registerFullNameInput = document.getElementById('registerFullName'); // Changed from registerUsernameInput
+        const registerNationalIdInput = document.getElementById('registerNationalId'); // New National ID input
+        const registerEmailInput = document.getElementById('registerEmail');
+        const registerPhoneInput = document.getElementById('registerPhone');
+        const registerPasswordInput = document.getElementById('registerPassword');
+        const registerConfirmPasswordInput = document.getElementById('registerConfirmPassword');
+        const passwordStrengthIndicator = document.getElementById('passwordStrengthIndicator');
+        const passwordConfirmStatus = document.getElementById('passwordConfirmStatus');
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+        const forgotPasswordSection = document.getElementById('forgotPasswordSection');
+        const resetEmailInput = document.getElementById('resetEmail');
+        const sendResetLinkButton = document.getElementById('sendResetLinkButton');
+        const backToLoginLink = document.getElementById('backToLoginLink');
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize currentUser from localStorage
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            updateAuthLinks(); // Update navbar immediately
+
+            // Attach logout handler to the logout link in navbar
+            logoutLink.addEventListener('click', (e) => {
+                e.preventDefault(); // Prevent default link behavior
+                logout();
+            });
+
+            // Tab switching logic
+            loginTab.addEventListener('click', () => {
+                loginTab.classList.add('active');
+                registerTab.classList.remove('active');
+                loginForm.style.display = 'block'; // Ensure it's block, not hidden class
+                registerForm.style.display = 'none'; // Ensure it's none
+                forgotPasswordSection.style.display = 'none'; // Hide reset section
+                clearMessages();
+            });
+
+            registerTab.addEventListener('click', () => {
+                registerTab.classList.add('active');
+                loginTab.classList.remove('active');
+                registerForm.style.display = 'block'; // Ensure it's block
+                loginForm.style.display = 'none'; // Ensure it's none
+                forgotPasswordSection.style.display = 'none'; // Hide reset section
+                clearMessages();
+            });
+
+            // Form submission listeners
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                loginUser();
+            });
+
+            registerForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                registerUser();
+            });
+
+            // Real-time validation for register password
+            registerPasswordInput.addEventListener('input', () => {
+                checkPasswordStrength(registerPasswordInput.value);
+                validateConfirmPassword(); // Also check confirm password when main password changes
+            });
+
+            registerConfirmPasswordInput.addEventListener('input', validateConfirmPassword);
+
+            // Initial validation for pre-filled inputs on load if any
+            document.querySelectorAll('input[required]').forEach(input => {
+                if (input.value.trim() !== '') {
+                    validateInput(input, input.type === 'email' ? 'email' : 'text');
+                }
+            });
+            checkPasswordStrength(registerPasswordInput.value); // Initial check for register password
+            validateConfirmPassword(); // Initial check for confirm password
+
+            // Password toggle functionality
+            document.querySelectorAll('.password-toggle').forEach(toggle => {
+                toggle.addEventListener('click', () => {
+                    const targetId = toggle.dataset.target;
+                    const passwordInput = document.getElementById(targetId);
+                    const icon = toggle.querySelector('i');
+
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        passwordInput.type = 'password';
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
+            });
+
+            // Add event listener for Forgot Password link
+            forgotPasswordLink.addEventListener('click', (e) => {
+                e.preventDefault(); // Prevent default link behavior
+                loginForm.style.display = 'none'; // Hide login form
+                registerForm.style.display = 'none'; // Hide register form
+                forgotPasswordSection.style.display = 'block'; // Show reset section
+                clearMessages(); // Clear existing messages
+                resetEmailInput.value = ''; // Clear email input
+            });
+
+            // Add event listener for Send Reset Link button
+            sendResetLinkButton.addEventListener('click', () => {
+                resetPassword();
+            });
+
+            // Add event listener for Back to Login link
+            backToLoginLink.addEventListener('click', (e) => {
+                e.preventDefault(); // Prevent default link behavior
+                forgotPasswordSection.style.display = 'none'; // Hide reset section
+                loginForm.style.display = 'block'; // Show login form
+                clearMessages(); // Clear existing messages
+            });
+        });
+
+
+        // Login function
+        function loginUser() {
+            const email = loginEmailInput.value;
+            const password = loginPasswordInput.value;
+
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            const user = users.find(u => u.email === email && u.password === password);
+
+            if (user) {
+                // Store the logged-in user in localStorage
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                alert('Login successful! Redirecting to home page.');
+                window.location.href = 'index.html?loginSuccess=true'; // Redirect to index.html with query parameter
+            } else {
+                displayMessage('loginMessage', 'Invalid email or password.', 'error');
+            }
+        }
+
+        // Register function
+        function registerUser() {
+            const fullName = registerFullNameInput.value; // Changed from username
+            const nationalId = registerNationalIdInput.value; // New National ID
+            const email = registerEmailInput.value;
+            const password = registerPasswordInput.value;
+            const confirmPassword = registerConfirmPasswordInput.value;
+            const phone = registerPhoneInput.value;
+
+            if (password !== confirmPassword) {
+                displayMessage('registerMessage', 'Passwords do not match.', 'error');
+                return;
+            }
+
+            if (!validateEmail(email)) {
+                displayMessage('registerMessage', 'Please enter a valid email address.', 'error');
+                return;
+            }
+
+            // Check password strength criteria
+            const passwordStrengthMessage = checkPasswordStrength(password, true);
+            if (passwordStrengthMessage) { // If there's a message, it means criteria not met
+                displayMessage('registerMessage', passwordStrengthMessage, 'error');
+                return;
+            }
+
+            let users = JSON.parse(localStorage.getItem('users')) || [];
+
+            if (users.some(u => u.email === email)) {
+                displayMessage('registerMessage', 'Email already registered.', 'error');
+                return;
+            }
+            if (users.some(u => u.nationalId === nationalId)) { // Check for existing National ID
+                displayMessage('registerMessage', 'National ID already registered.', 'error');
+                return;
+            }
+
+            const newUser = { fullName, nationalId, email, password, phone }; // Updated user object
+            users.push(newUser);
+            localStorage.setItem('users', JSON.stringify(users));
+
+            // After successful registration, automatically log them in
+            localStorage.setItem('currentUser', JSON.stringify(newUser)); // Set as current user
+            alert('Registration successful! You are now logged in. Redirecting to home page.');
+            window.location.href = 'index.html?registerSuccess=true'; // Redirect to home page after registration with query parameter
+
+            // Clear form fields
+            registerFullNameInput.value = '';
+            registerNationalIdInput.value = '';
+            registerEmailInput.value = '';
+            registerPasswordInput.value = '';
+            registerConfirmPasswordInput.value = '';
+            registerPhoneInput.value = '';
+            passwordStrengthIndicator.style.display = 'none'; // Hide strength indicator
+            passwordConfirmStatus.textContent = ''; // Clear confirm status
+        }
+
+        // Global function to update navbar links based on auth state
+        function updateAuthLinks() {
+            // Re-fetch current user just in case it was updated by another tab (though unlikely in this local storage setup)
+            const currentLoggedInUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            if (currentLoggedInUser) {
+                loginRegisterLink.style.display = 'none';
+                myProfileLink.style.display = 'block'; // Show My Profile
+                logoutLink.style.display = 'block';
+            } else {
+                loginRegisterLink.style.display = 'block';
+                myProfileLink.style.display = 'none'; // Hide My Profile
+                logoutLink.style.display = 'none';
+            }
+        }
+
+        // Global logout function
+        function logout() {
+            localStorage.removeItem('currentUser'); // Clear the session
+            alert('Logged out successfully!');
+            // Update links immediately without full page reload
+            updateAuthLinks();
+            // Redirect to home page or login page after logout
+            window.location.href = 'index.html'; // Or 'login-register.html'
+        }
+
+
+        // Utility function to display messages
+        function displayMessage(elementId, message, type) {
+            const messageElement = document.getElementById(elementId);
+            messageElement.textContent = message;
+            messageElement.className = `message show ${type}`; // Add type class for styling
+        }
+
+        // Utility function to clear all messages
+        function clearMessages() {
+            document.querySelectorAll('.message').forEach(msg => {
+                msg.classList.remove('show', 'error', 'success');
+                msg.textContent = '';
+            });
+        }
+
+        // Basic email validation
+        function validateEmail(email) {
+            const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            return re.test(String(email).toLowerCase());
+        }
+
+        // Password strength checker
+        function checkPasswordStrength(password, forSubmission = false) {
+            let strength = 0;
+            let message = '';
+            const indicator = passwordStrengthIndicator;
+
+            if (password.length === 0 && !forSubmission) {
+                indicator.textContent = '';
+                indicator.className = 'password-strength';
+                indicator.style.display = 'none';
+                return '';
+            }
+
+            indicator.style.display = 'block'; // Always show when typing
+
+            if (password.length >= 8) {
+                strength++;
+            } else {
+                if (forSubmission) message += 'Password must be at least 8 characters long. ';
+            }
+            if (password.match(/[A-Z]/)) {
+                strength++;
+            } else {
+                if (forSubmission) message += 'Password must contain an uppercase letter. ';
+            }
+            if (password.match(/[a-z]/)) {
+                strength++;
+            } else {
+                if (forSubmission) message += 'Password must contain a lowercase letter. ';
+            }
+            if (password.match(/[0-9]/)) {
+                strength++;
+            } else {
+                if (forSubmission) message += 'Password must contain a number. ';
+            }
+            if (password.match(/[^A-Za-z0-9]/)) {
+                strength++;
+            } else {
+                if (forSubmission) message += 'Password must contain a special character. ';
+            }
+
+            if (!forSubmission) { // Only update indicator text and color if not for submission validation
+                if (strength < 3) {
+                    indicator.textContent = 'Weak';
+                    indicator.className = 'password-strength strength-weak';
+                } else if (strength === 3 || strength === 4) {
+                    indicator.textContent = 'Medium';
+                    indicator.className = 'password-strength strength-medium';
+                } else {
+                    indicator.textContent = 'Strong';
+                    indicator.className = 'password-strength strength-strong';
+                }
+            }
+
+            return forSubmission && message ? message : '';
+        }
+
+        // Validate confirm password
+        function validateConfirmPassword() {
+            const password = registerPasswordInput.value;
+            const confirmPassword = registerConfirmPasswordInput.value;
+            const status = passwordConfirmStatus;
+
+            if (confirmPassword.length === 0) {
+                status.textContent = '';
+                status.className = 'password-strength';
+                return;
+            }
+
+            if (password === confirmPassword) {
+                status.textContent = 'Passwords match!';
+                status.className = 'password-strength strength-strong';
+            } else {
+                status.textContent = 'Passwords do not match!';
+                status.className = 'password-strength strength-weak';
+            }
+        }
+
+        // General input validation helper (can be expanded)
+        function validateInput(inputElement, type) {
+            if (type === 'email' && !validateEmail(inputElement.value)) {
+                inputElement.setCustomValidity('Please enter a valid email address.');
+            } else {
+                inputElement.setCustomValidity('');
+            }
+        }
+
+        // New function for password reset
+        function resetPassword() {
+            const email = resetEmailInput.value; // Get email from the new input field
+
+            if (email) {
+                if (validateEmail(email)) {
+                    displayMessage('resetMessage', `If ${email} is a registered email, a password reset link has been sent to it.`, 'success');
+                    // In a real application, you would send an API request to your server here
+                } else {
+                    displayMessage('resetMessage', 'Please enter a valid email address.', 'error');
+                }
+            } else {
+                displayMessage('resetMessage', 'Please enter your email address.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
