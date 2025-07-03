@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login / Register - Prince Alex Travel Services</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* Reusing common styles from your existing index.html */
         :root {
@@ -24,377 +25,416 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh; /* Full viewport height */
+            min-height: 100vh;
             padding: 20px;
-            box-sizing: border-box; /* Include padding in element's total width and height */
+            box-sizing: border-box;
+            position: relative; /* Added to make positioning of .back-home-button relative to body */
         }
-
         .container {
-            background-color: #fff;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 450px; /* Adjusted max-width */
-            margin: 20px;
+            max-width: 450px;
             text-align: center;
+            /* Removed position: relative; as the button is now outside */
         }
-
-        .tabs {
+        .form-tabs {
             display: flex;
-            justify-content: space-around;
+            margin-bottom: 25px;
             border-bottom: 2px solid #eee;
         }
-
         .tab-button {
-            flex-grow: 1;
-            padding: 18px 0; /* Increased padding */
-            font-size: 1.1em;
-            font-weight: 600;
-            color: var(--text-dark);
+            flex: 1;
+            padding: 12px 0;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
             background: none;
             border: none;
-            cursor: pointer;
+            border-bottom: 3px solid transparent;
             transition: all 0.3s ease;
-            position: relative;
-            outline: none;
         }
-
         .tab-button.active {
             color: var(--primary-color);
+            border-color: var(--primary-color);
         }
-
-        .tab-button.active::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            width: 100%;
-            height: 3px; /* Thicker active indicator */
-            background-color: var(--accent-color);
+        .tab-button:hover:not(.active) {
+            color: var(--accent-color);
         }
-
         .form-section {
-            padding: 35px; /* Increased padding */
-            display: flex;
-            flex-direction: column;
-            gap: 20px; /* Increased gap */
+            padding: 10px 0;
         }
-
-        .form-section.hidden {
+        .hidden {
             display: none;
         }
-
         h2 {
             color: var(--primary-color);
-            margin-bottom: 25px; /* Increased margin */
-            font-size: 2em; /* Larger heading */
+            margin-bottom: 25px;
         }
-
-        .input-group {
-            position: relative;
-            margin-bottom: 15px; /* Added margin-bottom */
+        .form-group {
+            margin-bottom: 18px;
+            text-align: left;
         }
-
-        .input-group input {
-            width: calc(100% - 40px); /* Adjust width for icon */
-            padding: 14px 18px; /* Increased padding */
-            padding-right: 40px; /* Space for icon */
+        .form-group input {
+            width: calc(100% - 22px);
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 8px; /* Slightly more rounded */
-            font-size: 1em;
-            color: var(--text-dark);
+            border-radius: 6px;
+            font-size: 16px;
             transition: border-color 0.3s ease;
         }
-
-        .input-group input:focus {
+        .form-group input:focus {
             border-color: var(--primary-color);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(0, 45, 107, 0.1); /* Subtle focus glow */
         }
-
-        .input-group .toggle-password {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #888;
-        }
-
-        .button-primary {
+        button {
             background-color: var(--primary-color);
-            color: #fff;
-            padding: 15px 25px; /* Increased padding */
+            color: white;
+            padding: 12px 25px;
             border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: 600;
+            border-radius: 6px;
             cursor: pointer;
+            font-size: 17px;
+            font-weight: bold;
             transition: background-color 0.3s ease, transform 0.2s ease;
-            margin-top: 10px; /* Space above button */
+            width: 100%;
+            margin-top: 10px;
         }
-
-        .button-primary:hover {
-            background-color: #001f4d; /* Darker shade on hover */
+        button:hover {
+            background-color: var(--accent-color);
             transform: translateY(-2px);
         }
-
         .message {
-            padding: 12px;
-            margin-top: 15px; /* Increased margin */
-            border-radius: 8px;
-            font-weight: 500;
-            text-align: left; /* Align message text */
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 0.95em;
         }
-
         .message.success {
             background-color: #d4edda;
             color: var(--success-color);
             border: 1px solid var(--success-color);
         }
-
         .message.error {
             background-color: #f8d7da;
             color: var(--error-color);
             border: 1px solid var(--error-color);
         }
-
-        .message.hidden {
-            display: none;
-        }
-
         .password-strength {
-            font-size: 0.9em;
+            font-size: 0.85em;
             margin-top: 5px;
-            text-align: left; /* Align text */
+            padding: 5px;
+            border-radius: 3px;
+            text-align: center;
         }
-
         .strength-weak {
             color: var(--error-color);
+            background-color: #f8d7da;
         }
-
         .strength-medium {
-            color: #ffc107; /* Orange/Yellow */
+            color: orange;
+            background-color: #fff3cd;
         }
-
         .strength-strong {
             color: var(--success-color);
+            background-color: #d4edda;
+        }
+        .forgot-password {
+            display: block;
+            margin-top: 15px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+        /* Style for the back home button */
+        .back-home-button {
+            position: absolute;
+            top: 5px; /* Adjusted to be even higher */
+            left: 5px; /* Adjusted for more space from the left edge */
+            background: none;
+            border: none;
+            font-size: 1.8em; /* Slightly larger icon */
+            color: var(--primary-color);
+            cursor: pointer;
+            transition: color 0.3s ease;
+            padding: 10px; /* Increased padding for better click area */
+            z-index: 10; /* Ensure it's above other elements */
+        }
+        .back-home-button:hover {
+            color: var(--accent-color);
         }
     </style>
 </head>
 <body>
+    <!-- Back Home Button - Moved outside the container -->
+    <button class="back-home-button" onclick="window.location.href='index.html'">
+        <i class="fas fa-arrow-left"></i>
+    </button>
+
     <div class="container">
-        <div class="tabs">
-            <button class="tab-button active" id="loginTab" onclick="showLogin()">Login</button>
-            <button class="tab-button" id="registerTab" onclick="showRegister()">Register</button>
+        <div class="form-tabs">
+            <button class="tab-button active" id="loginTabBtn" onclick="showForm('login')">Login</button>
+            <button class="tab-button" id="registerTabBtn" onclick="showForm('register')">Register</button>
+            <button class="tab-button" id="resetTabBtn" onclick="showForm('reset')">Reset Password</button>
         </div>
 
-        <div class="form-section" id="loginSection">
-            <h2>Admin Login</h2>
-            <div class="input-group">
-                <input type="email" id="loginEmail" placeholder="Email" required>
+        <div id="loginForm" class="form-section">
+            <h2>Login to Your Account</h2>
+            <div class="form-group">
+                <label for="loginEmail">Email:</label>
+                <input type="email" id="loginEmail" placeholder="Your Email" required oninput="validateInput(this, 'email')">
             </div>
-            <div class="input-group">
-                <input type="password" id="loginPassword" placeholder="Password" required>
-                <span class="toggle-password" onclick="togglePasswordVisibility('loginPassword')">
-                    <i class="fas fa-eye"></i>
-                </span>
+            <div class="form-group">
+                <label for="loginPassword">Password:</label>
+                <input type="password" id="loginPassword" placeholder="Your Password" required>
             </div>
-            <button class="button-primary" onclick="loginUser()">Login</button>
-            <div class="message hidden" id="loginMessage"></div>
+            <p id="loginMessage" class="message hidden"></p>
+            <button onclick="login()">Login</button>
+            <a href="#" class="forgot-password" onclick="showForm('reset'); return false;">Forgot Password?</a>
         </div>
 
-        <div class="form-section hidden" id="registerSection">
-            <h2>Admin Register</h2>
-            <div class="input-group">
-                <input type="email" id="registerEmail" placeholder="Email" required>
+        <div id="registerForm" class="form-section hidden">
+            <h2>Create New Account</h2>
+            <div class="form-group">
+                <label for="registerFullName">Full Names:</label>
+                <input type="text" id="registerFullName" placeholder="Your Full Names" required>
             </div>
-            <div class="input-group">
-                <input type="password" id="registerPassword" placeholder="Password" required onkeyup="checkPasswordStrength()">
-                <span class="toggle-password" onclick="togglePasswordVisibility('registerPassword')">
-                    <i class="fas fa-eye"></i>
-                </span>
+            <div class="form-group">
+                <label for="registerPhoneNumber">Phone Number:</label>
+                <input type="tel" id="registerPhoneNumber" placeholder="e.g., +254712345678" required>
             </div>
-            <div class="password-strength" id="passwordStrength"></div>
-            <div class="input-group">
-                <input type="password" id="confirmPassword" placeholder="Confirm Password" required onkeyup="checkPasswordMatch()">
-                <span class="toggle-password" onclick="togglePasswordVisibility('confirmPassword')">
-                    <i class="fas fa-eye"></i>
-                </span>
+            <div class="form-group">
+                <label for="registerIdNumber">ID Number:</label>
+                <input type="text" id="registerIdNumber" placeholder="Your ID Number" required>
             </div>
-            <div class="password-strength" id="passwordMatchStatus"></div>
-            <button class="button-primary" onclick="register()">Register</button>
-            <div class="message hidden" id="registerMessage"></div>
+            <div class="form-group">
+                <label for="registerEmail">Email:</label>
+                <input type="email" id="registerEmail" placeholder="Your Email" required oninput="validateInput(this, 'email')">
+            </div>
+            <div class="form-group">
+                <label for="registerPassword">Password:</label>
+                <input type="password" id="registerPassword" placeholder="Minimum 6 characters" required oninput="checkPasswordStrength()">
+                <p id="passwordStrength" class="password-strength hidden"></p>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password:</label>
+                <input type="password" id="confirmPassword" placeholder="Confirm Your Password" required oninput="checkPasswordMatch()">
+                <p id="passwordMatchStatus" class="password-strength hidden"></p>
+            </div>
+            <p id="registerMessage" class="message hidden"></p>
+            <button onclick="register()">Register</button>
+        </div>
+
+        <div id="resetForm" class="form-section hidden">
+            <h2>Reset Your Password</h2>
+            <p>Enter your email address and we'll send you a link to reset your password.</p>
+            <div class="form-group">
+                <label for="resetEmail">Email:</label>
+                <input type="email" id="resetEmail" placeholder="Your Email" required oninput="validateInput(this, 'email')">
+            </div>
+            <p id="resetMessage" class="message hidden"></p>
+            <button onclick="resetPassword()">Send Reset Link</button>
         </div>
     </div>
 
-    <script type="module">
-        // --- Add This at the Top of the Script Block ---
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-        const supabase = createClient(
-          'https://llcnwcvvqtxyesbftbkm.supabase.co', // Use this URL as provided in the instructions
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsY253Y3Z2cXR4eWVzYmZ0YmttIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODg0NjQ4ODgsImV4cCI6MjAwNDA0MDg4OH0.JgkkDNHz7ZkYiGakYK2lPbWRWm1UoOniC0spO-5AlEg' // Your actual anon key
-        );
+    <script>
+        // Supabase Initialization
+        const SUPABASE_URL = 'https://numnzxrnrlxvkjwlusbe.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bW56eHJucmx4dmtqd2x1c2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMTgxNzgsImV4cCI6MjA2Njc5NDEzOH0.03mPw9Y7tuWne5SNpsag7lYhQSZ6HqA8YmDSxVMVMFg'; // Replace with your actual anon key
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- Helper Functions for Messages ---
+        // Function to display messages (success/error)
         function displayMessage(elementId, message, type) {
-            const element = typeof elementId === 'string' ? document.getElementById(elementId) : elementId;
-            if (element) {
-                element.textContent = message;
-                element.className = 'message ' + type;
-                element.style.display = message ? 'block' : 'none'; // Use 'none' for hidden
+            const messageElement = document.getElementById(elementId);
+            messageElement.textContent = message;
+            messageElement.className = `message ${type}`;
+            messageElement.classList.remove('hidden');
+            setTimeout(() => {
+                messageElement.classList.add('hidden');
+            }, 5000); // Hide after 5 seconds
+        }
+
+        // --- Form Tab Switching ---
+        function showForm(formType) {
+            document.querySelectorAll('.form-section').forEach(form => {
+                form.classList.add('hidden');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(`${formType}Form`).classList.remove('hidden');
+            document.getElementById(`${formType}TabBtn`).classList.add('active');
+
+            // Clear messages when switching tabs
+            document.querySelectorAll('.message').forEach(msg => msg.classList.add('hidden'));
+        }
+
+        // --- User Registration ---
+        async function register() {
+            const fullName = document.getElementById('registerFullName').value.trim();
+            const phoneNumber = document.getElementById('registerPhoneNumber').value.trim();
+            const idNumber = document.getElementById('registerIdNumber').value.trim();
+            const email = document.getElementById('registerEmail').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!fullName || !phoneNumber || !idNumber) {
+                displayMessage('registerMessage', 'Please fill in all personal details.', 'error');
+                return;
+            }
+            if (!validateEmail(email)) {
+                displayMessage('registerMessage', 'Please enter a valid email address.', 'error');
+                return;
+            }
+            if (password.length < 6) {
+                displayMessage('registerMessage', 'Password must be at least 6 characters long.', 'error');
+                return;
+            }
+            if (password !== confirmPassword) {
+                displayMessage('registerMessage', 'Passwords do not match.', 'error');
+                return;
+            }
+
+            try {
+                // Step 1: Register user with Supabase Auth
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                });
+
+                if (authError) {
+                    displayMessage('registerMessage', 'Registration failed: ' + authError.message, 'error');
+                    return;
+                }
+
+                // If user is created (even if session is null due to email confirmation)
+                if (authData.user) {
+                    const userId = authData.user.id;
+
+                    // Step 2: Insert additional profile data into 'profiles' table
+                    const { error: profileError } = await supabase
+                        .from('profiles')
+                        .insert([
+                            {
+                                id: userId, // Link to auth.users table
+                                full_name: fullName,
+                                phone_number: phoneNumber,
+                                id_number: idNumber
+                            }
+                        ]);
+
+                    if (profileError) {
+                        // If profile creation fails, you might want to consider deleting the user from auth.users
+                        // This would require a service role key and server-side logic for security.
+                        // For client-side, we'll just log the error and inform the user.
+                        console.error("Error creating user profile:", profileError.message);
+                        displayMessage('registerMessage', 'Registration successful, but profile details could not be saved. Please contact support.', 'error');
+                        return;
+                    }
+
+                    displayMessage('registerMessage', 'Registration successful! Please check your email to confirm your account.', 'success');
+                    // Optional: automatically switch to login form after a delay
+                    setTimeout(() => showForm('login'), 3000);
+                } else if (authData.session === null) {
+                    // This case occurs if email confirmation is required and user is not auto-logged in
+                    displayMessage('registerMessage', 'Registration successful! Please check your email to confirm your account.', 'success');
+                     setTimeout(() => showForm('login'), 3000);
+                }
+            } catch (err) {
+                displayMessage('registerMessage', 'An unexpected error occurred: ' + err.message, 'error');
             }
         }
 
-        // --- Replace login() with this loginUser() ---
-        async function loginUser() {
-            const loginEmailInput = document.getElementById('loginEmail');
-            const loginPasswordInput = document.getElementById('loginPassword');
+        // --- User Login ---
+        async function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
 
-            const email = loginEmailInput.value.trim();
-            const password = loginPasswordInput.value.trim();
-
-            const loginMessage = document.getElementById('loginMessage');
-
-            if (!email || !password) {
-                displayMessage(loginMessage, 'Please enter both email and password.', 'error');
+            if (!validateEmail(email)) {
+                displayMessage('loginMessage', 'Please enter a valid email address.', 'error');
                 return;
             }
 
             try {
                 const { data, error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password
-                });
-
-                if (error || !data.user) {
-                    displayMessage(loginMessage, error?.message || 'Invalid login credentials.', 'error');
-                } else {
-                    localStorage.setItem('currentUser', JSON.stringify(data.user));
-                    displayMessage(loginMessage, 'Login successful! Redirecting to home page.', 'success');
-                    window.location.href = 'index.html?loginSuccess=true';
-                }
-            } catch (err) {
-                displayMessage(loginMessage, 'An unexpected error occurred.', 'error');
-                console.error('Login error:', err);
-            }
-        }
-
-        // --- Register Function (Untouched) ---
-        async function register() {
-            const email = document.getElementById('registerEmail').value;
-            const password = document.getElementById('registerPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const registerMessage = document.getElementById('registerMessage');
-            displayMessage(registerMessage, '', 'hidden'); // Clear previous messages
-
-            if (!validateEmail(email)) {
-                displayMessage(registerMessage, 'Please enter a valid email address.', 'error');
-                return;
-            }
-
-            if (password.length < 6) {
-                displayMessage(registerMessage, 'Password must be at least 6 characters long.', 'error');
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                displayMessage(registerMessage, 'Passwords do not match!', 'error');
-                return;
-            }
-
-            try {
-                const { data, error } = await supabase.auth.signUp({
                     email: email,
                     password: password,
                 });
 
                 if (error) {
-                    displayMessage(registerMessage, `Registration error: ${error.message}`, 'error');
+                    displayMessage('loginMessage', 'Login failed: ' + error.message, 'error');
                     return;
                 }
 
-                if (data && data.user) {
-                    displayMessage(registerMessage, 'Registration successful! Please check your email to confirm your account.', 'success');
-                    showLogin();
+                if (data.session) {
+                    displayMessage('loginMessage', 'Login successful! Redirecting...', 'success');
+                    // Redirect to the main page or user dashboard
+                    window.location.href = 'index.html'; // Or your dashboard page
                 } else {
-                    displayMessage(registerMessage, 'An unexpected error occurred during registration.', 'error');
+                    displayMessage('loginMessage', 'Login failed: Could not establish session.', 'error');
+                }
+            } catch (err) {
+                displayMessage('loginMessage', 'An unexpected error occurred: ' + err.message, 'error');
+            }
+        }
+
+        // --- Password Reset ---
+        async function resetPassword() {
+            const email = document.getElementById('resetEmail').value.trim();
+
+            if (!validateEmail(email)) {
+                displayMessage('resetMessage', 'Please enter a valid email address.', 'error');
+                return;
+            }
+
+            try {
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/update-password.html' // URL where user will set new password
+                });
+
+                if (error) {
+                    displayMessage('resetMessage', 'Password reset failed: ' + error.message, 'error');
+                    return;
                 }
 
-            } catch (error) {
-                console.error('An unexpected error occurred:', error.message);
-                displayMessage(registerMessage, `An unexpected error occurred: ${error.message}`, 'error');
+                displayMessage('resetMessage', 'If an account with this email exists, a password reset link has been sent to it.', 'success');
+            } catch (err) {
+                displayMessage('resetMessage', 'An unexpected error occurred: ' + err.message, 'error');
             }
         }
 
-        // --- Tab Switching (Untouched) ---
-        function showLogin() {
-            document.getElementById('loginSection').classList.remove('hidden');
-            document.getElementById('registerSection').classList.add('hidden');
-            document.getElementById('loginTab').classList.add('active');
-            document.getElementById('registerTab').classList.remove('active');
-            displayMessage('loginMessage', '', 'hidden'); // Clear messages on tab switch
-            displayMessage('registerMessage', '', 'hidden');
-        }
-
-        function showRegister() {
-            document.getElementById('registerSection').classList.remove('hidden');
-            document.getElementById('loginSection').classList.add('hidden');
-            document.getElementById('registerTab').classList.add('active');
-            document.getElementById('loginTab').classList.remove('active');
-            displayMessage('loginMessage', '', 'hidden'); // Clear messages on tab switch
-            displayMessage('registerMessage', '', 'hidden');
-        }
-
-        // --- Password Visibility Toggle (Untouched) ---
-        function togglePasswordVisibility(fieldId) {
-            const passwordField = document.getElementById(fieldId);
-            const toggleIcon = passwordField.nextElementSibling.querySelector('i'); // Assuming icon is next sibling's child
-
-            if (passwordField.type === 'password') {
-                passwordField.type = 'text';
-                toggleIcon.classList.remove('fa-eye');
-                toggleIcon.classList.add('fa-eye-slash');
-            } else {
-                passwordField.type = 'password';
-                toggleIcon.classList.remove('fa-eye-slash');
-                toggleIcon.classList.add('fa-eye');
-            }
-        }
-
-        // --- Password Strength & Match Checking (Untouched) ---
+        // --- Password Strength/Match Checks ---
         function checkPasswordStrength() {
-            const password = document.getElementById('registerPassword').value;
-            const strengthIndicator = document.getElementById('passwordStrength');
+            const passwordInput = document.getElementById('registerPassword');
+            const passwordStrength = document.getElementById('passwordStrength');
+            const password = passwordInput.value;
+
             let strength = 0;
+            if (password.length >= 6) strength += 1;
+            if (password.match(/[a-z]/)) strength += 1;
+            if (password.match(/[A-Z]/)) strength += 1;
+            if (password.match(/[0-9]/)) strength += 1;
+            if (password.match(/[^a-zA-Z0-9]/)) strength += 1;
 
-            if (password.length > 5) strength++;
-            if (password.match(/[a-z]+/)) strength++;
-            if (password.match(/[A-Z]+/)) strength++;
-            if (password.match(/[0-9]+/)) strength++;
-            if (password.match(/[^a-zA-Z0-9]+/)) strength++;
-
-            let strengthText = '';
-            let strengthClass = '';
-
-            if (strength === 0) {
-                strengthText = '';
-                strengthClass = '';
-            } else if (strength < 3) {
-                strengthText = 'Weak';
-                strengthClass = 'strength-weak';
-            } else if (strength === 3) {
-                strengthText = 'Medium';
-                strengthClass = 'strength-medium';
+            passwordStrength.classList.remove('hidden');
+            if (strength < 3) {
+                passwordStrength.textContent = 'Weak';
+                passwordStrength.className = 'password-strength strength-weak';
+            } else if (strength < 5) {
+                passwordStrength.textContent = 'Medium';
+                passwordStrength.className = 'password-strength strength-medium';
             } else {
-                strengthText = 'Strong';
-                strengthClass = 'strength-strong';
+                passwordStrength.textContent = 'Strong';
+                passwordStrength.className = 'password-strength strength-strong';
             }
-
-            strengthIndicator.textContent = strengthText;
-            strengthIndicator.className = 'password-strength ' + strengthClass;
-
             checkPasswordMatch(); // Also check match when strength changes
         }
 
@@ -403,9 +443,9 @@
             const confirmPassword = document.getElementById('confirmPassword').value;
             const passwordMatchStatus = document.getElementById('passwordMatchStatus');
 
+            passwordMatchStatus.classList.remove('hidden');
             if (confirmPassword === '') {
-                passwordMatchStatus.textContent = '';
-                passwordMatchStatus.className = '';
+                passwordMatchStatus.classList.add('hidden'); // Hide if confirm is empty
             } else if (password === confirmPassword) {
                 passwordMatchStatus.textContent = 'Passwords match!';
                 passwordMatchStatus.className = 'password-strength strength-strong';
@@ -415,13 +455,21 @@
             }
         }
 
-        // General email validation helper (Untouched)
+        // General email validation helper
         function validateEmail(email) {
             const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
             return re.test(String(email).toLowerCase());
         }
 
-        // --- Initial Load (Untouched - except for displayMessage reference) ---
+        function validateInput(inputElement, type) {
+            if (type === 'email' && !validateEmail(inputElement.value)) {
+                // Not setting custom validity directly, using displayMessage for consistency
+            } else {
+                inputElement.setCustomValidity('');
+            }
+        }
+
+        // --- Initial Load ---
         document.addEventListener('DOMContentLoaded', () => {
             // Check current session on page load
             supabase.auth.getSession().then(({ data: { session } }) => {
@@ -430,8 +478,7 @@
                     window.location.href = 'index.html'; // Or user dashboard
                 }
             }).catch(error => {
-                console.error('Error getting session:', error);
-                // Handle error, e.g., display a message or just proceed to show login/register
+                console.error("Error getting session:", error);
             });
         });
     </script>
