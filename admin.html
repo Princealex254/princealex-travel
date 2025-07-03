@@ -1,12 +1,13 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Admin Panel - Prince Alex Travel</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Panel - Prince Alex Travel</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
         body {
             font-family: Arial, sans-serif;
             background: #f0f2f5;
@@ -374,167 +375,138 @@
     </style>
 </head>
 <body>
-    <header class="header-brand">
-        <img src="Mylogo.png" alt="Prince Alex Logo">
-        <h1>Admin Panel</h1>
-    </header>
+<header class="header-brand">
+<img alt="Prince Alex Logo" src="Mylogo.png"/>
+<h1>Admin Panel</h1>
+</header>
+<div class="login" id="loginForm">
+<h2>Admin Login</h2>
+<input id="email" placeholder="Email" required="" type="email"/>
+<input id="password" placeholder="Password" required="" type="password"/>
+<p class="error-message" id="loginErrorMessage"></p>
+<button onclick="login()">Login</button>
+</div>
+<div class="admin-panel hidden" id="adminPanel">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+<h2 style="margin: 0;">Welcome, Admin!</h2>
+<button class="logout" onclick="logout()">Logout</button>
+</div>
+<div class="tab-buttons">
+<button class="active" id="busesTabBtn" onclick="showTab('buses')">Manage Buses</button>
+<button id="bookingsTabBtn" onclick="showTab('bookings')">Manage Bookings</button>
+<button id="makeBookingTabBtn" onclick="showTab('makeBooking')">Make Booking</button>
+</div>
+<div class="admin-section" id="busesTab">
+<h3>Add New Bus</h3>
+<div class="bus-form">
+<div>
+<label for="busRoute">Route:</label>
+<input id="busRoute" placeholder="e.g., Nairobi - Mombasa" required="" type="text"/>
+</div>
+<div>
+<label for="busOrigin">Origin:</label>
+<input id="busOrigin" placeholder="e.g., Nairobi" required="" type="text"/>
+</div>
+<div>
+<label for="busDestination">Destination:</label>
+<input id="busDestination" placeholder="e.g., Mombasa" required="" type="text"/>
+</div>
+<div>
+<label for="busTime">Departure Time:</label>
+<input id="busTime" required="" type="time"/>
+</div>
+<div>
+<label for="busPrice">Price (Ksh):</label>
+<input id="busPrice" min="0" placeholder="e.g., 2500" required="" step="0.01" type="number"/>
+</div>
+<div>
+<label for="busTotalSeats">Total Seats:</label>
+<input id="busTotalSeats" min="1" placeholder="e.g., 50" required="" type="number"/>
+</div>
+<div>
+<label for="busTravelDate">Travel Date:</label>
+<input id="busTravelDate" required="" type="date"/>
+</div>
+<p class="error-message" id="busErrorMessage"></p>
+<p class="success-message" id="busSuccessMessage"></p>
+<button onclick="addBus()">Add Bus</button>
+</div>
+<h3>Current Buses</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Route</th>
+<th>Origin</th>
+<th>Destination</th>
+<th>Time</th>
+<th>Price</th>
+<th>Total Seats</th>
+<th>Available Seats</th>
+<th>Travel Date</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody id="busesTableBody">
+</tbody>
+</table>
+</div>
+<div class="admin-section hidden" id="bookingsTab">
+<h3>Manage Bookings</h3>
+<div style="display: flex; gap: 15px; margin-bottom: 20px;">
+<input id="bookingSearchInput" placeholder="Search by name or phone..." style="flex-grow: 1;" type="text"/>
+<select id="filterBusId" style="width: auto;">
+<option value="">All Buses</option>
+</select>
+<button onclick="loadBookings()">Apply Filter</button>
+<button class="download-csv" onclick="downloadBookingsCSV()">Download CSV</button>
+</div>
+<p class="error-message" id="bookingsTabErrorMessage"></p>
+<p class="success-message" id="bookingsTabSuccessMessage"></p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Passenger Name</th>
+<th>Phone</th>
+<th>Email</th>
+<th>Bus ID</th>
+<th>Route</th>
+<th>Travel Date</th>
+<th>Time</th>
+<th>Seat</th>
+<th>Price</th>
+<th>Status</th>
+<th>Booking Date</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody id="bookingsTableBody">
+</tbody>
+</table>
+</div>
+<div class="admin-section hidden" id="makeBookingTab">
+<h3>Make New Booking</h3>
+<div class="search-form">
+<select id="searchOrigin" required="">
+<option value="">Select Origin</option>
+</select>
+<select id="searchDestination" required="">
+<option value="">Select Destination</option>
+</select>
+<input id="searchTravelDate" required="" type="date"/>
+<button onclick="searchBuses()">Search Buses</button>
+</div>
+<p class="error-message" id="makeBookingErrorMessage"></p>
+<div class="success-message" id="makeBookingSuccessContainer" style="display: none; flex-direction: column; align-items: center; gap: 10px;">
+<span id="makeBookingSuccessMessage"></span>
+</div>
+<div class="search-results" id="searchResults">
+</div>
+</div>
+</div>
 
-    <div id="loginForm" class="login">
-        <h2>Admin Login</h2>
-        <input type="email" id="email" placeholder="Email" required>
-        <input type="password" id="password" placeholder="Password" required>
-        <p id="loginErrorMessage" class="error-message"></p>
-        <button onclick="login()">Login</button>
-    </div>
-
-    <div id="adminPanel" class="admin-panel hidden">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="margin: 0;">Welcome, Admin!</h2>
-            <button class="logout" onclick="logout()">Logout</button>
-        </div>
-
-        <div class="tab-buttons">
-            <button id="busesTabBtn" class="active" onclick="showTab('buses')">Manage Buses</button>
-            <button id="bookingsTabBtn" onclick="showTab('bookings')">Manage Bookings</button>
-            <button id="makeBookingTabBtn" onclick="showTab('makeBooking')">Make Booking</button>
-        </div>
-
-        <div id="busesTab" class="admin-section">
-            <h3>Add New Bus</h3>
-            <div class="bus-form">
-                <div>
-                    <label for="busRoute">Route:</label>
-                    <input type="text" id="busRoute" placeholder="e.g., Nairobi - Mombasa" required>
-                </div>
-                <div>
-                    <label for="busOrigin">Origin:</label>
-                    <input type="text" id="busOrigin" placeholder="e.g., Nairobi" required>
-                </div>
-                <div>
-                    <label for="busDestination">Destination:</label>
-                    <input type="text" id="busDestination" placeholder="e.g., Mombasa" required>    
-                </div>
-                <div>
-                    <label for="busTime">Departure Time:</label>
-                    <input type="time" id="busTime" required>
-                </div>
-                <div>
-                    <label for="busPrice">Price (Ksh):</label>
-                    <input type="number" id="busPrice" step="0.01" min="0" placeholder="e.g., 2500" required>
-                </div>
-                <div>
-                    <label for="busTotalSeats">Total Seats:</label>
-                    <input type="number" id="busTotalSeats" min="1" placeholder="e.g., 50" required>
-                </div>
-                <div>
-                    <label for="busTravelDate">Travel Date:</label>
-                    <input type="date" id="busTravelDate" required>
-                </div>
-                <p id="busErrorMessage" class="error-message"></p>
-                <p id="busSuccessMessage" class="success-message"></p>
-                <button onclick="addBus()">Add Bus</button>
-            </div>
-
-            <h3>Current Buses</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Route</th>
-                        <th>Origin</th>
-                        <th>Destination</th>
-                        <th>Time</th>
-                        <th>Price</th>
-                        <th>Total Seats</th>
-                        <th>Available Seats</th>
-                        <th>Travel Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="busesTableBody">
-                    </tbody>
-            </table>
-        </div>
-
-        <div id="bookingsTab" class="admin-section hidden">
-            <h3>Manage Bookings</h3>
-            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-                <input type="text" id="bookingSearchInput" placeholder="Search by name or phone..." style="flex-grow: 1;">
-                <select id="filterBusId" style="width: auto;">
-                    <option value="">All Buses</option>
-                    </select>
-                <button onclick="loadBookings()">Apply Filter</button>
-                <button class="download-csv" onclick="downloadBookingsCSV()">Download CSV</button>
-            </div>
-            <p id="bookingsTabErrorMessage" class="error-message"></p>
-            <p id="bookingsTabSuccessMessage" class="success-message"></p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Passenger Name</th>
-                        <th>Phone</th>
-                        <th>Email</th>
-                        <th>Bus ID</th>
-                        <th>Route</th>
-                        <th>Travel Date</th>
-                        <th>Time</th>
-                        <th>Seat</th>
-                        <th>Price</th>
-                        <th>Status</th>
-                        <th>Booking Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="bookingsTableBody">
-                    </tbody>
-            </table>
-        </div>
-
-        <div id="makeBookingTab" class="admin-section hidden">
-            <h3>Make New Booking</h3>
-            <div class="search-form">
-                <select id="searchOrigin" required>
-                    <option value="">Select Origin</option>
-                </select>
-                <select id="searchDestination" required>
-                    <option value="">Select Destination</option>
-                </select>
-                <input type="date" id="searchTravelDate" required>
-                <button onclick="searchBuses()">Search Buses</button>
-            </div>
-            <p id="makeBookingErrorMessage" class="error-message"></p>
-            <div id="makeBookingSuccessContainer" class="success-message" style="display: none; flex-direction: column; align-items: center; gap: 10px;">
-                <span id="makeBookingSuccessMessage"></span>
-            </div>
-            <div id="searchResults" class="search-results">
-                </div>
-        </div>
-    </div>
-
-    <div id="seatSelectionModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" onclick="closeSeatModal()">&times;</span>
-            <h2>Select Your Seat(s)</h2>
-            <p>Bus: <span id="modalBusRoute"></span> on <span id="modalTravelDate"></span> at <span id="modalBusTime"></span></p>
-            <p>Selected Seats: <span id="selectedSeatsDisplay">None</span></p>
-            <p id="modalErrorMessage" class="error-message"></p>
-            <div class="seat-grid" id="seatGrid">
-                </div>
-            <div class="passenger-details-form">
-                <h4>Passenger Details</h4>
-                <input type="text" id="passengerName" placeholder="Passenger Full Name" required>
-                <input type="tel" id="passengerPhone" placeholder="Passenger Phone Number" required>
-                <input type="email" id="passengerEmail" placeholder="Passenger Email (Optional)">
-            </div>
-            <div class="modal-buttons">
-                <button onclick="confirmBookingAndGenerateTicket()">Confirm Booking</button>
-                <button onclick="closeSeatModal()">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
+<script>
         // --- In-memory Data (for demonstration, replace with API calls in production) ---
         let busesData = [
             { id: 'BUS001', route: 'Nairobi - Mombasa', origin: 'Nairobi', destination: 'Mombasa', time: '08:00', price: 2500, totalSeats: 32, available_seats: 32, travelDate: '2025-08-15' },
@@ -1457,7 +1429,6 @@
             document.getElementById('searchTravelDate').value = `${year}-${month}-${day}`;
         });
     </script>
-
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
@@ -1497,6 +1468,25 @@
     populateFilterBusDropdown();
   };
 </script>
-
-</body>
+<div class="modal" id="seatSelectionModal" style="display: none;">
+<div class="modal-content">
+<span class="close-button" onclick="closeSeatModal()">×</span>
+<h2>Select Your Seat(s)</h2>
+<p>Bus: <span id="modalBusRoute"></span> on <span id="modalTravelDate"></span> at <span id="modalBusTime"></span></p>
+<p>Selected Seats: <span id="selectedSeatsDisplay">None</span></p>
+<p class="error-message" id="modalErrorMessage"></p>
+<div class="seat-grid" id="seatGrid">
+</div>
+<div class="passenger-details-form">
+<h4>Passenger Details</h4>
+<input id="passengerName" placeholder="Passenger Full Name" required="" type="text"/>
+<input id="passengerPhone" placeholder="Passenger Phone Number" required="" type="tel"/>
+<input id="passengerEmail" placeholder="Passenger Email (Optional)" type="email"/>
+</div>
+<div class="modal-buttons">
+<button onclick="confirmBookingAndGenerateTicket()">Confirm Booking</button>
+<button onclick="closeSeatModal()">Cancel</button>
+</div>
+</div>
+</div></body>
 </html>
