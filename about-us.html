@@ -356,98 +356,41 @@
                 display: flex; /* Show hamburger icon */
             }
             /* Use: Adjusts navbar layout for tablets and smaller screens. */
-            .hero {
-                padding: 40px 15px; /* Smaller padding */
+            .container {
+                margin: 20px auto; /* Reduced top/bottom margin */
+                padding: 15px; /* Reduced padding */
             }
-            .hero h1 {
-                font-size: 28px; /* Smaller font size */
+            h1, h2 {
+                font-size: 24px; /* Slightly smaller headings */
+                margin-bottom: 15px; /* Reduced margin */
             }
-            .hero p {
-                font-size: 16px; /* Smaller font size */
+            p {
+                margin-bottom: 10px; /* Reduced margin for paragraphs */
             }
-            /* Use: Adjusts hero section padding and heading size for smaller screens. */
-            .booking {
-                padding: 40px 15px;
-            }
-            .booking h2 {
-                font-size: 24px;
-            }
-            .booking-form {
+            .founder-info {
                 flex-direction: column;
-                align-items: stretch;
+                gap: 15px;
+                margin-top: 20px;
             }
-            .booking-form select,
-            .booking-form input[type="date"],
-            .booking-form button[type="submit"] {
-                min-width: unset;
-                width: 100%;
+            .why-choose-us ul {
+                grid-template-columns: 1fr;
+                gap: 15px; /* Reduced gap between list items */
             }
-            /* Use: Makes booking form elements stack vertically on smaller screens. */
-            .results-section {
-                padding: 15px;
+            .why-choose-us ul li {
+                padding: 15px; /* Reduced padding for list items */
             }
-            .results-section h2 {
-                font-size: 22px;
+            .testimonial-section {
+                padding: 20px; /* Reduced padding */
+                margin-top: 30px; /* Reduced margin */
             }
-            .result-card {
-                flex-direction: column;
-                align-items: flex-start;
-                padding: 15px;
-                gap: 10px;
+            .cta-section {
+                padding: 20px; /* Reduced padding */
+                margin-top: 30px; /* Reduced margin */
             }
-            .result-card img {
-                width: 100%; /* Full width image */
-                height: 150px; /* Fixed height for consistency */
-            }
-            .result-details {
-                min-width: unset;
-                width: 100%;
-            }
-            .book-btn {
-                margin-left: unset;
-                margin-top: 15px;
-                width: 100%;
-            }
-            /* Use: Adjusts "Book Now" button positioning and width for smaller screens. */
-            .gallery {
-                padding: 40px 15px;
-            }
-            .gallery h2 {
-                font-size: 24px;
-            }
-            .image-grid {
-                grid-template-columns: 1fr; /* Single column for images */
-            }
-            /* Use: Changes seat grid to 3 columns on smaller screens. */
-            .seat-container {
-                width: 50px;
-                height: 50px;
-            }
-            .seat-container .seat-icon {
-                font-size: 2.5em;
-            }
-            /* Use: Adjusts seat size and icon size for smaller screens. */
-            #seatModal > div, #loginChoiceModal > div {
-                margin: 20px; /* More margin on smaller screens */
-                padding: 20px;
-            }
-            #seatModal input, #seatModal select { /* General rule for modal inputs */
-                padding: 10px;
-            }
-            #seatModal button, #loginChoiceModal button {
-                padding: 10px 20px;
-                font-size: 0.95em;
-            }
-            /* Use: Adjusts modal padding, input/button sizes for smaller screens. */
             .footer-content {
                 flex-direction: column;
                 text-align: center;
-            }
-            .footer-section {
-                min-width: unset;
-            }
-            .footer-section h4 {
-                text-align: center;
+                gap: 15px; /* Reduced gap between footer sections */
             }
             .footer-section a,
             .footer-section p,
@@ -455,27 +398,14 @@
                 display: block; /* Stack links/text vertically in footer sections */
                 margin: 4px 0;
             }
-            /* Use: Adjusts footer layout for smaller screens to stack sections. */
+            .footer-section h4 {
+                margin-bottom: 5px; /* Reduced margin for footer headings */
+            }
         }
 
         @media (max-width: 480px) {
-            #seatGrid {
-                grid-template-columns: repeat(2, 1fr); /* 2 columns on very small screens */
-            }
-            /* Use: Changes seat grid to 2 columns on very small screens. */
-            .seat-container {
-                width: 45px;
-                height: 45px;
-            }
-            .seat-container .seat-icon {
-                font-size: 2em;
-            }
-            /* Use: Further reduces seat and icon size for very small screens. */
-            .book-now-btn, #seatModal button, #loginChoiceModal button {
-                font-size: 0.9em;
-                padding: 10px 15px;
-            }
-            /* Use: Adjusts button font size and padding for very small screens. */
+            /* Further adjustments for very small screens if needed,
+               but the 768px breakpoint often handles most mobile devices well. */
         }
     </style>
 </head>
@@ -583,7 +513,6 @@
                     <h3>Alex Senerwa Keverenge</h3>
                     <p>Prince Alex Digital Travel Services was founded by <strong>Alex Senerwa Keverenge</strong>, a visionary entrepreneur with a passion for transforming the transportation industry. With a deep understanding of customer needs and a commitment to innovation, Alex embarked on this journey to create a travel service that stands for reliability, comfort, and digital convenience.</p>
                     <p>His dedication to excellence and his belief in harnessing technology to improve everyday lives are the driving forces behind our company's mission. Alex envisioned a future where booking bus tickets is effortless, and every journey is an experience to remember.</p>
-                    <p>Under his leadership, Prince Alex Digital Travel Services continues to grow, striving to exceed passenger expectations and set new benchmarks in the travel sector.</p>
                 </div>
             </div>
         </section>
