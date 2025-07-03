@@ -39,6 +39,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative; /* Added for absolute positioning of nav-links */
         }
         .logo { /* Removed 'a' selector as per current logo structure */
             /* background-color: white; */ /* Removed background to avoid conflict with logo image */
@@ -49,15 +50,109 @@
             height: 80px; /* Adjust height as per your logo size */
             display: block;
         }
+        .nav-links {
+            display: flex;
+            gap: 25px; /* Added gap for desktop links */
+        }
         .nav-links a {
             color: white;
             text-decoration: none;
             padding: 0 15px;
             transition: color 0.3s ease;
+            font-weight: 600; /* Added font-weight for consistency */
+            font-size: 16px; /* Added font-size for consistency */
+            position: relative; /* Added for consistency with index.html hover effect */
         }
         .nav-links a:hover {
             color: var(--accent-color);
         }
+        /* Added hover effect for consistency with index.html */
+        .nav-links a::after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 2px;
+            background: var(--accent-color);
+            transition: width 0.3s;
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+        }
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Hamburger Menu Icon */
+        .menu-toggle {
+            display: none; /* Hidden by default, shown on mobile */
+            flex-direction: column;
+            justify-content: space-around;
+            width: 30px;
+            height: 25px;
+            cursor: pointer;
+            z-index: 10001; /* Above nav links when open */
+        }
+
+        .menu-toggle .bar {
+            width: 100%;
+            height: 3px;
+            background-color: white;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        /* Animation for hamburger to close icon */
+        .menu-toggle.open .bar:nth-child(1) {
+            transform: translateY(11px) rotate(45deg);
+        }
+        .menu-toggle.open .bar:nth-child(2) {
+            opacity: 0;
+        }
+        .menu-toggle.open .bar:nth-child(3) {
+            transform: translateY(-11px) rotate(-45deg);
+        }
+
+        /* Mobile Navigation Overlay */
+        @media (max-width: 768px) {
+            .nav-links { /* Target the .nav-links directly for mobile styles */
+                flex-direction: column;
+                position: absolute; /* Position relative to .navbar-container */
+                top: 100%; /* Place it directly below the navbar */
+                left: 0;
+                width: 100%; /* Take full width of the container */
+                background-color: var(--primary-color);
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                overflow: hidden; /* Crucial for max-height transition */
+                max-height: 0; /* Initially collapsed */
+                transition: max-height 0.3s ease-in-out; /* Smooth transition for height */
+                z-index: 9999; /* Ensure it's above other content */
+            }
+
+            .nav-links.open { /* This class will be toggled by JS */
+                max-height: 500px; /* Expand to show content (adjust as needed, ensure it's larger than actual content height) */
+            }
+
+            .nav-links a {
+                padding: 15px 20px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                text-align: left;
+                width: 100%;
+                font-size: 1.1em;
+            }
+            .nav-links a:last-child {
+                border-bottom: none;
+            }
+
+            .menu-toggle {
+                display: flex; /* Show hamburger icon */
+            }
+            /* Reset desktop styles for nav-links on mobile */
+            .navbar .nav-links {
+                display: flex; /* Keep flex for column layout */
+                gap: 0; /* Remove gap for stacked links */
+            }
+        }
+
         .lookup-container {
             flex-grow: 1;
             max-width: 700px;
@@ -196,14 +291,37 @@
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .navbar-container {
-                flex-direction: column;
+                flex-direction: row; /* Keep logo and hamburger on one row */
+                justify-content: space-between;
+                align-items: center;
+                position: relative; /* Needed for absolute positioning of nav-links */
             }
             .nav-links {
-                margin-top: 10px;
+                /* This is the mobile menu style */
+                flex-direction: column;
+                position: absolute; /* Position relative to .navbar-container */
+                top: 100%; /* Place it directly below the navbar */
+                left: 0;
+                width: 100%; /* Take full width of the container */
+                background-color: var(--primary-color);
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                overflow: hidden; /* Crucial for max-height transition */
+                max-height: 0; /* Initially collapsed */
+                transition: max-height 0.3s ease-in-out; /* Smooth transition for height */
+                z-index: 9999; /* Ensure it's above other content */
             }
-            .nav-links a {
-                display: block;
-                padding: 8px 0;
+
+            .nav-links.open { /* This class will be toggled by JS */
+                max-height: 500px; /* Expand to show content (adjust as needed, ensure it's larger than actual content height) */
+            }
+
+            /* Ensure desktop nav-links are hidden on mobile */
+            .navbar .nav-links:not(.open) {
+                display: none; /* Hide when not open to prevent layout issues */
+            }
+
+            .menu-toggle {
+                display: flex; /* Show hamburger icon */
             }
             .lookup-container {
                 margin: 30px 20px;
@@ -230,7 +348,13 @@
             <div class="logo">
                 <img src="mylogo.png" alt="Prince Alex Logo">
             </div>
-            <div class="nav-links">
+            <!-- Hamburger Menu Icon -->
+            <div class="menu-toggle" id="mobile-menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+            <div class="nav-links" id="main-nav">
                 <a href="index.html">Home</a>
                 <a href="about-us.html">About Us</a>
                 <a href="#contact-us">Contact</a>
@@ -301,9 +425,29 @@
             const messageElem = document.getElementById('message');
             const ticketDetailsSection = document.getElementById('ticketDetailsSection');
             const downloadTicketBtn = document.getElementById('downloadTicketBtn');
+            const mobileMenuToggle = document.getElementById('mobile-menu'); // Get hamburger icon
+            const mainNav = document.getElementById('main-nav'); // Get nav links container
+
 
             lookupTicketBtn.addEventListener('click', loadBookingDetails);
             downloadTicketBtn.addEventListener('click', downloadTicket);
+
+            // Hamburger menu toggle logic
+            if (mobileMenuToggle && mainNav) {
+                mobileMenuToggle.addEventListener('click', function () {
+                    this.classList.toggle('open');
+                    mainNav.classList.toggle('open');
+                });
+
+                // Close mobile menu when a link is clicked
+                mainNav.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', () => {
+                        mobileMenuToggle.classList.remove('open');
+                        mainNav.classList.remove('open');
+                    });
+                });
+            }
+
 
             async function loadBookingDetails() {
                 const bookingRef = bookingRefInput.value.trim();
