@@ -120,29 +120,24 @@
         }
 
         /* Mobile Navigation Overlay */
-        /* This class will be applied to the .nav-links element on mobile */
         @media (max-width: 768px) {
             .nav-links { /* Target the .nav-links directly for mobile styles */
                 flex-direction: column;
-                position: fixed;
-                top: 0;
-                right: -100%; /* Start off-screen */
-                width: 70%; /* Adjust as needed */
-                height: 100%;
+                position: absolute; /* Changed from fixed to absolute, relative to navbar-container if needed, or body */
+                top: 100%; /* Position below the navbar */
+                left: 0;
+                width: 100%; /* Full width */
                 background-color: var(--primary-color);
-                padding-top: 100px; /* Space for logo/header */
-                box-shadow: -2px 0 10px rgba(0,0,0,0.2);
-                transition: right 0.3s ease-in-out, opacity 0.3s ease-in-out;
-                z-index: 10000;
-                opacity: 0; /* Initially hidden */
-                pointer-events: none; /* Disable interaction when hidden */
-                display: flex; /* Keep it as flex for transitions, but visually hidden */
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                overflow: hidden; /* Hide content outside max-height */
+                max-height: 0; /* Initially collapsed */
+                transition: max-height 0.3s ease-in-out; /* Smooth transition for height */
+                z-index: 9999; /* Ensure it's above other content */
             }
 
             .nav-links.open { /* This class will be toggled by JS */
-                right: 0; /* Slide in */
-                opacity: 1; /* Make visible */
-                pointer-events: auto; /* Enable interaction */
+                max-height: 500px; /* Expand to show content (adjust as needed) */
+                /* If you want a fade effect too, add: opacity: 1; */
             }
 
             .nav-links a {
@@ -154,6 +149,15 @@
             }
             .nav-links a:last-child {
                 border-bottom: none;
+            }
+
+            .menu-toggle {
+                display: flex; /* Show hamburger icon */
+            }
+            /* Reset desktop styles for nav-links on mobile */
+            .navbar .nav-links {
+                display: flex; /* Keep flex for column layout */
+                gap: 0; /* Remove gap for stacked links */
             }
         }
 
@@ -566,29 +570,30 @@
                 flex-direction: row; /* Keep logo and hamburger on one row */
                 justify-content: space-between;
                 align-items: center;
+                position: relative; /* Needed for absolute positioning of nav-links */
             }
             .nav-links {
-                /* Changed to explicitly set initial state for mobile */
+                /* This is the mobile menu style */
                 flex-direction: column;
-                position: fixed;
-                top: 0;
-                right: -100%; /* Start off-screen */
-                width: 70%; /* Adjust as needed */
-                height: 100%;
+                position: absolute; /* Position relative to .navbar-container */
+                top: 100%; /* Place it directly below the navbar */
+                left: 0;
+                width: 100%; /* Take full width of the container */
                 background-color: var(--primary-color);
-                padding-top: 100px; /* Space for logo/header */
-                box-shadow: -2px 0 10px rgba(0,0,0,0.2);
-                transition: right 0.3s ease-in-out, opacity 0.3s ease-in-out;
-                z-index: 10000;
-                opacity: 0; /* Initially hidden */
-                pointer-events: none; /* Disable interaction when hidden */
-                display: flex; /* Keep it as flex for transitions, but visually hidden */
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                overflow: hidden; /* Crucial for max-height transition */
+                max-height: 0; /* Initially collapsed */
+                transition: max-height 0.3s ease-in-out; /* Smooth transition for height */
+                z-index: 9999; /* Ensure it's above other content */
             }
 
             .nav-links.open { /* This class will be toggled by JS */
-                right: 0; /* Slide in */
-                opacity: 1; /* Make visible */
-                pointer-events: auto; /* Enable interaction */
+                max-height: 500px; /* Expand to show content (adjust as needed, ensure it's larger than actual content height) */
+            }
+
+            /* Ensure desktop nav-links are hidden on mobile */
+            .navbar .nav-links:not(.open) {
+                display: none; /* Hide when not open to prevent layout issues */
             }
 
             .menu-toggle {
@@ -1180,7 +1185,7 @@
             resultsContainer.classList.add('active'); // Show results section
 
             if (from === to) {
-                resultsContainer.innerHTML += '<p style="color: red; text-align: center;">Please choose different origin and destination.</p>';
+                alert("Please choose different origin and destination."); // Use alert for user feedback
                 return;
             }
 
