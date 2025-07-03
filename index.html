@@ -121,7 +121,6 @@
 
         /* Mobile Navigation Overlay */
         .nav-links.mobile-menu-active { /* Changed class name to avoid conflict with base .nav-links */
-            display: none; /* Hidden by default */
             flex-direction: column;
             position: fixed;
             top: 0;
@@ -131,13 +130,19 @@
             background-color: var(--primary-color);
             padding-top: 100px; /* Space for logo/header */
             box-shadow: -2px 0 10px rgba(0,0,0,0.2);
-            transition: right 0.3s ease-in-out;
+            transition: right 0.3s ease-in-out, opacity 0.3s ease-in-out; /* Added opacity transition */
             z-index: 10000;
+            opacity: 0; /* Initially hidden */
+            pointer-events: none; /* Disable interaction when hidden */
+            /* Use: Styles the mobile menu, initially off-screen and invisible. */
         }
 
         .nav-links.mobile-menu-active.open {
             right: 0; /* Slide in */
-            display: flex; /* Make it visible when open */
+            opacity: 1; /* Make visible */
+            pointer-events: auto; /* Enable interaction */
+            display: flex; /* Ensure it's displayed as flex when open */
+            /* Use: Makes the mobile menu slide in and become visible/interactive. */
         }
 
         .nav-links.mobile-menu-active a {
@@ -429,7 +434,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            border-radius: 8鸣;
+            border-radius: 8px;
             transition: transform 0.2s ease, background-color 0.2s ease;
             /* Use: Styles individual seat containers, making them clickable and setting initial appearance. */
         }
@@ -1096,7 +1101,7 @@
             mobileMenuToggle.addEventListener('click', () => {
                 mobileMenuToggle.classList.toggle('open');
                 // Corrected: Toggle 'mobile-menu-active' class on mainNav
-                mainNav.classList.toggle('mobile-menu-active'); 
+                mainNav.classList.toggle('open'); /* Changed from mobile-menu-active to open for consistency */
             });
 
             // Close mobile menu when a link is clicked
@@ -1104,7 +1109,7 @@
                 link.addEventListener('click', () => {
                     mobileMenuToggle.classList.remove('open');
                     // Corrected: Remove 'mobile-menu-active' class from mainNav
-                    mainNav.classList.remove('mobile-menu-active'); 
+                    mainNav.classList.remove('open'); /* Changed from mobile-menu-active to open for consistency */
                 });
             });
         });
@@ -1131,14 +1136,14 @@
             if (error) {
                 console.error('Error logging out:', error.message);
                 alert('Error logging out: ' + error.message);
-            } else {
-                localStorage.removeItem('currentUser'); // Clear the session
-                alert('Logged out successfully!');
-                // Update links immediately without full page reload
-                updateAuthLinks();
-                // Redirect to home page or login page after logout
-                window.location.href = 'index.html'; // Or 'login-register.html'
+                return; // Exit if there's an error
             }
+            localStorage.removeItem('currentUser'); // Clear the session
+            alert('Logged out successfully!');
+            // Update links immediately without full page reload
+            updateAuthLinks();
+            // Redirect to home page or login page after logout
+            window.location.href = 'index.html'; // Or 'login-register.html'
         }
 
 
@@ -1177,7 +1182,7 @@
             }
 
             buses.forEach(item => {
-                const busImage = item.image || 'Bus1.png'; // Use default image if not available
+                const busImage = item.image || 'https://placehold.co/150x100/002d6b/ffffff?text=Bus'; // Use a placeholder image if not available
                 resultsContainer.innerHTML += `
                     <div class="result-card">
                         <img src="${busImage}" alt="${item.origin} to ${item.destination}" />
@@ -1444,18 +1449,24 @@
 
         function toggleChat() {
             const chatContainer = document.getElementById('aiAssistantChat');
-            const isHidden = chatContainer.classList.contains('chat-hidden');
+            // Check for 'chat-hidden' class to determine current state
+            const isHidden = chatContainer.classList.contains('chat-hidden'); 
 
             if (isHidden) {
-                chatContainer.classList.remove('chat-hidden'); // Remove display:none
+                // If currently hidden, remove 'chat-hidden' to make it display:flex
+                chatContainer.classList.remove('chat-hidden'); 
+                // A small timeout is often needed to allow the browser to register the display change
+                // before applying the transition properties.
                 setTimeout(() => {
-                    chatContainer.classList.add('chat-visible'); // Trigger transition
-                }, 10); // Small delay to allow reflow
+                    chatContainer.classList.add('chat-visible'); // Add 'chat-visible' to trigger opacity/transform transition
+                }, 10); 
             } else {
-                chatContainer.classList.remove('chat-visible'); // Reverse transition
+                // If currently visible, remove 'chat-visible' to start the reverse transition
+                chatContainer.classList.remove('chat-visible'); 
+                // After the transition completes (300ms, matching CSS), add 'chat-hidden' to set display:none
                 setTimeout(() => {
-                    chatContainer.classList.add('chat-hidden'); // Add display:none after transition
-                }, 300); // Match CSS transition duration
+                    chatContainer.classList.add('chat-hidden'); 
+                }, 300); // This timeout should match the CSS transition duration for a smooth close
             }
         }
 
