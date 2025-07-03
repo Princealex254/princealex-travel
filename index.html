@@ -120,7 +120,7 @@
         }
 
         /* Mobile Navigation Overlay */
-        .nav-links.mobile-menu {
+        .nav-links.mobile-menu-active { /* Changed class name to avoid conflict with base .nav-links */
             display: none; /* Hidden by default */
             flex-direction: column;
             position: fixed;
@@ -135,19 +135,19 @@
             z-index: 10000;
         }
 
-        .nav-links.mobile-menu.open {
+        .nav-links.mobile-menu-active.open {
             right: 0; /* Slide in */
             display: flex; /* Make it visible when open */
         }
 
-        .nav-links.mobile-menu a {
+        .nav-links.mobile-menu-active a {
             padding: 15px 20px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             text-align: left;
             width: 100%;
             font-size: 1.1em;
         }
-        .nav-links.mobile-menu a:last-child {
+        .nav-links.mobile-menu-active a:last-child {
             border-bottom: none;
         }
 
@@ -429,7 +429,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            border-radius: 8px;
+            border-radius: 8鸣;
             transition: transform 0.2s ease, background-color 0.2s ease;
             /* Use: Styles individual seat containers, making them clickable and setting initial appearance. */
         }
@@ -847,7 +847,7 @@
             cursor: pointer;
             font-weight: bold;
             transition: background-color 0.3s ease;
-            /* Use: Styles the "Send" button in the chat footer. */
+            /* Use: Darkens the "Send" button on hover. */
         }
 
         .chat-footer button:hover {
@@ -1068,7 +1068,7 @@
             
             document.getElementById('aiAssistantButton').addEventListener('click', toggleChat);
             const aiAssistantChat = document.getElementById('aiAssistantChat');
-            aiAssistantChat.classList.add('chat-hidden');
+            aiAssistantChat.classList.add('chat-hidden'); // Ensure it starts hidden
 
             // Get references to chat elements
             const chatInput = document.getElementById('chatInput');
@@ -1095,14 +1095,16 @@
             // Toggle mobile menu
             mobileMenuToggle.addEventListener('click', () => {
                 mobileMenuToggle.classList.toggle('open');
-                mainNav.classList.toggle('mobile-menu-open');
+                // Corrected: Toggle 'mobile-menu-active' class on mainNav
+                mainNav.classList.toggle('mobile-menu-active'); 
             });
 
             // Close mobile menu when a link is clicked
             mainNav.querySelectorAll('a').forEach(link => {
                 link.addEventListener('click', () => {
                     mobileMenuToggle.classList.remove('open');
-                    mainNav.classList.remove('mobile-menu-open');
+                    // Corrected: Remove 'mobile-menu-active' class from mainNav
+                    mainNav.classList.remove('mobile-menu-active'); 
                 });
             });
         });
@@ -1445,15 +1447,15 @@
             const isHidden = chatContainer.classList.contains('chat-hidden');
 
             if (isHidden) {
-                chatContainer.classList.remove('chat-hidden');
+                chatContainer.classList.remove('chat-hidden'); // Remove display:none
                 setTimeout(() => {
-                    chatContainer.classList.add('chat-visible');
-                }, 10);
+                    chatContainer.classList.add('chat-visible'); // Trigger transition
+                }, 10); // Small delay to allow reflow
             } else {
-                chatContainer.classList.remove('chat-visible');
+                chatContainer.classList.remove('chat-visible'); // Reverse transition
                 setTimeout(() => {
-                    chatContainer.classList.add('chat-hidden');
-                }, 300);
+                    chatContainer.classList.add('chat-hidden'); // Add display:none after transition
+                }, 300); // Match CSS transition duration
             }
         }
 
