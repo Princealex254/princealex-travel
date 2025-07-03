@@ -28,6 +28,7 @@
             min-height: 100vh;
             padding: 20px;
             box-sizing: border-box;
+            position: relative; /* Added to make positioning of .back-home-button relative to body */
         }
         .container {
             background: white;
@@ -37,6 +38,7 @@
             width: 100%;
             max-width: 450px;
             text-align: center;
+            /* Removed position: relative; as the button is now outside */
         }
         .form-tabs {
             display: flex;
@@ -75,12 +77,6 @@
         .form-group {
             margin-bottom: 18px;
             text-align: left;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: var(--text-dark);
         }
         .form-group input {
             width: calc(100% - 22px);
@@ -157,9 +153,31 @@
         .forgot-password:hover {
             text-decoration: underline;
         }
+        /* Style for the back home button */
+        .back-home-button {
+            position: absolute;
+            top: 5px; /* Adjusted to be even higher */
+            left: 5px; /* Adjusted for more space from the left edge */
+            background: none;
+            border: none;
+            font-size: 1.8em; /* Slightly larger icon */
+            color: var(--primary-color);
+            cursor: pointer;
+            transition: color 0.3s ease;
+            padding: 10px; /* Increased padding for better click area */
+            z-index: 10; /* Ensure it's above other elements */
+        }
+        .back-home-button:hover {
+            color: var(--accent-color);
+        }
     </style>
 </head>
 <body>
+    <!-- Back Home Button - Moved outside the container -->
+    <button class="back-home-button" onclick="window.location.href='index.html'">
+        <i class="fas fa-arrow-left"></i>
+    </button>
+
     <div class="container">
         <div class="form-tabs">
             <button class="tab-button active" id="loginTabBtn" onclick="showForm('login')">Login</button>
