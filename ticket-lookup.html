@@ -50,10 +50,11 @@
             height: 80px; /* Adjust height as per your logo size */
             display: block;
         }
-        .nav-links {
-            display: flex;
+        .nav-links {.nav-links {
+            display: flex; flex-direction: row;
             gap: 25px; /* Added gap for desktop links */
-        }
+         transition: max-height 0.3s ease-in-out;
+}
         .nav-links a {
             color: white;
             text-decoration: none;
