@@ -126,11 +126,14 @@
                 max-height: 0; /* Initially collapsed */
                 transition: max-height 0.3s ease-in-out; /* Smooth transition for height */
                 z-index: 9999; /* Ensure it's above other content */
+                display: flex; /* Ensure it's always flex on mobile for transitions to work */
             }
 
             .nav-links.open { /* This class will be toggled by JS */
                 max-height: 500px; /* Expand to show content (adjust as needed, ensure it's larger than actual content height) */
             }
+
+            /* REMOVED: .navbar .nav-links:not(.open) { display: none; } */
 
             .nav-links a {
                 padding: 15px 20px;
@@ -147,8 +150,8 @@
                 display: flex; /* Show hamburger icon */
             }
             /* Reset desktop styles for nav-links on mobile */
-            .navbar .nav-links {
-                display: flex; /* Keep flex for column layout */
+            .navbar .nav-links { /* This rule is for desktop, but if it was setting display:flex, it would override */
+                /* Ensure no conflicting display properties here for mobile */
                 gap: 0; /* Remove gap for stacked links */
             }
         }
@@ -309,6 +312,7 @@
                 max-height: 0; /* Initially collapsed */
                 transition: max-height 0.3s ease-in-out; /* Smooth transition for height */
                 z-index: 9999; /* Ensure it's above other content */
+                display: flex; /* Ensure it's always flex on mobile */
             }
 
             .nav-links.open { /* This class will be toggled by JS */
@@ -316,9 +320,10 @@
             }
 
             /* Ensure desktop nav-links are hidden on mobile */
-            .navbar .nav-links:not(.open) {
-                display: none; /* Hide when not open to prevent layout issues */
-            }
+            /* This rule is no longer needed as max-height:0 with overflow:hidden handles it */
+            /* .navbar .nav-links:not(.open) {
+                display: none;
+            } */
 
             .menu-toggle {
                 display: flex; /* Show hamburger icon */
