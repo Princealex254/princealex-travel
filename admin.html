@@ -14,6 +14,7 @@
             background: #f0f2f5;
             margin: 0;
             padding: 20px;
+            position: relative; /* Added to make positioning of .back-home-button relative to body */
         }
         .header-brand {
             display: flex;
@@ -372,9 +373,32 @@
             flex-direction: column;
             gap: 10px;
         }
+
+        /* Style for the back home button */
+        .back-home-button {
+            position: absolute;
+            top: 5px; /* Position from the top of the body */
+            left: 5px; /* Position from the left of the body */
+            background: none;
+            border: none;
+            font-size: 1.8em; /* Slightly larger icon */
+            color: #002d6b; /* Primary color */
+            cursor: pointer;
+            transition: color 0.3s ease;
+            padding: 10px; /* Increased padding for better click area */
+            z-index: 10; /* Ensure it's above other elements */
+        }
+        .back-home-button:hover {
+            color: #c69214; /* Accent color on hover */
+        }
     </style>
 </head>
 <body>
+    <!-- Back Home Button - Moved outside the container -->
+    <button class="back-home-button" onclick="window.location.href='index.html'">
+        <i class="fas fa-arrow-left"></i>
+    </button>
+
     <header class="header-brand">
         <img src="mylogo.png" alt="Prince Alex Logo">
         <h1>Admin Panel</h1>
@@ -1217,6 +1241,10 @@
 
                     if (busUpdateError) {
                         showErrorMessage('bookingsTabErrorMessage', 'Error updating bus available seats: ' + busUpdateError.message);
+                        // If booking update fails, attempt to revert bus seat count
+                        if (newAvailableSeatsAdjustment !== 0) {
+                            await supabase.from('buses').update({ available_seats: currentBus.available_seats }).eq('id', booking.bus_id);
+                        }
                         return;
                     }
                 }
