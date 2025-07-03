@@ -88,6 +88,70 @@
             color: var(--accent-color);
             /* Use: Changes link color on hover. */
         }
+
+        /* Hamburger Menu Icon */
+        .menu-toggle {
+            display: none; /* Hidden by default, shown on mobile */
+            flex-direction: column;
+            justify-content: space-around;
+            width: 30px;
+            height: 25px;
+            cursor: pointer;
+            z-index: 10001; /* Above nav links when open */
+        }
+
+        .menu-toggle .bar {
+            width: 100%;
+            height: 3px;
+            background-color: white;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        /* Animation for hamburger to close icon */
+        .menu-toggle.open .bar:nth-child(1) {
+            transform: translateY(11px) rotate(45deg);
+        }
+        .menu-toggle.open .bar:nth-child(2) {
+            opacity: 0;
+        }
+        .menu-toggle.open .bar:nth-child(3) {
+            transform: translateY(-11px) rotate(-45deg);
+        }
+
+        /* Mobile Navigation Overlay */
+        .nav-links.mobile-menu {
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            right: -100%; /* Start off-screen */
+            width: 70%; /* Adjust as needed */
+            height: 100%;
+            background-color: var(--primary-color);
+            padding-top: 100px; /* Space for logo/header */
+            box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+            transition: right 0.3s ease-in-out;
+            z-index: 10000;
+        }
+
+        .nav-links.mobile-menu.open {
+            right: 0; /* Slide in */
+            display: flex; /* Make it visible when open */
+        }
+
+        .nav-links.mobile-menu a {
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            text-align: left;
+            width: 100%;
+            font-size: 1.1em;
+        }
+        .nav-links.mobile-menu a:last-child {
+            border-bottom: none;
+        }
+
+
         .hero {
             background: linear-gradient(to right, var(--primary-color), #001c44);
             color: white;
@@ -472,7 +536,7 @@
         }
 
         #seatModal button[onclick="confirmBooking()"]:hover,
-        #loginChoiceModal button[onclick="proceedAsGuest()"] {
+        #loginChoiceModal button[onclick="proceedAsGuest()"]:hover {
             background-color: #b27e0f; /* Darker accent */
             /* Use: Darkens "Proceed to Pay" button on hover. */
         }
@@ -493,17 +557,33 @@
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .navbar-container {
-                flex-direction: column;
-                gap: 15px;
+                flex-direction: row; /* Keep logo and hamburger on one row */
+                justify-content: space-between;
+                align-items: center;
+            }
+            .nav-links {
+                display: none; /* Hide desktop nav links */
+            }
+            .menu-toggle {
+                display: flex; /* Show hamburger icon */
             }
             /* Use: Adjusts navbar layout for tablets and smaller screens. */
             .hero {
-                padding: 60px 20px;
+                padding: 40px 15px; /* Smaller padding */
             }
             .hero h1 {
-                font-size: 30px;
+                font-size: 28px; /* Smaller font size */
+            }
+            .hero p {
+                font-size: 16px; /* Smaller font size */
             }
             /* Use: Adjusts hero section padding and heading size for smaller screens. */
+            .booking {
+                padding: 40px 15px;
+            }
+            .booking h2 {
+                font-size: 24px;
+            }
             .booking-form {
                 flex-direction: column;
                 align-items: stretch;
@@ -515,19 +595,40 @@
                 width: 100%;
             }
             /* Use: Makes booking form elements stack vertically on smaller screens. */
+            .results-section {
+                padding: 15px;
+            }
+            .results-section h2 {
+                font-size: 22px;
+            }
             .result-card {
                 flex-direction: column;
                 align-items: flex-start;
+                padding: 15px;
+                gap: 10px;
             }
-            /* Use: Makes result cards stack elements vertically on smaller screens. */
+            .result-card img {
+                width: 100%; /* Full width image */
+                height: 150px; /* Fixed height for consistency */
+            }
+            .result-details {
+                min-width: unset;
+                width: 100%;
+            }
             .book-btn {
                 margin-left: unset;
                 margin-top: 15px;
                 width: 100%;
             }
             /* Use: Adjusts "Book Now" button positioning and width for smaller screens. */
-            #seatGrid {
-                grid-template-columns: repeat(3, 1fr); /* 3 columns on smaller screens */
+            .gallery {
+                padding: 40px 15px;
+            }
+            .gallery h2 {
+                font-size: 24px;
+            }
+            .image-grid {
+                grid-template-columns: 1fr; /* Single column for images */
             }
             /* Use: Changes seat grid to 3 columns on smaller screens. */
             .seat-container {
@@ -562,8 +663,8 @@
             }
             .footer-section a,
             .footer-section p {
-                display: inline-block; /* For horizontal links/text in smaller screens */
-                margin: 0 5px;
+                display: block; /* Stack links/text vertically in footer sections */
+                margin: 4px 0;
             }
             /* Use: Adjusts footer layout for smaller screens to stack sections. */
         }
@@ -626,13 +727,12 @@
             border-radius: 12px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
             z-index: 9999;
-            display: flex; /* Always flex */
+            display: flex;
             flex-direction: column;
             overflow: hidden;
             transition: all 0.3s ease-in-out;
-            /* Initial state for animation */
-            opacity: 0;
             transform: translateY(20px) scale(0.9);
+            opacity: 0;
             pointer-events: none; /* Disable interaction when hidden */
             /* Use: Styles the chat window (position, size, appearance, initial hidden state). */
         }
@@ -644,10 +744,10 @@
             /* Use: Applies transformation and opacity to make chat window visible with animation. */
         }
 
-        /* Removed .chat-hidden display: none; to allow transition */
-        /* .chat-hidden {
-            display: none;
-        } */
+        .chat-hidden {
+            display: none; /* For initial state and complete hiding */
+            /* Use: Hides the chat window completely when not in use. */
+        }
 
         .chat-header {
             background-color: var(--primary-color);
@@ -780,16 +880,23 @@
         <div class="navbar-container">
             <div class="logo">
                 <img src="mylogo.png" alt="Prince Alex Logo" />
-                </div>
-            <nav class="nav-links">
+            </div>
+            <!-- Hamburger Menu Icon -->
+            <div class="menu-toggle" id="mobile-menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+            <nav class="nav-links" id="main-nav">
                 <a href="index.html">Home</a>
                 <a href="about-us.html">About Us</a>
                 <a href="#contact-us">Contact</a>
                 <a href="ticket-lookup.html">Print Ticket</a>
                 <a href="admin.html">Admin Login</a>
-                <a href="profile.html" id="myProfileLink" style="display:none;">My Profile</a> <a href="login-register.html" id="loginRegisterLink">Login / Register</a>
-                <a href="#" id="logoutLink" style="display:none;">Logout</a> </div>
-                </nav>
+                <a href="profile.html" id="myProfileLink" style="display:none;">My Profile</a>
+                <a href="login-register.html" id="loginRegisterLink">Login / Register</a>
+                <a href="#" id="logoutLink" style="display:none;">Logout</a>
+            </nav>
         </div>
     </header>
 
@@ -797,7 +904,7 @@
         <h1>Welcome to Prince Alex Digital Travel Services</h1>
         <h2>Travel with Comfort and Safety</h2>
         <p>Your journey, our priority. Book your bus tickets online with Prince Alex Travel Services for a seamless experience.</p>
-        </section>
+    </section>
 
     <section class="booking">
         <div class="booking-container">
@@ -815,7 +922,7 @@
                     <option>Kitale</option>
                     <option>Nyeri</option>
                     <option>Busia</option>
-                    </select>
+                </select>
                 <select id="to" required>
                     <option value="">To</option>
                     <option>Nairobi</option>
@@ -828,10 +935,10 @@
                     <option>Kitale</option>
                     <option>Nyeri</option>
                     <option>Busia</option>
-                    </select>
+                </select>
                 <input type="date" id="travelDate" required />
                 <button type="submit">Search</button>
-                </form>
+            </form>
         </div>
     </section>
 
@@ -843,7 +950,7 @@
                 <img src="Bus1.png" alt="Luxury Bus">
                 <img src="Bus2.png" alt="VIP Interior">
                 <img src="Bus3.png" alt="Clean and Air Conditioned">
-                </div>
+            </div>
         </div>
     </section>
 
@@ -871,7 +978,7 @@
         </div>
         <div class="footer-bottom">
             &copy; 2025 Prince Alex Digital. All rights reserved.
-            </div>
+        </div>
     </footer>
 
     <div id="loginChoiceModal">
@@ -900,31 +1007,31 @@
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>
-                    </select>
+                </select>
                 <input type="tel" id="passengerPhone" placeholder="Phone Number" required />
                 <input type="email" id="passengerEmail" placeholder="Email Address" required />
-                </div>
+            </div>
             <button onclick="confirmBooking()">Proceed to Pay</button>
             <button onclick="closeModal()">Cancel</button>
-            </div>
+        </div>
     </div>
 
     <div id="aiAssistantButton">
         <i class="fas fa-comments"></i>
-        </div>
+    </div>
 
-    <div id="aiAssistantChat">
+    <div id="aiAssistantChat" class="chat-hidden">
         <div class="chat-header">
             <h3>AI Assistant</h3>
             <button class="chat-close-btn" onclick="toggleChat()">&times;</button>
-            </div>
+        </div>
         <div class="chat-body" id="chatBody">
             <p class="bot-message">Hello! How can I assist you with your travel plans today?</p>
-            </div>
+        </div>
         <div class="chat-footer">
             <input type="text" placeholder="Type your message..." id="chatInput" />
             <button id="sendChatBtn">Send</button>
-            </div>
+        </div>
     </div>
 
     <script>
@@ -950,6 +1057,8 @@
         const myProfileLink = document.getElementById('myProfileLink');
         const loginRegisterLink = document.getElementById('loginRegisterLink');
         const logoutLink = document.getElementById('logoutLink');
+        const mobileMenuToggle = document.getElementById('mobile-menu');
+        const mainNav = document.getElementById('main-nav');
 
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -958,10 +1067,8 @@
             document.getElementById("loginChoiceModal").style.display = "none"; 
             
             document.getElementById('aiAssistantButton').addEventListener('click', toggleChat);
-            
-            // Set initial state for chat window to hidden using class
-            document.getElementById('aiAssistantChat').classList.add('chat-hidden');
-
+            const aiAssistantChat = document.getElementById('aiAssistantChat');
+            aiAssistantChat.classList.add('chat-hidden');
 
             // Get references to chat elements
             const chatInput = document.getElementById('chatInput');
@@ -983,6 +1090,20 @@
             logoutLink.addEventListener('click', async (e) => {
                 e.preventDefault(); // Prevent default link behavior
                 await logout(); // Use await for async logout
+            });
+
+            // Toggle mobile menu
+            mobileMenuToggle.addEventListener('click', () => {
+                mobileMenuToggle.classList.toggle('open');
+                mainNav.classList.toggle('mobile-menu-open');
+            });
+
+            // Close mobile menu when a link is clicked
+            mainNav.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    mobileMenuToggle.classList.remove('open');
+                    mainNav.classList.remove('mobile-menu-open');
+                });
             });
         });
 
@@ -1321,19 +1442,18 @@
 
         function toggleChat() {
             const chatContainer = document.getElementById('aiAssistantChat');
-            const isVisible = chatContainer.classList.contains('chat-visible');
+            const isHidden = chatContainer.classList.contains('chat-hidden');
 
-            if (!isVisible) {
-                chatContainer.style.display = 'flex'; // Ensure it's laid out
+            if (isHidden) {
+                chatContainer.classList.remove('chat-hidden');
                 setTimeout(() => {
-                    chatContainer.classList.add('chat-visible'); // Trigger animation
-                }, 10); // Small delay to allow display change to register before animation
+                    chatContainer.classList.add('chat-visible');
+                }, 10);
             } else {
-                chatContainer.classList.remove('chat-visible'); // Start reverse animation
-                // Hide completely after the transition
+                chatContainer.classList.remove('chat-visible');
                 setTimeout(() => {
-                    chatContainer.style.display = 'none';
-                }, 300); // Match this with your CSS transition duration
+                    chatContainer.classList.add('chat-hidden');
+                }, 300);
             }
         }
 
