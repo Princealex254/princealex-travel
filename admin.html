@@ -6,7 +6,31 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Admin Panel - Prince Alex Travel</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
+function downloadTicketPDF(booking) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const lines = [
+        `Booking Reference: ${booking.id}`,
+        `Passenger Name: ${booking.name}`,
+        `Phone Number: ${booking.phone}`,
+        `Email: ${booking.email}`,
+        `Bus Route: ${booking.route}`,
+        `Travel Date: ${booking.travelDate}`,
+        `Departure Time: ${booking.time}`,
+        `Bus ID: ${booking.busId}`,
+        `Seat Number: ${booking.seat}`,
+        `Price: Ksh ${booking.price}`,
+        `Status: ${booking.status}`,
+        `Booking Date: ${booking.bookingDate}`
+    ];
+
+    lines.forEach((line, i) => doc.text(line, 10, 10 + i * 10));
+    doc.save(`Ticket-${booking.id}.pdf`);
+}
+
+</script>
 <!-- Firebase SDKs -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -97,6 +121,30 @@
             document.getElementById('adminPanel').classList.add('hidden');
         }
     });
+
+function downloadTicketPDF(booking) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const lines = [
+        `Booking Reference: ${booking.id}`,
+        `Passenger Name: ${booking.name}`,
+        `Phone Number: ${booking.phone}`,
+        `Email: ${booking.email}`,
+        `Bus Route: ${booking.route}`,
+        `Travel Date: ${booking.travelDate}`,
+        `Departure Time: ${booking.time}`,
+        `Bus ID: ${booking.busId}`,
+        `Seat Number: ${booking.seat}`,
+        `Price: Ksh ${booking.price}`,
+        `Status: ${booking.status}`,
+        `Booking Date: ${booking.bookingDate}`
+    ];
+
+    lines.forEach((line, i) => doc.text(line, 10, 10 + i * 10));
+    doc.save(`Ticket-${booking.id}.pdf`);
+}
+
 </script>
 <style>
         body {
@@ -1749,6 +1797,34 @@
             document.getElementById('searchTravelDate').min = `${year}-${month}-${day}`;
             document.getElementById('searchTravelDate').value = `${year}-${month}-${day}`;
         });
-    </script>
+    
+function downloadTicketPDF(booking) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const lines = [
+        `Booking Reference: ${booking.id}`,
+        `Passenger Name: ${booking.name}`,
+        `Phone Number: ${booking.phone}`,
+        `Email: ${booking.email}`,
+        `Bus Route: ${booking.route}`,
+        `Travel Date: ${booking.travelDate}`,
+        `Departure Time: ${booking.time}`,
+        `Bus ID: ${booking.busId}`,
+        `Seat Number: ${booking.seat}`,
+        `Price: Ksh ${booking.price}`,
+        `Status: ${booking.status}`,
+        `Booking Date: ${booking.bookingDate}`
+    ];
+
+    lines.forEach((line, i) => doc.text(line, 10, 10 + i * 10));
+    doc.save(`Ticket-${booking.id}.pdf`);
+}
+
+</script>
 </body>
 </html>
+
+<!-- NOTE: Booking table rows should include a button like:
+<button onclick='downloadTicketPDF(booking)'>Download PDF</button>
+Ensure booking data is passed to the function -->
