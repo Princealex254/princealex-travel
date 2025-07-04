@@ -7,6 +7,97 @@
 <title>Admin Panel - Prince Alex Travel</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- Firebase SDKs -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { 
+        getAuth, 
+        signInWithEmailAndPassword, 
+        signOut, 
+        onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { 
+        getFirestore, 
+        collection, 
+        query, 
+        where, 
+        getDocs, 
+        addDoc, 
+        doc, 
+        updateDoc, 
+        deleteDoc, 
+        increment,
+        getDoc,
+        onSnapshot // For real-time seat updates
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
+        authDomain: "princealextravel.firebaseapp.com",
+        projectId: "princealextravel",
+        storageBucket: "princealextravel.firebasestorage.app",
+        messagingSenderId: "947577729462",
+        appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Make Firebase instances and functions globally accessible for inline scripts
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    window.signOutFirebase = signOut;
+    window.onAuthStateChanged = onAuthStateChanged;
+    window.collection = collection;
+    window.query = query;
+    window.where = where;
+    window.getDocs = getDocs;
+    window.addDoc = addDoc;
+    window.doc = doc;
+    window.updateDoc = updateDoc;
+    window.deleteDoc = deleteDoc;
+    window.increment = increment;
+    window.getDoc = getDoc;
+    window.onSnapshot = onSnapshot;
+
+    // Global variable to store current admin user
+    window.currentAdminUser = null;
+
+    // Listen for authentication state changes
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            // User is signed in, check if they are an admin
+            const adminDocRef = doc(db, "admins", user.uid);
+            const adminDocSnap = await getDoc(adminDocRef);
+
+            if (adminDocSnap.exists() && adminDocSnap.data().isAdmin) {
+                window.currentAdminUser = user;
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+                loadBuses();
+                loadBookings();
+                populateSearchDropdowns();
+                populateFilterBusDropdown();
+            } else {
+                // Not an admin, sign them out
+                await signOutFirebase(auth);
+                window.currentAdminUser = null;
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('adminPanel').classList.add('hidden');
+                showErrorMessage('loginErrorMessage', 'Access Denied: You are not authorized as an admin.');
+            }
+        } else {
+            // User is signed out
+            window.currentAdminUser = null;
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('adminPanel').classList.add('hidden');
+        }
+    });
+</script>
 <style>
         body {
             font-family: Arial, sans-serif;
@@ -508,14 +599,9 @@
 
 <script>
         // --- In-memory Data (for demonstration, replace with API calls in production) ---
-        let busesData = [
-            { id: 'BUS001', route: 'Nairobi - Mombasa', origin: 'Nairobi', destination: 'Mombasa', time: '08:00', price: 2500, totalSeats: 32, available_seats: 32, travelDate: '2025-08-15' },
-            { id: 'BUS002', route: 'Nairobi - Kisumu', origin: 'Nairobi', destination: 'Kisumu', time: '10:00', price: 2000, totalSeats: 28, available_seats: 28, travelDate: '2025-08-15' },
-            { id: 'BUS003', route: 'Mombasa - Nairobi', origin: 'Mombasa', destination: 'Nairobi', time: '09:00', price: 2500, totalSeats: 32, available_seats: 32, travelDate: '2025-08-16' },
-            { id: 'BUS004', route: 'Kisumu - Nairobi', origin: 'Kisumu', destination: 'Nairobi', time: '11:00', price: 2000, totalSeats: 28, available_seats: 28, travelDate: '2025-08-16' }
-        ];
-
-        let bookingsData = []; // To store current bookings
+        // These are now handled by Firebase, but we keep the structure for local manipulation
+        let busesData = []; 
+        let bookingsData = []; 
 
         // --- Helper functions for messages ---
         function showErrorMessage(elementId, message) {
@@ -534,33 +620,72 @@
             }
         }
 
-        // --- Authentication (PLACEHOLDER - Requires backend implementation) ---
-        // The login function is now handled by the Supabase script below,
-        // but this placeholder remains for other non-Supabase related functionalities that might call it.
+        // --- Authentication ---
         async function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const loginErrorMessage = document.getElementById('loginErrorMessage');
             loginErrorMessage.style.display = 'none'; // Hide previous error
 
+            if (!email || !password) {
+                showErrorMessage('loginErrorMessage', 'Please enter both email and password.');
+                return;
+            }
+
+            // --- START HARDCODED ADMIN LOGIN ---
+            // WARNING: This is for demonstration purposes only and is NOT secure for production.
+            // Hardcoding credentials makes them visible to anyone viewing your page source.
             if (email === "senerwaalex@gmail.com" && password === "admin") {
+                window.currentAdminUser = { uid: "hardcoded_admin_uid", email: email }; // Simulate a user object
                 document.getElementById('loginForm').classList.add('hidden');
                 document.getElementById('adminPanel').classList.remove('hidden');
                 loadBuses();
                 loadBookings();
                 populateSearchDropdowns();
-                populateFilterBusDropdown(); // Ensure dropdown is populated on login
-            } else {
-                showErrorMessage('loginErrorMessage', 'Invalid email or password.');
+                populateFilterBusDropdown();
+                showSuccessMessage('loginErrorMessage', 'Logged in as hardcoded admin!');
+                return; // Exit function after hardcoded login
+            }
+            // --- END HARDCODED ADMIN LOGIN ---
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+                const user = userCredential.user;
+
+                // Check if the logged-in user is an admin from Firestore 'admins' collection
+                const adminDocRef = doc(firebaseDb, "admins", user.uid);
+                const adminDocSnap = await getDoc(adminDocRef);
+
+                if (adminDocSnap.exists() && adminDocSnap.data().isAdmin) {
+                    // Handled by onAuthStateChanged listener
+                } else {
+                    // Not an admin, sign out and show error
+                    await signOutFirebase(firebaseAuth);
+                    showErrorMessage('loginErrorMessage', 'Access Denied: You are not authorized as an admin.');
+                }
+            } catch (error) {
+                showErrorMessage('loginErrorMessage', 'Login failed: ' + error.message);
             }
         }
 
-        function logout() {
-            document.getElementById('loginForm').classList.remove('hidden');
-            document.getElementById('adminPanel').classList.add('hidden');
-            document.getElementById('email').value = '';
-            document.getElementById('password').value = '';
-            showSuccessMessage('loginErrorMessage', 'Logged out successfully!'); // Re-using for general message
+        async function logout() {
+            try {
+                // If using hardcoded admin, clear the simulated user and show login form
+                if (window.currentAdminUser && window.currentAdminUser.uid === "hardcoded_admin_uid") {
+                    window.currentAdminUser = null;
+                    document.getElementById('loginForm').classList.remove('hidden');
+                    document.getElementById('adminPanel').classList.add('hidden');
+                    showSuccessMessage('loginErrorMessage', 'Logged out successfully!');
+                } else {
+                    // For Firebase authenticated users
+                    await signOutFirebase(firebaseAuth);
+                    showSuccessMessage('loginErrorMessage', 'Logged out successfully!');
+                    // onAuthStateChanged will handle UI changes
+                }
+            } catch (error) {
+                console.error("Error logging out:", error.message);
+                showErrorMessage('loginErrorMessage', 'Error logging out: ' + error.message);
+            }
         }
 
         // --- Tab Management ---
@@ -588,67 +713,248 @@
         }
 
         // --- Bus Management ---
-        // addBus function is now handled by Supabase script below
+        async function addBus() { 
+            const route = document.getElementById('busRoute').value; 
+            const origin = document.getElementById('busOrigin').value; 
+            const destination = document.getElementById('busDestination').value; 
+            const time = document.getElementById('busTime').value; 
+            const price = parseFloat(document.getElementById('busPrice').value); 
+            const totalSeats = parseInt(document.getElementById('busTotalSeats').value); 
+            const travelDate = document.getElementById('busTravelDate').value; 
 
-        // loadBuses function is now handled by Supabase script below
+            if (!route || !origin || !destination || !time || isNaN(price) || isNaN(totalSeats) || !travelDate) { 
+                showErrorMessage('busErrorMessage', 'Please fill in all bus details correctly.'); 
+                return; 
+            } 
 
-        function editBus(busId) {
+            try {
+                // Add a new document with a generated ID
+                await addDoc(collection(firebaseDb, "buses"), { 
+                    route, 
+                    origin, 
+                    destination, 
+                    time, 
+                    price, 
+                    totalSeats: totalSeats, 
+                    available_seats: totalSeats, // Initially, all seats are available
+                    travelDate,
+                    createdAt: new Date().toISOString()
+                }); 
+
+                showSuccessMessage('busSuccessMessage', 'Bus added successfully!'); 
+                // Clear form fields
+                document.getElementById('busRoute').value = ''; 
+                document.getElementById('busOrigin').value = ''; 
+                document.getElementById('busDestination').value = ''; 
+                document.getElementById('busTime').value = ''; 
+                document.getElementById('busPrice').value = ''; 
+                document.getElementById('busTotalSeats').value = ''; 
+                document.getElementById('busTravelDate').value = ''; 
+                loadBuses(); 
+                populateSearchDropdowns(); 
+                populateFilterBusDropdown(); 
+            } catch (error) {
+                showErrorMessage('busErrorMessage', 'Failed to add bus: ' + error.message);
+                console.error("Error adding bus:", error);
+            }
+        } 
+
+        async function loadBuses() { 
+            const busesTableBody = document.getElementById('busesTableBody'); 
+            busesTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Loading buses...</td></tr>'; 
+
+            try {
+                const busesCol = collection(firebaseDb, "buses");
+                const q = query(busesCol); // No specific ordering needed for now, can sort client-side
+                const querySnapshot = await getDocs(q);
+                
+                busesData = []; // Clear in-memory data
+                querySnapshot.forEach((doc) => {
+                    busesData.push({ id: doc.id, ...doc.data() });
+                });
+
+                busesTableBody.innerHTML = ''; 
+                if (busesData.length === 0) { 
+                    busesTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">No buses found.</td></tr>'; 
+                    return; 
+                } 
+                
+                // Sort buses by travelDate and then time for consistent display
+                busesData.sort((a, b) => {
+                    const dateA = new Date(a.travelDate + 'T' + a.time);
+                    const dateB = new Date(b.travelDate + 'T' + b.time);
+                    return dateA - dateB;
+                });
+
+                for (const bus of busesData) { 
+                    const row = document.createElement('tr'); 
+                    row.innerHTML = ` 
+                        <td>${bus.id}</td> 
+                        <td>${bus.route}</td> 
+                        <td>${bus.origin}</td> 
+                        <td>${bus.destination}</td> 
+                        <td>${bus.time}</td> 
+                        <td>Ksh ${bus.price.toFixed(2)}</td> 
+                        <td>${bus.totalSeats}</td> 
+                        <td>${bus.available_seats}</td> 
+                        <td>${bus.travelDate}</td> 
+                        <td class="action-buttons"> 
+                            <button class="edit-btn" onclick="startEditBus('${bus.id}')">Edit</button>
+                            <button class="delete-btn" onclick="deleteBus('${bus.id}')">Delete</button> 
+                        </td>`; 
+                    busesTableBody.appendChild(row); 
+                } 
+                populateSearchDropdowns(); 
+                populateFilterBusDropdown(); 
+            } catch (error) {
+                showErrorMessage('busErrorMessage', 'Failed to load buses: ' + error.message);
+                console.error("Error loading buses:", error);
+                busesTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Error loading buses.</td></tr>';
+            }
+        } 
+
+        let editingBusId = null;
+
+        function startEditBus(busId) {
+            if (editingBusId === busId) {
+                return;
+            }
+            if (editingBusId !== null) {
+                cancelEditBus(editingBusId);
+            }
+
+            editingBusId = busId;
             const bus = busesData.find(b => b.id === busId);
             if (!bus) {
                 showErrorMessage('busErrorMessage', 'Bus not found for editing.');
                 return;
             }
 
-            const newRoute = prompt('Enter new route:', bus.route);
-            if (newRoute === null) return;
-            const newOrigin = prompt('Enter new origin:', bus.origin);
-            if (newOrigin === null) return;
-            const newDestination = prompt('Enter new destination:', bus.destination);
-            if (newDestination === null) return;
-            const newTime = prompt('Enter new time (HH:MM):', bus.time);
-            if (newTime === null) return;
-            const newPrice = prompt('Enter new price:', bus.price);
-            if (newPrice === null) return;
-            const newTotalSeats = prompt('Enter new total seats:', bus.totalSeats);
-            if (newTotalSeats === null) return;
-            const newTravelDate = prompt('Enter new travel date (YYYY-MM-DD):', bus.travelDate);
-            if (newTravelDate === null) return;
-
-            // Basic validation
-            if (!newRoute || !newOrigin || !newDestination || !newTime || isNaN(parseFloat(newPrice)) || isNaN(parseInt(newTotalSeats)) || !newTravelDate) {
-                showErrorMessage('busErrorMessage', 'Invalid input. Please fill all fields.');
+            const row = document.querySelector(`#busesTableBody tr`).parentNode.querySelector(`tr:has(td:first-child:contains("${busId}"))`);
+            if (!row) {
+                showErrorMessage('busErrorMessage', 'Bus row not found for editing.');
                 return;
             }
 
-            bus.route = newRoute;
-            bus.origin = newOrigin;
-            bus.destination = newDestination;
-            bus.time = newTime;
-            bus.price = parseFloat(newPrice);
-            
-            const oldTotalSeats = bus.totalSeats;
-            const newTotalSeatsInt = parseInt(newTotalSeats);
-            bus.totalSeats = newTotalSeatsInt;
+            // Store original values for cancel
+            row.dataset.originalRoute = bus.route;
+            row.dataset.originalOrigin = bus.origin;
+            row.dataset.originalDestination = bus.destination;
+            row.dataset.originalTime = bus.time;
+            row.dataset.originalPrice = bus.price;
+            row.dataset.originalTotalSeats = bus.totalSeats;
+            row.dataset.originalTravelDate = bus.travelDate;
 
-            // Adjust available seats if total seats changed and it's not currently booked beyond new capacity
-            const currentBookedSeats = bookingsData.filter(b => b.busId === bus.id && b.travelDate === bus.travelDate && (b.status === 'pending' || b.status === 'paid')).length;
-            if (newTotalSeatsInt >= currentBookedSeats) {
-                bus.available_seats = newTotalSeatsInt - currentBookedSeats;
-            } else {
-                showErrorMessage('busErrorMessage', `Cannot reduce total seats below current booked seats (${currentBookedSeats}).`);
-                bus.totalSeats = oldTotalSeats; // Revert to old value
-                return;
-            }
+            // Make cells editable
+            row.children[1].innerHTML = `<input type="text" id="editRoute-${busId}" value="${bus.route}" style="width:100%;">`;
+            row.children[2].innerHTML = `<input type="text" id="editOrigin-${busId}" value="${bus.origin}" style="width:100%;">`;
+            row.children[3].innerHTML = `<input type="text" id="editDestination-${busId}" value="${bus.destination}" style="width:100%;">`;
+            row.children[4].innerHTML = `<input type="time" id="editTime-${busId}" value="${bus.time}" style="width:100%;">`;
+            row.children[5].innerHTML = `<input type="number" id="editPrice-${busId}" value="${bus.price}" step="0.01" min="0" style="width:100%;">`;
+            row.children[6].innerHTML = `<input type="number" id="editTotalSeats-${busId}" value="${bus.totalSeats}" min="1" style="width:100%;">`;
+            row.children[8].innerHTML = `<input type="date" id="editTravelDate-${busId}" value="${bus.travelDate}" style="width:100%;">`;
 
-            bus.travelDate = newTravelDate;
-
-            showSuccessMessage('busSuccessMessage', 'Bus updated successfully!');
-            loadBuses();
-            populateSearchDropdowns(); // Update dropdowns after editing bus
-            populateFilterBusDropdown(); // Update filter dropdown after editing bus
+            // Change action buttons
+            const actionButtonsCell = row.querySelector('.action-buttons');
+            actionButtonsCell.innerHTML = `
+                <button class="save-btn" onclick="saveEditBus('${busId}')">Save</button>
+                <button class="cancel-btn" onclick="cancelEditBus('${busId}')">Cancel</button>
+            `;
         }
 
-        // deleteBus function is now handled by Supabase script below
+        async function saveEditBus(busId) {
+            const bus = busesData.find(b => b.id === busId);
+            if (!bus) {
+                showErrorMessage('busErrorMessage', 'Bus not found for saving.');
+                return;
+            }
+
+            const newRoute = document.getElementById(`editRoute-${busId}`).value.trim();
+            const newOrigin = document.getElementById(`editOrigin-${busId}`).value.trim();
+            const newDestination = document.getElementById(`editDestination-${busId}`).value.trim();
+            const newTime = document.getElementById(`editTime-${busId}`).value.trim();
+            const newPrice = parseFloat(document.getElementById(`editPrice-${busId}`).value);
+            const newTotalSeats = parseInt(document.getElementById(`editTotalSeats-${busId}`).value);
+            const newTravelDate = document.getElementById(`editTravelDate-${busId}`).value.trim();
+
+            if (!newRoute || !newOrigin || !newDestination || !newTime || isNaN(newPrice) || isNaN(newTotalSeats) || !newTravelDate) {
+                showErrorMessage('busErrorMessage', 'Invalid input. Please fill all fields correctly.');
+                return;
+            }
+
+            const busDocRef = doc(firebaseDb, "buses", busId);
+
+            try {
+                // Get current booked seats to validate newTotalSeats
+                const bookingsRef = collection(firebaseDb, "bookings");
+                const qBookedSeats = query(bookingsRef, 
+                                            where("bus_id", "==", busId), 
+                                            where("travel_date", "==", bus.travelDate), // Use original travel date for current bookings
+                                            where("status", "in", ['pending', 'paid']));
+                const bookedSeatsSnapshot = await getDocs(qBookedSeats);
+                const currentBookedSeats = bookedSeatsSnapshot.size;
+
+                if (newTotalSeats < currentBookedSeats) {
+                    showErrorMessage('busErrorMessage', `Cannot reduce total seats below current booked seats (${currentBookedSeats}).`);
+                    return;
+                }
+
+                const updatedAvailableSeats = newTotalSeats - currentBookedSeats;
+
+                await updateDoc(busDocRef, {
+                    route: newRoute,
+                    origin: newOrigin,
+                    destination: newDestination,
+                    time: newTime,
+                    price: newPrice,
+                    totalSeats: newTotalSeats,
+                    available_seats: updatedAvailableSeats,
+                    travelDate: newTravelDate
+                });
+
+                showSuccessMessage('busSuccessMessage', 'Bus updated successfully!');
+                editingBusId = null; // Reset editing state
+                loadBuses(); // Reload the table
+            } catch (error) {
+                showErrorMessage('busErrorMessage', 'Failed to update bus: ' + error.message);
+                console.error("Error updating bus:", error);
+            }
+        }
+
+        function cancelEditBus(busId) {
+            editingBusId = null; // Reset editing state
+            loadBuses(); // Reload the table to discard changes
+            showErrorMessage('busErrorMessage', 'Bus edit cancelled.'); // Optional: indicate cancellation
+        }
+
+        async function deleteBus(busId) { 
+            if (!confirm('Are you sure you want to delete this bus? This will also remove associated bookings for this bus ID and travel date.')) return; 
+            
+            try {
+                const busDocRef = doc(firebaseDb, "buses", busId);
+
+                // Delete associated bookings first
+                const bookingsRef = collection(firebaseDb, "bookings");
+                const qBookings = query(bookingsRef, where("bus_id", "==", busId));
+                const bookingSnapshot = await getDocs(qBookings);
+
+                const deleteBookingPromises = [];
+                bookingSnapshot.forEach((doc) => {
+                    deleteBookingPromises.push(deleteDoc(doc.ref));
+                });
+                await Promise.all(deleteBookingPromises);
+
+                // Then, delete the bus
+                await deleteDoc(busDocRef);
+
+                showSuccessMessage('busSuccessMessage', 'Bus and associated bookings deleted successfully!');
+                loadBuses();
+                loadBookings(); // Reload bookings after deletion
+            } catch (error) {
+                showErrorMessage('busErrorMessage', 'Failed to delete bus: ' + error.message);
+                console.error("Error deleting bus:", error);
+            }
+        } 
 
         // --- Booking Management ---
         let editingBookingId = null; // To keep track of the booking being edited
@@ -662,7 +968,79 @@
             return result;
         }
 
-        // loadBookings function is now handled by Supabase script below
+        async function loadBookings() { 
+            const bookingsTableBody = document.getElementById('bookingsTableBody'); 
+            const filterBusId = document.getElementById('filterBusId').value;
+            const searchTerm = document.getElementById('bookingSearchInput').value.toLowerCase();
+            
+            bookingsTableBody.innerHTML = '<tr><td colspan="13" style="text-align: center;">Loading bookings...</td></tr>'; 
+
+            try {
+                const bookingsCol = collection(firebaseDb, "bookings");
+                let q = query(bookingsCol);
+
+                if (filterBusId) {
+                    q = query(q, where("bus_id", "==", filterBusId));
+                }
+                
+                const querySnapshot = await getDocs(q);
+                bookingsData = []; // Clear in-memory bookings
+
+                querySnapshot.forEach((doc) => {
+                    bookingsData.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Client-side filtering for search term (Firestore doesn't support OR for multiple fields easily)
+                let filteredBookings = bookingsData.filter(booking => {
+                    if (searchTerm) {
+                        const passengerNameMatch = booking.passenger_name && booking.passenger_name.toLowerCase().includes(searchTerm);
+                        const passengerPhoneMatch = booking.passenger_phone && booking.passenger_phone.toLowerCase().includes(searchTerm);
+                        return passengerNameMatch || passengerPhoneMatch;
+                    }
+                    return true;
+                });
+
+                filteredBookings.sort((a, b) => new Date(b.booking_date) - new Date(a.booking_date)); // Newest first
+
+                bookingsTableBody.innerHTML = ''; 
+                if (filteredBookings.length === 0) { 
+                    bookingsTableBody.innerHTML = '<tr><td colspan="13" style="text-align: center;">No bookings found for the current selection.</td></tr>'; 
+                    return; 
+                } 
+                
+                for (const b of filteredBookings) { 
+                    const row = document.createElement('tr'); 
+                    row.id = `booking-row-${b.id}`;
+                    row.innerHTML = ` 
+                        <td>${b.id}</td> 
+                        <td id="name-${b.id}" contenteditable="false">${b.passenger_name}</td>
+                        <td id="phone-${b.id}" contenteditable="false">${b.passenger_phone}</td>
+                        <td id="email-${b.id}" contenteditable="false">${b.passenger_email || 'N/A'}</td>
+                        <td>${b.bus_id || 'N/A'}</td> 
+                        <td>${b.bus_route || 'N/A'}</td> 
+                        <td>${b.travel_date || 'N/A'}</td> 
+                        <td>${b.bus_time || 'N/A'}</td> 
+                        <td>${b.seat_number || 'N/A'}</td> 
+                        <td>Ksh ${b.price.toFixed(2)}</td> 
+                        <td id="status-${b.id}">
+                            <span style="color: ${b.status === 'paid' ? 'green' : b.status === 'pending' ? 'orange' : 'red'};">
+                                ${b.status.toUpperCase()}
+                            </span>
+                        </td> 
+                        <td>${new Date(b.booking_date).toLocaleDateString()}</td> 
+                        <td class="action-buttons">
+                            <button class="edit-btn" onclick="startEditBooking('${b.id}')">Edit</button>
+                            <button class="delete-btn" onclick="deleteBooking('${b.id}')">Delete</button>
+                            <button onclick="downloadTicketFromAdmin('${b.id}')">Print Ticket</button>
+                        </td>`; 
+                    bookingsTableBody.appendChild(row); 
+                } 
+            } catch (error) {
+                showErrorMessage('bookingsTabErrorMessage', 'Failed to load bookings: ' + error.message);
+                console.error("Error loading bookings:", error);
+                bookingsTableBody.innerHTML = '<tr><td colspan="13" style="text-align: center;">Error loading bookings.</td></tr>';
+            }
+        } 
 
         function populateFilterBusDropdown() {
             const filterBusDropdown = document.getElementById('filterBusId');
@@ -684,11 +1062,9 @@
 
         function startEditBooking(bookingId) {
             if (editingBookingId === bookingId) {
-                // Already editing this row, do nothing
                 return;
             }
             if (editingBookingId !== null) {
-                // If another row is being edited, cancel that edit first
                 cancelEditBooking(editingBookingId);
             }
 
@@ -725,7 +1101,7 @@
             `;
         }
 
-        function saveEditBooking(bookingId) {
+        async function saveEditBooking(bookingId) {
             const booking = bookingsData.find(b => b.id === bookingId);
             if (!booking) {
                 showErrorMessage('bookingsTabErrorMessage', 'Booking not found for saving.');
@@ -743,33 +1119,51 @@
                 return;
             }
 
-            // Handle seat availability adjustment if status changes
-            const originalStatus = booking.status;
-            const affectedBus = busesData.find(bus => bus.id === booking.busId && bus.travelDate === booking.travelDate);
+            const bookingDocRef = doc(firebaseDb, "bookings", bookingId);
+            const busDocRef = doc(firebaseDb, "buses", booking.bus_id);
 
-            if (affectedBus) {
+            try {
+                const originalStatus = booking.status;
+                let availableSeatsChange = 0;
+
+                // Determine if available_seats needs to be updated
                 if ((originalStatus === 'pending' || originalStatus === 'paid') && newStatus.toLowerCase() === 'cancelled') {
-                    affectedBus.available_seats++; // Seat becomes available
+                    availableSeatsChange = 1; // Seat becomes available
                 } else if (originalStatus === 'cancelled' && (newStatus.toLowerCase() === 'pending' || newStatus.toLowerCase() === 'paid')) {
-                    if (affectedBus.available_seats > 0) {
-                        affectedBus.available_seats--; // Seat becomes occupied
+                    // Check if there's space before reactivating a booking
+                    const busSnap = await getDoc(busDocRef);
+                    if (busSnap.exists() && busSnap.data().available_seats > 0) {
+                        availableSeatsChange = -1; // Seat becomes occupied
                     } else {
                         showErrorMessage('bookingsTabErrorMessage', 'Cannot change status to active, no available seats left on bus.');
                         return;
                     }
                 }
-            }
-            
-            booking.passengerName = newPassengerName;
-            booking.passengerPhone = newPassengerPhone;
-            booking.passengerEmail = (newPassengerEmail === 'N/A' || newPassengerEmail === '') ? '' : newPassengerEmail;
-            booking.status = newStatus.toLowerCase();
-            booking.lastUpdated = new Date().toISOString(); // Update timestamp
 
-            showSuccessMessage('bookingsTabSuccessMessage', 'Booking updated successfully!');
-            editingBookingId = null; // Reset editing state
-            loadBookings(); // Reload the table to show updated data and revert edit mode
-            loadBuses(); // Reload buses to show updated available seats
+                // Update booking document
+                await updateDoc(bookingDocRef, {
+                    passenger_name: newPassengerName,
+                    phone: newPassengerPhone,
+                    email: (newPassengerEmail === 'N/A' || newPassengerEmail === '') ? '' : newPassengerEmail,
+                    status: newStatus.toLowerCase(),
+                    last_updated: new Date().toISOString()
+                });
+
+                // Update bus available_seats if necessary
+                if (availableSeatsChange !== 0) {
+                    await updateDoc(busDocRef, {
+                        available_seats: increment(availableSeatsChange)
+                    });
+                }
+            
+                showSuccessMessage('bookingsTabSuccessMessage', 'Booking updated successfully!');
+                editingBookingId = null; // Reset editing state
+                loadBookings(); // Reload the table to show updated data and revert edit mode
+                loadBuses(); // Reload buses to show updated available seats
+            } catch (error) {
+                showErrorMessage('bookingsTabErrorMessage', 'Failed to update booking: ' + error.message);
+                console.error("Error updating booking:", error);
+            }
         }
 
         function cancelEditBooking(bookingId) {
@@ -778,7 +1172,37 @@
             showErrorMessage('bookingsTabErrorMessage', 'Booking edit cancelled.'); // Optional: indicate cancellation
         }
 
-        // deleteBooking function is now handled by Supabase script below
+        async function deleteBooking(id) { 
+            if (!confirm('Are you sure you want to delete this booking?')) return; 
+
+            const bookingToDelete = bookingsData.find(b => b.id === id);
+            if (!bookingToDelete) {
+                showErrorMessage('bookingsTabErrorMessage', 'Booking not found for deletion.');
+                return;
+            }
+
+            const bookingDocRef = doc(firebaseDb, "bookings", id);
+            const busDocRef = doc(firebaseDb, "buses", bookingToDelete.bus_id);
+
+            try {
+                // Delete the booking document
+                await deleteDoc(bookingDocRef);
+
+                // If booking was active (pending/paid), increment available seats for the bus
+                if (bookingToDelete.status === 'pending' || bookingToDelete.status === 'paid') {
+                    await updateDoc(busDocRef, {
+                        available_seats: increment(1)
+                    });
+                }
+                
+                showSuccessMessage('bookingsTabSuccessMessage', 'Booking deleted successfully!');
+                loadBookings();
+                loadBuses(); // Reload buses to reflect available seat change
+            } catch (error) {
+                showErrorMessage('bookingsTabErrorMessage', 'Failed to delete booking: ' + error.message);
+                console.error("Error deleting booking:", error);
+            }
+        } 
 
         function downloadBookingsCSV() {
             if (bookingsData.length === 0) {
@@ -798,19 +1222,19 @@
             bookingsData.forEach(booking => {
                 const rowData = [
                     booking.id,
-                    booking.passengerName,
-                    booking.passengerPhone,
-                    booking.passengerEmail,
-                    booking.busId,
-                    booking.busRoute,
+                    booking.passenger_name,
+                    booking.passenger_phone,
+                    booking.passenger_email,
+                    booking.bus_id,
+                    booking.bus_route,
                     booking.origin,
                     booking.destination,
-                    booking.travelDate,
-                    booking.busTime,
-                    booking.seatNumber,
+                    booking.travel_date,
+                    booking.bus_time,
+                    booking.seat_number,
                     booking.price.toFixed(2),
                     booking.status.toUpperCase(),
-                    new Date(booking.bookingDate).toLocaleDateString()
+                    new Date(booking.booking_date).toLocaleDateString()
                 ].map(cell => {
                     if (cell === null || cell === undefined) return '""';
                     return `"${String(cell).replace(/"/g, '""')}"`;
@@ -835,6 +1259,7 @@
         // --- Make Booking Functionality ---
         let selectedBusForBooking = null;
         let selectedSeats = [];
+        let unsubscribeSeatSnapshot = null; // To manage real-time listener for seats
 
         function populateSearchDropdowns() {
             const searchOrigin = document.getElementById('searchOrigin');
@@ -873,7 +1298,7 @@
             document.getElementById('searchTravelDate').min = `${year}-${month}-${day}`;
         }
 
-        function searchBuses() {
+        async function searchBuses() {
             const origin = document.getElementById('searchOrigin').value;
             const destination = document.getElementById('searchDestination').value;
             const travelDate = document.getElementById('searchTravelDate').value;
@@ -885,45 +1310,58 @@
                 return;
             }
 
-            const availableBuses = busesData.filter(bus => 
-                bus.origin === origin && 
-                bus.destination === destination && 
-                bus.travelDate === travelDate &&
-                bus.available_seats > 0
-            );
+            try {
+                const busesRef = collection(firebaseDb, "buses");
+                const q = query(busesRef, 
+                                where("origin", "==", origin), 
+                                where("destination", "==", destination), 
+                                where("travelDate", "==", travelDate));
+                
+                const querySnapshot = await getDocs(q);
+                const availableBuses = [];
+                querySnapshot.forEach((doc) => {
+                    const bus = { id: doc.id, ...doc.data() };
+                    if (bus.available_seats > 0) {
+                        availableBuses.push(bus);
+                    }
+                });
 
-            if (availableBuses.length === 0) {
-                searchResultsDiv.innerHTML = '<p style="text-align: center;">No buses found for this route and date with available seats.</p>';
-                return;
+                if (availableBuses.length === 0) {
+                    searchResultsDiv.innerHTML = '<p style="text-align: center;">No buses found for this route and date with available seats.</p>';
+                    return;
+                }
+
+                availableBuses.forEach(bus => {
+                    const busCard = document.createElement('div');
+                    busCard.classList.add('result-card');
+                    busCard.innerHTML = `
+                        <div class="details">
+                            <h4>${bus.route}</h4>
+                            <p>Departure: ${bus.time}</p>
+                            <p>Price: Ksh ${bus.price.toFixed(2)}</p>
+                            <p>Available Seats: ${bus.available_seats} / ${bus.totalSeats}</p>
+                            <p>Travel Date: ${bus.travelDate}</p>
+                        </div>
+                        <button class="book-seat-btn" data-bus-id="${bus.id}" data-bus-date="${bus.travelDate}">Select Bus</button>
+                    `;
+                    searchResultsDiv.appendChild(busCard);
+                });
+
+                document.querySelectorAll('.book-seat-btn').forEach(button => {
+                    button.onclick = (event) => {
+                        const busId = event.target.dataset.busId;
+                        const travelDate = event.target.dataset.busDate; // Pass travel date to identify unique bus instance
+                        openSeatModal(busId, travelDate);
+                    };
+                });
+            } catch (error) {
+                showErrorMessage('makeBookingErrorMessage', 'Error searching buses: ' + error.message);
+                console.error("Error searching buses:", error);
             }
-
-            availableBuses.forEach(bus => {
-                const busCard = document.createElement('div');
-                busCard.classList.add('result-card');
-                busCard.innerHTML = `
-                    <div class="details">
-                        <h4>${bus.route}</h4>
-                        <p>Departure: ${bus.time}</p>
-                        <p>Price: Ksh ${bus.price.toFixed(2)}</p>
-                        <p>Available Seats: ${bus.available_seats} / ${bus.totalSeats}</p>
-                        <p>Travel Date: ${bus.travelDate}</p>
-                    </div>
-                    <button class="book-seat-btn" data-bus-id="${bus.id}" data-bus-date="${bus.travelDate}">Select Bus</button>
-                `;
-                searchResultsDiv.appendChild(busCard);
-            });
-
-            document.querySelectorAll('.book-seat-btn').forEach(button => {
-                button.onclick = (event) => {
-                    const busId = event.target.dataset.busId;
-                    const travelDate = event.target.dataset.busDate; // Pass travel date to identify unique bus instance
-                    openSeatModal(busId, travelDate);
-                };
-            });
         }
 
-        function openSeatModal(busId, travelDate) {
-            // Find the specific bus instance by ID and travelDate
+        async function openSeatModal(busId, travelDate) {
+            // Find the specific bus instance by ID and travelDate from the loaded busesData
             selectedBusForBooking = busesData.find(bus => bus.id === busId && bus.travelDate === travelDate);
             if (!selectedBusForBooking) {
                 showErrorMessage('makeBookingErrorMessage', 'Selected bus not found or no longer available.');
@@ -936,7 +1374,7 @@
             
             selectedSeats = []; // Clear any previously selected seats
             updateSelectedSeatsDisplay();
-            generateSeatGrid();
+            await generateSeatGrid(); // Now an async function
             document.getElementById('seatSelectionModal').style.display = 'flex';
             document.getElementById('modalErrorMessage').style.display = 'none'; // Hide modal error
             // Clear passenger details form when opening modal
@@ -951,36 +1389,66 @@
             selectedSeats = [];
             // Hide success message container when closing modal
             document.getElementById('makeBookingSuccessContainer').style.display = 'none';
+
+            // Unsubscribe from real-time seat listener when modal closes
+            if (unsubscribeSeatSnapshot) {
+                unsubscribeSeatSnapshot();
+                unsubscribeSeatSnapshot = null;
+            }
         }
 
-        function generateSeatGrid() {
+        async function generateSeatGrid() {
             const seatGrid = document.getElementById('seatGrid');
             seatGrid.innerHTML = '';
             const totalSeats = selectedBusForBooking.totalSeats;
 
-            const bookedSeatsForThisTrip = bookingsData
-                .filter(booking => 
-                    booking.busId === selectedBusForBooking.id && 
-                    booking.travelDate === selectedBusForBooking.travelDate &&
-                    (booking.status === 'pending' || booking.status === 'paid') // Only consider actively booked seats
-                )
-                .map(booking => booking.seatNumber);
-
-            for (let i = 1; i <= totalSeats; i++) {
-                const seatDiv = document.createElement('div');
-                seatDiv.classList.add('seat');
-                seatDiv.dataset.seatNumber = i;
-
-                if (bookedSeatsForThisTrip.includes(i)) {
-                    seatDiv.classList.add('booked');
-                    seatDiv.innerHTML = `<i class="fas fa-chair seat-icon"></i><br>Booked`;
-                } else {
-                    seatDiv.classList.add('available');
-                    seatDiv.innerHTML = `<i class="fas fa-chair seat-icon"></i><br>Seat ${i}`;
-                    seatDiv.onclick = () => selectSeat(i);
-                }
-                seatGrid.appendChild(seatDiv);
+            // Unsubscribe from previous listener if exists
+            if (unsubscribeSeatSnapshot) {
+                unsubscribeSeatSnapshot();
+                unsubscribeSeatSnapshot = null;
             }
+
+            // Setup real-time listener for bookings for this specific bus and date
+            const bookingsRef = collection(firebaseDb, "bookings");
+            const q = query(bookingsRef, 
+                            where("bus_id", "==", selectedBusForBooking.id), 
+                            where("travel_date", "==", selectedBusForBooking.travelDate));
+
+            unsubscribeSeatSnapshot = onSnapshot(q, (snapshot) => {
+                const bookedSeatsForThisTrip = [];
+                snapshot.forEach((doc) => {
+                    const booking = doc.data();
+                    if (booking.status !== 'cancelled') { // Only consider actively booked seats
+                        bookedSeatsForThisTrip.push(booking.seat_number);
+                    }
+                });
+
+                // Re-render seats based on the latest bookedSeatsForThisTrip
+                seatGrid.innerHTML = ""; // Clear current seats
+                for (let i = 1; i <= totalSeats; i++) {
+                    const seatDiv = document.createElement('div');
+                    seatDiv.classList.add('seat');
+                    seatDiv.dataset.seatNumber = i;
+
+                    if (bookedSeatsForThisTrip.includes(i)) {
+                        seatDiv.classList.add('booked');
+                        seatDiv.innerHTML = `<i class="fas fa-chair seat-icon"></i><br>Booked`;
+                        seatDiv.onclick = null; // Make booked seats non-clickable
+                    } else {
+                        seatDiv.classList.add('available');
+                        seatDiv.innerHTML = `<i class="fas fa-chair seat-icon"></i><br>Seat ${i}`;
+                        // Check if this seat was previously selected by the user
+                        if (selectedSeats.includes(i)) {
+                            seatDiv.classList.add("selected");
+                        }
+                        seatDiv.onclick = () => selectSeat(i);
+                    }
+                    seatGrid.appendChild(seatDiv);
+                }
+            }, (error) => {
+                console.error('Error fetching booked seats in real-time:', error.message);
+                showErrorMessage('modalErrorMessage', 'Error fetching seat availability. Please try again.');
+            });
         }
 
         function selectSeat(seatNumber) {
@@ -991,7 +1459,7 @@
                 return;
             }
 
-            // Deselect all other seats if only one seat can be selected
+            // Deselect all other seats if only one seat can be selected (current logic)
             document.querySelectorAll('.seat.selected').forEach(s => s.classList.remove('selected'));
             
             // Select the current seat
@@ -1027,82 +1495,102 @@
 
             const seatNumber = selectedSeats[0]; // Assuming single seat for now
 
-            // Re-check bus available seats and selected seat status
-            const currentBusState = busesData.find(bus => bus.id === selectedBusForBooking.id && bus.travelDate === selectedBusForBooking.travelDate);
-            if (!currentBusState || currentBusState.available_seats <= 0) {
+            const busDocRef = doc(firebaseDb, "buses", selectedBusForBooking.id);
+            const busDocSnap = await getDoc(busDocRef);
+
+            if (!busDocSnap.exists()) {
+                showErrorMessage('modalErrorMessage', 'Error: Bus details not found. Please try searching again.');
+                return;
+            }
+            const currentBusState = busDocSnap.data();
+
+            if (currentBusState.available_seats <= 0) {
                 showErrorMessage('modalErrorMessage', 'No seats available on this bus. Please select another bus.');
                 return;
             }
 
-            const isSeatBooked = bookingsData.some(booking =>
-                booking.busId === selectedBusForBooking.id &&
-                booking.travelDate === selectedBusForBooking.travelDate &&
-                booking.seatNumber === seatNumber &&
-                (booking.status === 'pending' || booking.status === 'paid')
-            );
+            // Re-check if the specific seat is booked in real-time
+            const bookingsRef = collection(firebaseDb, "bookings");
+            const qSeatBooked = query(bookingsRef, 
+                                    where("bus_id", "==", selectedBusForBooking.id),
+                                    where("travel_date", "==", selectedBusForBooking.travelDate),
+                                    where("seat_number", "==", seatNumber),
+                                    where("status", "in", ['pending', 'paid']));
+            const seatBookedSnapshot = await getDocs(qSeatBooked);
 
-            if (isSeatBooked) {
+            if (!seatBookedSnapshot.empty) {
                 showErrorMessage('modalErrorMessage', `Seat ${seatNumber} has just been booked. Please select another seat.`);
                 generateSeatGrid(); // Re-render seat grid with updated status
                 return;
             }
 
-
             const newBooking = {
-                id: generateBookingRef(), // Re-use booking ID generator
-                passengerName: passengerName,
-                passengerPhone: passengerPhone,
-                passengerEmail: passengerEmail,
-                busId: selectedBusForBooking.id,
-                busRoute: selectedBusForBooking.route,
+                booking_ref: generateBookingRef(), // Use booking_ref for consistency with frontend
+                passenger_name: passengerName,
+                passenger_phone: passengerPhone,
+                passenger_email: passengerEmail,
+                bus_id: selectedBusForBooking.id,
+                bus_route: selectedBusForBooking.route,
                 origin: selectedBusForBooking.origin,
                 destination: selectedBusForBooking.destination,
-                travelDate: selectedBusForBooking.travelDate,
-                busTime: selectedBusForBooking.time,
-                seatNumber: seatNumber,
+                travel_date: selectedBusForBooking.travelDate,
+                bus_time: selectedBusForBooking.time,
+                seat_number: seatNumber,
                 price: selectedBusForBooking.price,
                 status: 'paid', // Admin bookings are typically confirmed/paid immediately
-                bookingDate: new Date().toISOString(),
-                lastUpdated: new Date().toISOString()
+                booking_date: new Date().toISOString(),
+                last_updated: new Date().toISOString()
             };
 
-            bookingsData.push(newBooking);
+            try {
+                const docRef = await addDoc(collection(firebaseDb, "bookings"), newBooking);
+                newBooking.id = docRef.id; // Assign the Firestore generated ID to the newBooking object
 
-            // Decrement available seats for the bus
-            currentBusState.available_seats--;
+                // Decrement available seats for the bus in Firestore
+                await updateDoc(busDocRef, {
+                    available_seats: increment(-1)
+                });
 
-            closeSeatModal();
-            loadBuses(); // Update available seats in bus list
-            loadBookings(); // Update bookings table
-            
-            // Show success message and download button
-            const successContainer = document.getElementById('makeBookingSuccessContainer');
-            const successMessageSpan = document.getElementById('makeBookingSuccessMessage');
-            successMessageSpan.textContent = `Booking ${newBooking.id} confirmed for ${passengerName}!`;
-            
-            const downloadButton = document.createElement('button');
-            downloadButton.textContent = 'Download Ticket';
-            downloadButton.classList.add('download-ticket-btn'); // Add a class for potential styling
-            downloadButton.onclick = () => generateTicketFromBooking(newBooking.id);
+                closeSeatModal();
+                loadBuses(); // Update available seats in bus list
+                loadBookings(); // Update bookings table
+                
+                // Show success message and download button
+                const successContainer = document.getElementById('makeBookingSuccessContainer');
+                const successMessageSpan = document.getElementById('makeBookingSuccessMessage');
+                successMessageSpan.textContent = `Booking ${newBooking.booking_ref} confirmed for ${passengerName}!`; // Use booking_ref for display
+                
+                const downloadButton = document.createElement('button');
+                downloadButton.textContent = 'Download Ticket';
+                downloadButton.classList.add('download-ticket-btn'); // Add a class for potential styling
+                downloadButton.onclick = () => generateTicketFromBooking(newBooking.id); // Pass Firestore doc ID
 
-            successContainer.innerHTML = ''; // Clear previous content
-            successContainer.appendChild(successMessageSpan);
-            successContainer.appendChild(downloadButton);
-            successContainer.style.display = 'flex'; // Show the container
+                successContainer.innerHTML = ''; // Clear previous content
+                successContainer.appendChild(successMessageSpan);
+                successContainer.appendChild(downloadButton);
+                successContainer.style.display = 'flex'; // Show the container
 
-            // Hide the success message and button after 10 seconds (adjust as needed)
-            setTimeout(() => {
-                successContainer.style.display = 'none';
-            }, 10000);
+                // Hide the success message and button after 10 seconds (adjust as needed)
+                setTimeout(() => {
+                    successContainer.style.display = 'none';
+                }, 10000);
+            } catch (error) {
+                showErrorMessage('modalErrorMessage', 'Failed to confirm booking: ' + error.message);
+                console.error("Error confirming booking:", error);
+            }
         }
 
         // --- Ticket Generation (QR Code removed) ---
-        async function generateTicketFromBooking(bookingId) {
-            const booking = bookingsData.find(b => b.id === bookingId);
-            if (!booking) {
+        async function generateTicketFromBooking(bookingFirestoreId) { // Changed parameter name to reflect Firestore ID
+            // Fetch the booking details from Firestore using the Firestore document ID
+            const bookingDocRef = doc(firebaseDb, "bookings", bookingFirestoreId);
+            const bookingDocSnap = await getDoc(bookingDocRef);
+
+            if (!bookingDocSnap.exists()) {
                 alert("Booking details not found for ticket generation.");
                 return;
             }
+            const booking = { id: bookingDocSnap.id, ...bookingDocSnap.data() }; // Get data including ID
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
@@ -1145,7 +1633,7 @@
             doc.text("Booking Reference:", 20, yPos);
             doc.setFont("helvetica", "bold");
             doc.setTextColor(accentColor);
-            doc.text(booking.id, 20, yPos + 7);
+            doc.text(booking.booking_ref, 20, yPos + 7); // Use booking_ref
             doc.setTextColor(darkTextColor); // Reset color
             doc.setFont("helvetica", "normal");
 
@@ -1159,12 +1647,12 @@
             yPos += 7;
             doc.setFont("helvetica", "normal");
             doc.setTextColor(darkTextColor);
-            doc.text(`Name: ${booking.passengerName}`, 20, yPos);
+            doc.text(`Name: ${booking.passenger_name}`, 20, yPos);
             yPos += 7;
-            doc.text(`Phone: ${booking.passengerPhone}`, 20, yPos);
+            doc.text(`Phone: ${booking.passenger_phone}`, 20, yPos);
             yPos += 7;
-            if (booking.passengerEmail && booking.passengerEmail !== '') {
-                doc.text(`Email: ${booking.passengerEmail}`, 20, yPos);
+            if (booking.passenger_email && booking.passenger_email !== '') {
+                doc.text(`Email: ${booking.passenger_email}`, 20, yPos);
                 yPos += 7;
             }
             yPos += 10;
@@ -1177,17 +1665,17 @@
             yPos += 7;
             doc.setFont("helvetica", "normal");
             doc.setTextColor(darkTextColor);
-            doc.text(`Route: ${booking.busRoute}`, 20, yPos);
+            doc.text(`Route: ${booking.bus_route}`, 20, yPos);
             yPos += 7;
             doc.text(`From: ${booking.origin} To: ${booking.destination}`, 20, yPos);
             yPos += 7;
-            doc.text(`Date: ${booking.travelDate}`, 20, yPos);
+            doc.text(`Date: ${booking.travel_date}`, 20, yPos);
             yPos += 7;
-            doc.text(`Departure Time: ${booking.busTime}`, 20, yPos);
+            doc.text(`Departure Time: ${booking.bus_time}`, 20, yPos);
             yPos += 7;
-            doc.text(`Bus ID: ${booking.busId}`, 20, yPos);
+            doc.text(`Bus ID: ${booking.bus_id}`, 20, yPos);
             yPos += 7;
-            doc.text(`Seat Number: ${booking.seatNumber}`, 20, yPos);
+            doc.text(`Seat Number: ${booking.seat_number}`, 20, yPos);
             yPos += 7;
             doc.text(`Price: Ksh ${booking.price.toFixed(2)}`, 20, yPos);
             yPos += 10;
@@ -1237,7 +1725,7 @@
             yPos += 5;
             doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
 
-            doc.save(`PrinceAlex_Ticket_${booking.id}.pdf`);
+            doc.save(`PrinceAlex_Ticket_${booking.booking_ref}.pdf`); // Use booking_ref for filename
             console.log("PDF download initiated successfully.");
         }
 
@@ -1249,545 +1737,18 @@
         // Initial load when admin panel is shown or page is refreshed
         document.addEventListener('DOMContentLoaded', () => {
              // For demonstration, initially show login form. User needs to "login" to see admin panel.
-             document.getElementById('loginForm').classList.remove('hidden');
-             document.getElementById('adminPanel').classList.add('hidden');
+             // The onAuthStateChanged listener will handle showing/hiding the forms.
+             // document.getElementById('loginForm').classList.remove('hidden');
+             // document.getElementById('adminPanel').classList.add('hidden');
 
              // Set default travel date for search to today
             const today = new Date();
             const year = today.getFullYear();
             const month = (today.getMonth() + 1).toString().padStart(2, '0');
             const day = today.getDate().toString().padStart(2, '0');
+            document.getElementById('searchTravelDate').min = `${year}-${month}-${day}`;
             document.getElementById('searchTravelDate').value = `${year}-${month}-${day}`;
         });
     </script>
-<script type="module"> 
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'; 
-
-  const supabase = createClient( 
-    'https://llcnwcvvqtxyesbftbkm.supabase.co', 
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsY253Y3Z2cXR4eWVzYmZ0YmttIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODg0NjQ4ODgsImV4cCI6MjAwNDA0MDg4OH0.JgkkDNHz7ZkYiGakYK2lPbWRWm1UoOniC0spO-5AlEg' 
-  ); 
-
-  window.login = async function () { 
-    const email = document.getElementById('email').value.trim(); 
-    const password = document.getElementById('password').value.trim(); 
-    const loginErrorMessage = document.getElementById('loginErrorMessage'); 
-    loginErrorMessage.style.display = 'none'; 
-
-    if (!email || !password) { 
-      loginErrorMessage.textContent = 'Please enter both email and password.'; 
-      loginErrorMessage.style.display = 'block'; 
-      return; 
-    } 
-
-    const { data: admin, error } = await supabase 
-      .from('admins') 
-      .select('*') 
-      .eq('email', email) 
-      .maybeSingle(); 
-
-    if (error || !admin || admin.password !== password) { 
-      loginErrorMessage.textContent = 'Invalid email or password.'; 
-      loginErrorMessage.style.display = 'block'; 
-      return; 
-    } 
-
-    document.getElementById('loginForm').classList.add('hidden'); 
-    document.getElementById('adminPanel').classList.remove('hidden'); 
-    loadBuses(); 
-    loadBookings(); 
-    populateSearchDropdowns?.(); 
-    populateFilterBusDropdown?.(); 
-  }; 
-
-  window.addBus = async function () { 
-    const route = document.getElementById('busRoute').value; 
-    const origin = document.getElementById('busOrigin').value; 
-    const destination = document.getElementById('busDestination').value; 
-    const time = document.getElementById('busTime').value; 
-    const price = parseFloat(document.getElementById('busPrice').value); 
-    const totalSeats = parseInt(document.getElementById('busTotalSeats').value); 
-    const travelDate = document.getElementById('busTravelDate').value; 
-
-    if (!route || !origin || !destination || !time || isNaN(price) || isNaN(totalSeats) || !travelDate) { 
-      showErrorMessage('busErrorMessage', 'Please fill in all bus details correctly.'); 
-      return; 
-    } 
-
-    const { error } = await supabase.from('buses').insert([{ 
-      id: 'BUS' + Date.now(), 
-      route, 
-      origin, 
-      destination, 
-      time, 
-      price, 
-      total_seats: totalSeats, 
-      travel_date: travelDate 
-    }]); 
-
-    if (error) { 
-      showErrorMessage('busErrorMessage', 'Failed to add bus.'); 
-    } else { 
-      showSuccessMessage('busSuccessMessage', 'Bus added successfully!'); 
-      document.getElementById('busRoute').value = ''; 
-      document.getElementById('busOrigin').value = ''; 
-      document.getElementById('busDestination').value = ''; 
-      document.getElementById('busTime').value = ''; 
-      document.getElementById('busPrice').value = ''; 
-      document.getElementById('busTotalSeats').value = ''; 
-      document.getElementById('busTravelDate').value = ''; 
-      loadBuses(); 
-      populateSearchDropdowns(); // Call this to update the dropdowns
-      populateFilterBusDropdown(); // Call this to update the dropdowns
-    } 
-  } 
-
-  window.loadBuses = async function () { 
-    const busesTableBody = document.getElementById('busesTableBody'); 
-    busesTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Loading buses...</td></tr>'; 
-
-    const { data: buses, error } = await supabase.from('buses').select('*'); 
-    busesTableBody.innerHTML = ''; 
-    if (!buses || buses.length === 0) { 
-      busesTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">No buses found.</td></tr>'; 
-      return; 
-    } 
-    // Clear in-memory busesData and repopulate from Supabase
-    busesData = []; 
-
-    for (const bus of buses) { 
-      const { count: bookedSeats } = await supabase 
-        .from('bookings') 
-        .select('*', { count: 'exact', head: true }) 
-        .eq('bus_id', bus.id) 
-        .eq('travel_date', bus.travel_date) 
-        .in('status', ['pending', 'paid']); 
-
-      const available = bus.total_seats - (bookedSeats || 0); 
-      // Add bus data to the in-memory array
-      busesData.push({
-          id: bus.id,
-          route: bus.route,
-          origin: bus.origin,
-          destination: bus.destination,
-          time: bus.time,
-          price: bus.price,
-          totalSeats: bus.total_seats,
-          available_seats: available, // Ensure this is correctly calculated from Supabase
-          travelDate: bus.travel_date
-      });
-
-      const row = document.createElement('tr'); 
-      row.innerHTML = ` 
-        <td>${bus.id}</td> 
-        <td>${bus.route}</td> 
-        <td>${bus.origin}</td> 
-        <td>${bus.destination}</td> 
-        <td>${bus.time}</td> 
-        <td>Ksh ${bus.price.toFixed(2)}</td> 
-        <td>${bus.total_seats}</td> 
-        <td>${available}</td> 
-        <td>${bus.travel_date}</td> 
-        <td class="action-buttons"> 
-          <button class="edit-btn" onclick="editBus('${bus.id}')">Edit</button>
-          <button class="delete-btn" onclick="deleteBus('${bus.id}')">Delete</button> 
-        </td>`; 
-      busesTableBody.appendChild(row); 
-    } 
-    populateSearchDropdowns(); // Update dropdowns after loading buses
-    populateFilterBusDropdown(); // Update filter dropdown after loading buses
-  } 
-
-  window.deleteBus = async function (busId) { 
-    if (!confirm('Are you sure you want to delete this bus? This will also remove associated bookings.')) return; 
-    
-    // First, delete associated bookings
-    const { error: bookingError } = await supabase.from('bookings').delete().eq('bus_id', busId);
-    if (bookingError) {
-        showErrorMessage('busErrorMessage', 'Failed to delete associated bookings.');
-        return;
-    }
-
-    // Then, delete the bus
-    const { error: busError } = await supabase.from('buses').delete().eq('id', busId); 
-    if (!busError) {
-        showSuccessMessage('busSuccessMessage', 'Bus and associated bookings deleted successfully!');
-        loadBuses();
-        loadBookings(); // Reload bookings after deletion
-    } else {
-        showErrorMessage('busErrorMessage', 'Failed to delete bus.');
-    }
-  } 
-
-  window.loadBookings = async function () { 
-    const bookingsTableBody = document.getElementById('bookingsTableBody'); 
-    const filterBusId = document.getElementById('filterBusId').value;
-    const searchTerm = document.getElementById('bookingSearchInput').value.toLowerCase();
-    
-    bookingsTableBody.innerHTML = '<tr><td colspan="13" style="text-align: center;">Loading bookings...</td></tr>'; 
-
-    let query = supabase.from('bookings').select('*');
-
-    if (filterBusId) {
-        query = query.eq('bus_id', filterBusId);
-    }
-    if (searchTerm) {
-        // Supabase doesn't directly support OR for multiple filters easily on client-side
-        // For simplicity, a direct filter on concatenated string is not possible.
-        // A more complex query might involve `or` conditions, or fetching all and filtering in-memory.
-        // For this example, we'll filter client-side for search term.
-    }
-
-    const { data: bookings, error } = await query; 
-    bookingsTableBody.innerHTML = ''; 
-
-    if (error || !bookings || bookings.length === 0) { 
-      bookingsTableBody.innerHTML = '<tr><td colspan="13" style="text-align: center;">No bookings found for the current selection.</td></tr>'; 
-      bookingsData = []; // Clear in-memory bookings if none found
-      return; 
-    } 
-    
-    let filteredBookings = bookings.map(b => ({
-        id: b.id,
-        passengerName: b.passenger_name,
-        passengerPhone: b.phone,
-        passengerEmail: b.email,
-        busId: b.bus_id,
-        busRoute: b.route,
-        origin: b.origin,
-        destination: b.destination,
-        travelDate: b.travel_date,
-        busTime: b.time,
-        seatNumber: b.seat,
-        price: b.price,
-        status: b.status,
-        bookingDate: b.booking_date,
-        lastUpdated: b.last_updated // Assuming you add this column in Supabase
-    })).filter(booking => {
-        if (searchTerm) {
-            return booking.passengerName.toLowerCase().includes(searchTerm) ||
-                   booking.passengerPhone.toLowerCase().includes(searchTerm);
-        }
-        return true;
-    });
-
-    bookingsData = filteredBookings; // Update in-memory bookings
-
-    filteredBookings.sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate)); // Newest first
-
-
-    for (const b of filteredBookings) { 
-      const row = document.createElement('tr'); 
-      row.id = `booking-row-${b.id}`;
-      row.innerHTML = ` 
-        <td>${b.id}</td> 
-        <td id="name-${b.id}" contenteditable="false">${b.passengerName}</td>
-        <td id="phone-${b.id}" contenteditable="false">${b.passengerPhone}</td>
-        <td id="email-${b.id}" contenteditable="false">${b.passengerEmail || 'N/A'}</td>
-        <td>${b.busId || 'N/A'}</td> 
-        <td>${b.busRoute || 'N/A'}</td> 
-        <td>${b.travelDate || 'N/A'}</td> 
-        <td>${b.busTime || 'N/A'}</td> 
-        <td>${b.seatNumber || 'N/A'}</td> 
-        <td>Ksh ${b.price.toFixed(2)}</td> 
-        <td id="status-${b.id}">
-            <span style="color: ${b.status === 'paid' ? 'green' : b.status === 'pending' ? 'orange' : 'red'};">
-                ${b.status.toUpperCase()}
-            </span>
-        </td> 
-        <td>${new Date(b.bookingDate).toLocaleDateString()}</td> 
-        <td class="action-buttons">
-            <button class="edit-btn" onclick="startEditBooking('${b.id}')">Edit</button>
-            <button class="delete-btn" onclick="deleteBooking('${b.id}')">Delete</button>
-            <button onclick="downloadTicketFromAdmin('${b.id}')">Print Ticket</button>
-        </td>`; 
-      bookingsTableBody.appendChild(row); 
-    } 
-  } 
-
-  window.deleteBooking = async function (id) { 
-    if (!confirm('Are you sure you want to delete this booking?')) return; 
-
-    // Retrieve the booking details before deletion to update bus available seats
-    const bookingToDelete = bookingsData.find(b => b.id === id);
-    if (!bookingToDelete) {
-        showErrorMessage('bookingsTabErrorMessage', 'Booking not found for deletion.');
-        return;
-    }
-
-    const { error } = await supabase.from('bookings').delete().eq('id', id); 
-    if (!error) {
-        // If booking was active (pending/paid), free up the seat in Supabase
-        if (bookingToDelete.status === 'pending' || bookingToDelete.status === 'paid') {
-            const { data: busData, error: busFetchError } = await supabase
-                .from('buses')
-                .select('total_seats')
-                .eq('id', bookingToDelete.busId)
-                .eq('travel_date', bookingToDelete.travelDate)
-                .maybeSingle();
-
-            if (!busFetchError && busData) {
-                const currentBookedSeatsForBus = bookingsData.filter(b => 
-                    b.busId === bookingToDelete.busId && 
-                    b.travelDate === bookingToDelete.travelDate && 
-                    b.id !== id && // Exclude the one being deleted
-                    (b.status === 'pending' || b.status === 'paid')
-                ).length;
-                const newAvailableSeats = busData.total_seats - currentBookedSeatsForBus;
-
-                const { error: updateError } = await supabase
-                    .from('buses')
-                    .update({ available_seats: newAvailableSeats }) // Assuming an available_seats column in buses table
-                    .eq('id', bookingToDelete.busId)
-                    .eq('travel_date', bookingToDelete.travelDate);
-                
-                if (updateError) {
-                    console.error("Error updating bus available seats:", updateError);
-                }
-            }
-        }
-        showSuccessMessage('bookingsTabSuccessMessage', 'Booking deleted successfully!');
-        loadBookings();
-        loadBuses(); // Reload buses to reflect available seat change
-    } else {
-        showErrorMessage('bookingsTabErrorMessage', 'Failed to delete booking.');
-    }
-  } 
-
-  // New function for updating booking
-  window.saveEditBooking = async function (bookingId) {
-    const booking = bookingsData.find(b => b.id === bookingId);
-    if (!booking) {
-        showErrorMessage('bookingsTabErrorMessage', 'Booking not found for saving.');
-        return;
-    }
-
-    const newPassengerName = document.getElementById(`name-${bookingId}`).textContent.trim();
-    const newPassengerPhone = document.getElementById(`phone-${bookingId}`).textContent.trim();
-    const newPassengerEmail = document.getElementById(`email-${bookingId}`).textContent.trim();
-    const newStatus = document.getElementById(`status-dropdown-${bookingId}`).value;
-
-    if (!newPassengerName || !newPassengerPhone) {
-        showErrorMessage('bookingsTabErrorMessage', 'Passenger name and phone cannot be empty.');
-        return;
-    }
-
-    // Handle seat availability adjustment if status changes (Supabase logic)
-    const originalStatus = booking.status;
-    let busUpdateNeeded = false;
-    let availableSeatsChange = 0;
-
-    if ((originalStatus === 'pending' || originalStatus === 'paid') && newStatus.toLowerCase() === 'cancelled') {
-        availableSeatsChange = 1; // Seat becomes available
-        busUpdateNeeded = true;
-    } else if (originalStatus === 'cancelled' && (newStatus.toLowerCase() === 'pending' || newStatus.toLowerCase() === 'paid')) {
-        const { data: busData, error: busFetchError } = await supabase
-            .from('buses')
-            .select('total_seats')
-            .eq('id', booking.busId)
-            .eq('travel_date', booking.travelDate)
-            .maybeSingle();
-
-        if (!busFetchError && busData) {
-            const currentBookedSeatsForBus = bookingsData.filter(b => 
-                b.busId === booking.busId && 
-                b.travelDate === booking.travelDate && 
-                b.id !== bookingId && // Exclude the one being updated (as its status is not yet changed)
-                (b.status === 'pending' || b.status === 'paid')
-            ).length;
-            const potentialBookedSeats = currentBookedSeatsForBus + 1; // If this booking becomes active
-
-            if (potentialBookedSeats <= busData.total_seats) {
-                availableSeatsChange = -1; // Seat becomes occupied
-                busUpdateNeeded = true;
-            } else {
-                showErrorMessage('bookingsTabErrorMessage', 'Cannot change status to active, no available seats left on bus.');
-                return;
-            }
-        } else {
-            console.error("Error fetching bus data for status change:", busFetchError);
-            showErrorMessage('bookingsTabErrorMessage', 'Could not verify bus capacity.');
-            return;
-        }
-    }
-
-    const { error: updateBookingError } = await supabase.from('bookings').update({
-        passenger_name: newPassengerName,
-        phone: newPassengerPhone,
-        email: newPassengerEmail,
-        status: newStatus.toLowerCase(),
-        last_updated: new Date().toISOString()
-    }).eq('id', bookingId);
-
-    if (updateBookingError) {
-        showErrorMessage('bookingsTabErrorMessage', 'Failed to update booking.');
-        return;
-    }
-
-    if (busUpdateNeeded) {
-        // Fetch current available_seats to update it correctly
-        const { data: currentBus, error: currentBusError } = await supabase
-            .from('buses')
-            .select('available_seats')
-            .eq('id', booking.busId)
-            .eq('travel_date', booking.travelDate)
-            .maybeSingle();
-
-        if (!currentBusError && currentBus) {
-            const newAvailableSeats = currentBus.available_seats + availableSeatsChange;
-            const { error: updateBusError } = await supabase
-                .from('buses')
-                .update({ available_seats: newAvailableSeats })
-                .eq('id', booking.busId)
-                .eq('travel_date', booking.travelDate);
-
-            if (updateBusError) {
-                console.error("Error updating bus available seats after booking status change:", updateBusError);
-            }
-        }
-    }
-    
-    showSuccessMessage('bookingsTabSuccessMessage', 'Booking updated successfully!');
-    editingBookingId = null; // Reset editing state
-    loadBookings(); // Reload the table to show updated data and revert edit mode
-    loadBuses(); // Reload buses to show updated available seats
-};
-
-// Override the existing confirmBookingAndGenerateTicket to use Supabase
-window.confirmBookingAndGenerateTicket = async function () {
-    const passengerName = document.getElementById('passengerName').value.trim();
-    const passengerPhone = document.getElementById('passengerPhone').value.trim();
-    const passengerEmail = document.getElementById('passengerEmail').value.trim();
-
-    if (selectedSeats.length === 0) {
-        showErrorMessage('modalErrorMessage', 'Please select a seat.');
-        return;
-    }
-    if (!passengerName || !passengerPhone) {
-        showErrorMessage('modalErrorMessage', 'Please fill in passenger name and phone number.');
-        return;
-    }
-
-    const seatNumber = selectedSeats[0];
-
-    // Re-check bus available seats and selected seat status from Supabase
-    const { data: currentBusState, error: busFetchError } = await supabase
-        .from('buses')
-        .select('*')
-        .eq('id', selectedBusForBooking.id)
-        .eq('travel_date', selectedBusForBooking.travelDate)
-        .maybeSingle();
-
-    if (busFetchError || !currentBusState) {
-        showErrorMessage('modalErrorMessage', 'Error fetching bus details. Please try again.');
-        return;
-    }
-
-    const { count: bookedSeatsCount, error: bookedSeatsError } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .eq('bus_id', selectedBusForBooking.id)
-        .eq('travel_date', selectedBusForBooking.travelDate)
-        .eq('seat', seatNumber)
-        .in('status', ['pending', 'paid']);
-
-    if (bookedSeatsError) {
-        showErrorMessage('modalErrorMessage', 'Error checking seat availability. Please try again.');
-        return;
-    }
-
-    if (bookedSeatsCount > 0) {
-        showErrorMessage('modalErrorMessage', `Seat ${seatNumber} has just been booked. Please select another seat.`);
-        generateSeatGrid(); // Re-render seat grid with updated status
-        return;
-    }
-
-    if (currentBusState.total_seats - (bookedSeatsCount || 0) <= 0) {
-        showErrorMessage('modalErrorMessage', 'No seats available on this bus. Please select another bus.');
-        return;
-    }
-
-    const newBooking = {
-        id: generateBookingRef(),
-        passenger_name: passengerName,
-        phone: passengerPhone,
-        email: passengerEmail,
-        bus_id: selectedBusForBooking.id,
-        route: selectedBusForBooking.route,
-        origin: selectedBusForBooking.origin,
-        destination: selectedBusForBooking.destination,
-        travel_date: selectedBusForBooking.travelDate,
-        time: selectedBusForBooking.time,
-        seat: seatNumber,
-        price: selectedBusForBooking.price,
-        status: 'paid', // Admin bookings are typically confirmed/paid immediately
-        booking_date: new Date().toISOString(),
-        last_updated: new Date().toISOString()
-    };
-
-    const { error: insertBookingError } = await supabase.from('bookings').insert([newBooking]);
-
-    if (insertBookingError) {
-        showErrorMessage('modalErrorMessage', 'Failed to confirm booking. Please try again.');
-        console.error('Booking insertion error:', insertBookingError);
-        return;
-    }
-
-    // Decrement available seats for the bus in Supabase
-    const newAvailableSeats = currentBusState.total_seats - (bookedSeatsCount || 0) - 1; // Subtract current booked count + the new booking
-    const { error: updateBusError } = await supabase
-        .from('buses')
-        .update({ available_seats: newAvailableSeats })
-        .eq('id', selectedBusForBooking.id)
-        .eq('travel_date', selectedBusForBooking.travelDate);
-
-    if (updateBusError) {
-        console.error("Error updating bus available seats after booking:", updateBusError);
-    }
-
-    closeSeatModal();
-    loadBuses(); // Update available seats in bus list
-    loadBookings(); // Update bookings table
-    
-    const successContainer = document.getElementById('makeBookingSuccessContainer');
-    const successMessageSpan = document.getElementById('makeBookingSuccessMessage');
-    successMessageSpan.textContent = `Booking ${newBooking.id} confirmed for ${passengerName}!`;
-    
-    const downloadButton = document.createElement('button');
-    downloadButton.textContent = 'Download Ticket';
-    downloadButton.classList.add('download-ticket-btn');
-    downloadButton.onclick = () => generateTicketFromBooking(newBooking.id);
-
-    successContainer.innerHTML = '';
-    successContainer.appendChild(successMessageSpan);
-    successContainer.appendChild(downloadButton);
-    successContainer.style.display = 'flex';
-
-    setTimeout(() => {
-        successContainer.style.display = 'none';
-    }, 10000);
-};
-
-</script>
-<div class="modal" id="seatSelectionModal" style="display: none;">
-<div class="modal-content">
-<span class="close-button" onclick="closeSeatModal()">×</span>
-<h2>Select Your Seat(s)</h2>
-<p>Bus: <span id="modalBusRoute"></span> on <span id="modalTravelDate"></span> at <span id="modalBusTime"></span></p>
-<p>Selected Seats: <span id="selectedSeatsDisplay">None</span></p>
-<p class="error-message" id="modalErrorMessage"></p>
-<div class="seat-grid" id="seatGrid">
-</div>
-<div class="passenger-details-form">
-<h4>Passenger Details</h4>
-<input id="passengerName" placeholder="Passenger Full Name" required="" type="text"/>
-<input id="passengerPhone" placeholder="Passenger Phone Number" required="" type="tel"/>
-<input id="passengerEmail" placeholder="Passenger Email (Optional)" type="email"/>
-</div>
-<div class="modal-buttons">
-<button onclick="confirmBookingAndGenerateTicket()">Confirm Booking</button>
-<button onclick="closeSeatModal()">Cancel</button>
-</div>
-</div>
-</div></body>
+</body>
 </html>
