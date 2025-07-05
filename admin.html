@@ -6,31 +6,7 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Admin Panel - Prince Alex Travel</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
-function downloadTicketPDF(booking) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    const lines = [
-        `Booking Reference: ${booking.id}`,
-        `Passenger Name: ${booking.name}`,
-        `Phone Number: ${booking.phone}`,
-        `Email: ${booking.email}`,
-        `Bus Route: ${booking.route}`,
-        `Travel Date: ${booking.travelDate}`,
-        `Departure Time: ${booking.time}`,
-        `Bus ID: ${booking.busId}`,
-        `Seat Number: ${booking.seat}`,
-        `Price: Ksh ${booking.price}`,
-        `Status: ${booking.status}`,
-        `Booking Date: ${booking.bookingDate}`
-    ];
-
-    lines.forEach((line, i) => doc.text(line, 10, 10 + i * 10));
-    doc.save(`Ticket-${booking.id}.pdf`);
-}
-
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- Firebase SDKs -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -121,30 +97,6 @@ function downloadTicketPDF(booking) {
             document.getElementById('adminPanel').classList.add('hidden');
         }
     });
-
-function downloadTicketPDF(booking) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    const lines = [
-        `Booking Reference: ${booking.id}`,
-        `Passenger Name: ${booking.name}`,
-        `Phone Number: ${booking.phone}`,
-        `Email: ${booking.email}`,
-        `Bus Route: ${booking.route}`,
-        `Travel Date: ${booking.travelDate}`,
-        `Departure Time: ${booking.time}`,
-        `Bus ID: ${booking.busId}`,
-        `Seat Number: ${booking.seat}`,
-        `Price: Ksh ${booking.price}`,
-        `Status: ${booking.status}`,
-        `Booking Date: ${booking.bookingDate}`
-    ];
-
-    lines.forEach((line, i) => doc.text(line, 10, 10 + i * 10));
-    doc.save(`Ticket-${booking.id}.pdf`);
-}
-
 </script>
 <style>
         body {
@@ -668,6 +620,43 @@ function downloadTicketPDF(booking) {
             }
         }
 
+        // Custom Alert (replaces browser's alert and confirm)
+        function showCustomAlert(message, type = 'info', callback = null) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
+                align-items: center; z-index: 1001;
+            `;
+            let bgColor = '#002d6b'; // Default info
+            if (type === 'error') bgColor = '#dc3545';
+            if (type === 'success') bgColor = '#28a745';
+            if (type === 'confirm') bgColor = '#c69214'; // Accent color for confirm
+
+            modal.innerHTML = `
+                <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    <p style="margin-bottom: 20px; font-size: 1.1em; color: ${bgColor};">${message}</p>
+                    <div style="display: flex; justify-content: center; gap: 15px;">
+                        <button id="modalOkBtn" style="background-color: ${bgColor}; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">OK</button>
+                        ${type === 'confirm' ? '<button id="modalCancelBtn" style="background-color: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Cancel</button>' : ''}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            document.getElementById('modalOkBtn').onclick = () => {
+                modal.remove();
+                if (callback) callback(true);
+            };
+            if (type === 'confirm') {
+                document.getElementById('modalCancelBtn').onclick = () => {
+                    modal.remove();
+                    if (callback) callback(false);
+                };
+            }
+        }
+
+
         // --- Authentication ---
         async function login() {
             const email = document.getElementById('email').value;
@@ -976,32 +965,34 @@ function downloadTicketPDF(booking) {
         }
 
         async function deleteBus(busId) { 
-            if (!confirm('Are you sure you want to delete this bus? This will also remove associated bookings for this bus ID and travel date.')) return; 
+            showCustomAlert('Are you sure you want to delete this bus? This will also remove associated bookings for this bus ID and travel date.', 'confirm', async (confirmed) => {
+                if (!confirmed) return;
             
-            try {
-                const busDocRef = doc(firebaseDb, "buses", busId);
+                try {
+                    const busDocRef = doc(firebaseDb, "buses", busId);
 
-                // Delete associated bookings first
-                const bookingsRef = collection(firebaseDb, "bookings");
-                const qBookings = query(bookingsRef, where("bus_id", "==", busId));
-                const bookingSnapshot = await getDocs(qBookings);
+                    // Delete associated bookings first
+                    const bookingsRef = collection(firebaseDb, "bookings");
+                    const qBookings = query(bookingsRef, where("bus_id", "==", busId));
+                    const bookingSnapshot = await getDocs(qBookings);
 
-                const deleteBookingPromises = [];
-                bookingSnapshot.forEach((doc) => {
-                    deleteBookingPromises.push(deleteDoc(doc.ref));
-                });
-                await Promise.all(deleteBookingPromises);
+                    const deleteBookingPromises = [];
+                    bookingSnapshot.forEach((doc) => {
+                        deleteBookingPromises.push(deleteDoc(doc.ref));
+                    });
+                    await Promise.all(deleteBookingPromises);
 
-                // Then, delete the bus
-                await deleteDoc(busDocRef);
+                    // Then, delete the bus
+                    await deleteDoc(busDocRef);
 
-                showSuccessMessage('busSuccessMessage', 'Bus and associated bookings deleted successfully!');
-                loadBuses();
-                loadBookings(); // Reload bookings after deletion
-            } catch (error) {
-                showErrorMessage('busErrorMessage', 'Failed to delete bus: ' + error.message);
-                console.error("Error deleting bus:", error);
-            }
+                    showSuccessMessage('busSuccessMessage', 'Bus and associated bookings deleted successfully!');
+                    loadBuses();
+                    loadBookings(); // Reload bookings after deletion
+                } catch (error) {
+                    showErrorMessage('busErrorMessage', 'Failed to delete bus: ' + error.message);
+                    console.error("Error deleting bus:", error);
+                }
+            });
         } 
 
         // --- Booking Management ---
@@ -1221,35 +1212,37 @@ function downloadTicketPDF(booking) {
         }
 
         async function deleteBooking(id) { 
-            if (!confirm('Are you sure you want to delete this booking?')) return; 
+            showCustomAlert('Are you sure you want to delete this booking?', 'confirm', async (confirmed) => {
+                if (!confirmed) return;
 
-            const bookingToDelete = bookingsData.find(b => b.id === id);
-            if (!bookingToDelete) {
-                showErrorMessage('bookingsTabErrorMessage', 'Booking not found for deletion.');
-                return;
-            }
-
-            const bookingDocRef = doc(firebaseDb, "bookings", id);
-            const busDocRef = doc(firebaseDb, "buses", bookingToDelete.bus_id);
-
-            try {
-                // Delete the booking document
-                await deleteDoc(bookingDocRef);
-
-                // If booking was active (pending/paid), increment available seats for the bus
-                if (bookingToDelete.status === 'pending' || bookingToDelete.status === 'paid') {
-                    await updateDoc(busDocRef, {
-                        available_seats: increment(1)
-                    });
+                const bookingToDelete = bookingsData.find(b => b.id === id);
+                if (!bookingToDelete) {
+                    showErrorMessage('bookingsTabErrorMessage', 'Booking not found for deletion.');
+                    return;
                 }
-                
-                showSuccessMessage('bookingsTabSuccessMessage', 'Booking deleted successfully!');
-                loadBookings();
-                loadBuses(); // Reload buses to reflect available seat change
-            } catch (error) {
-                showErrorMessage('bookingsTabErrorMessage', 'Failed to delete booking: ' + error.message);
-                console.error("Error deleting booking:", error);
-            }
+
+                const bookingDocRef = doc(firebaseDb, "bookings", id);
+                const busDocRef = doc(firebaseDb, "buses", bookingToDelete.bus_id);
+
+                try {
+                    // Delete the booking document
+                    await deleteDoc(bookingDocRef);
+
+                    // If booking was active (pending/paid), increment available seats for the bus
+                    if (bookingToDelete.status === 'pending' || bookingToDelete.status === 'paid') {
+                        await updateDoc(busDocRef, {
+                            available_seats: increment(1)
+                        });
+                    }
+                    
+                    showSuccessMessage('bookingsTabSuccessMessage', 'Booking deleted successfully!');
+                    loadBookings();
+                    loadBuses(); // Reload buses to reflect available seat change
+                } catch (error) {
+                    showErrorMessage('bookingsTabErrorMessage', 'Failed to delete booking: ' + error.message);
+                    console.error("Error deleting booking:", error);
+                }
+            });
         } 
 
         function downloadBookingsCSV() {
@@ -1635,7 +1628,7 @@ function downloadTicketPDF(booking) {
             const bookingDocSnap = await getDoc(bookingDocRef);
 
             if (!bookingDocSnap.exists()) {
-                alert("Booking details not found for ticket generation.");
+                showCustomAlert("Booking details not found for ticket generation.", 'error'); // Changed from alert()
                 return;
             }
             const booking = { id: bookingDocSnap.id, ...bookingDocSnap.data() }; // Get data including ID
@@ -1797,34 +1790,6 @@ function downloadTicketPDF(booking) {
             document.getElementById('searchTravelDate').min = `${year}-${month}-${day}`;
             document.getElementById('searchTravelDate').value = `${year}-${month}-${day}`;
         });
-    
-function downloadTicketPDF(booking) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    const lines = [
-        `Booking Reference: ${booking.id}`,
-        `Passenger Name: ${booking.name}`,
-        `Phone Number: ${booking.phone}`,
-        `Email: ${booking.email}`,
-        `Bus Route: ${booking.route}`,
-        `Travel Date: ${booking.travelDate}`,
-        `Departure Time: ${booking.time}`,
-        `Bus ID: ${booking.busId}`,
-        `Seat Number: ${booking.seat}`,
-        `Price: Ksh ${booking.price}`,
-        `Status: ${booking.status}`,
-        `Booking Date: ${booking.bookingDate}`
-    ];
-
-    lines.forEach((line, i) => doc.text(line, 10, 10 + i * 10));
-    doc.save(`Ticket-${booking.id}.pdf`);
-}
-
-</script>
+    </script>
 </body>
 </html>
-
-<!-- NOTE: Booking table rows should include a button like:
-<button onclick='downloadTicketPDF(booking)'>Download PDF</button>
-Ensure booking data is passed to the function -->
