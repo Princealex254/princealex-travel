@@ -10,7 +10,8 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Added 'collection', 'query', and 'where' for querying by field
+        import { getFirestore, doc, getDoc, updateDoc, onSnapshot, collection, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration (copied from index.html)
         const firebaseConfig = {
@@ -32,6 +33,10 @@
         window.getDoc = getDoc;
         window.updateDoc = updateDoc;
         window.onSnapshot = onSnapshot;
+        // Expose new functions for querying
+        window.collection = collection;
+        window.query = query;
+        window.where = where;
     </script>
     <style>
         /* Reusing common styles from your existing index.html and profile.html */
@@ -405,10 +410,10 @@
 
     <div class="success-container">
         <h1 id="successHeader"><i class="fas fa-check-circle"></i> Booking Successful!</h1>
-        <p>Your booking has been successfully placed. Please proceed to payment to confirm your ticket.</p>
+        <p id="initialMessage">Your booking has been successfully placed. Please proceed to payment to confirm your ticket.</p>
         <p id="bookingRefDisplay" style="font-size: 1.2em; font-weight: bold; color: var(--primary-color);"></p>
 
-        <div class="booking-details-summary">
+        <div id="bookingDetailsSummary" class="booking-details-summary">
             <h3>Booking Details</h3>
             <p><strong>Passenger Name:</strong> <span id="passengerName"></span></p>
             <p><strong>Phone Number:</strong> <span id="passengerPhone"></span></p>
@@ -453,7 +458,7 @@
     </footer>
 
     <script>
-        let currentBookingId = null;
+        let currentBookingId = null; // This will now store the Firestore document ID
         let currentBookingData = null; // Store fetched booking data
         let unsubscribeBookingSnapshot = null; // To manage real-time listener
 
@@ -477,13 +482,16 @@
 
             const lastBookingRef = localStorage.getItem('lastBookingRef');
             if (lastBookingRef) {
-                currentBookingId = lastBookingRef;
+                // We now assume lastBookingRef is the custom booking_ref string, not the Firestore doc ID
                 document.getElementById('bookingRefDisplay').textContent = `Reference: ${lastBookingRef}`;
-                await loadBookingAndListen(lastBookingRef);
+                await loadBookingAndListen(lastBookingRef); // Pass the custom booking_ref to the function
             } else {
                 showCustomAlert("No booking reference found. Please book a ticket first.");
                 document.getElementById('successHeader').textContent = "Booking Not Found";
                 document.getElementById('successHeader').style.color = "var(--error-color)";
+                document.getElementById('initialMessage').classList.add('hidden'); // Hide initial message
+                document.getElementById('bookingRefDisplay').classList.add('hidden'); // Hide booking ref display
+                document.getElementById('bookingDetailsSummary').classList.add('hidden'); // Hide booking details
                 document.getElementById('paymentSection').classList.add('hidden');
                 document.getElementById('downloadTicketBtn').classList.add('hidden');
             }
@@ -498,26 +506,45 @@
             });
         });
 
-        async function loadBookingAndListen(bookingId) {
-            const bookingDocRef = doc(firebaseDb, "bookings", bookingId);
+        /**
+         * Loads booking details from Firestore using the custom booking_ref and sets up a real-time listener.
+         * @param {string} bookingRef The custom booking reference string (e.g., PA-XYZ123).
+         */
+        async function loadBookingAndListen(bookingRef) {
+            const bookingsCollectionRef = collection(firebaseDb, "bookings");
+            // Query for the document where the 'booking_ref' field matches the provided bookingRef
+            const q = query(bookingsCollectionRef, where("booking_ref", "==", bookingRef));
 
-            // Unsubscribe from previous listener if exists
+            // Unsubscribe from previous listener if exists to prevent multiple listeners
             if (unsubscribeBookingSnapshot) {
                 unsubscribeBookingSnapshot();
                 unsubscribeBookingSnapshot = null;
             }
 
-            unsubscribeBookingSnapshot = onSnapshot(bookingDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    currentBookingData = { id: docSnap.id, ...docSnap.data() };
+            // Set up real-time listener
+            unsubscribeBookingSnapshot = onSnapshot(q, (querySnapshot) => {
+                if (!querySnapshot.empty) {
+                    // Assuming booking_ref is unique, there should be only one document
+                    const docSnap = querySnapshot.docs[0];
+                    currentBookingData = { id: docSnap.id, ...docSnap.data() }; // Store Firestore doc ID and all data
+                    currentBookingId = docSnap.id; // Store the actual Firestore document ID for updates
+
+                    document.getElementById('initialMessage').classList.remove('hidden'); // Show initial message
+                    document.getElementById('bookingRefDisplay').classList.remove('hidden'); // Show booking ref display
+                    document.getElementById('bookingDetailsSummary').classList.remove('hidden'); // Show booking details
+
                     updateUIForBookingStatus(currentBookingData);
                 } else {
+                    // If no document is found for the given booking_ref
                     showCustomAlert("Booking not found or has been deleted.");
                     document.getElementById('successHeader').textContent = "Booking Not Found";
                     document.getElementById('successHeader').style.color = "var(--error-color)";
+                    document.getElementById('initialMessage').classList.add('hidden'); // Hide initial message
+                    document.getElementById('bookingRefDisplay').classList.add('hidden'); // Hide booking ref display
+                    document.getElementById('bookingDetailsSummary').classList.add('hidden'); // Hide booking details
                     document.getElementById('paymentSection').classList.add('hidden');
                     document.getElementById('downloadTicketBtn').classList.add('hidden');
-                    console.error("Booking document does not exist:", bookingId);
+                    console.error("Booking document does not exist for booking_ref:", bookingRef);
                 }
             }, (error) => {
                 console.error("Error listening to booking changes:", error);
@@ -591,7 +618,7 @@
             // For this demonstration, we simulate success after a delay.
             setTimeout(async () => {
                 try {
-                    // Update booking status to 'paid' in Firestore
+                    // Use currentBookingId which holds the actual Firestore document ID
                     const bookingDocRef = doc(firebaseDb, "bookings", currentBookingId);
                     await updateDoc(bookingDocRef, {
                         status: 'paid',
