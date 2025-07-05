@@ -384,7 +384,7 @@
             object-fit: cover;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             transition: transform 0.3s ease;
-            /* Use: Styles individual gallery images with rounded corners, shadow, and zoom effect on hover. */
+            /* Use: Slightly scales up the image on hover. */
         }
         .image-grid img:hover {
             transform: scale(1.03);
@@ -1301,6 +1301,7 @@
 
         // MODIFIED: handleBookNowClick function
         async function handleBookNowClick(event) {
+            console.log("handleBookNowClick called. Current user:", window.currentUser);
             // Store selected bus details temporarily
             currentBusId = event.target.dataset.busId;
             currentBusRoute = event.target.dataset.busRoute;
@@ -1317,6 +1318,7 @@
 
             // Check if user is logged in using Firebase currentUser
             if (window.currentUser) {
+                console.log("User is logged in. Proceeding to seat selection directly.");
                 // If logged in, directly show the seat selection modal and pre-fill details
                 document.getElementById("busDetails").textContent = `${currentBusRoute} at ${currentBusTime} on ${currentTravelDate}`;
                 await generateSeats(currentTotalSeats); // Pass total seats to generateSeats
@@ -1330,6 +1332,7 @@
                 document.getElementById("seatModal").style.display = "flex";
 
             } else {
+                console.log("User is NOT logged in. Showing login choice modal.");
                 // If not logged in, show the login choice modal
                 showLoginChoiceModal();
             }
@@ -1337,11 +1340,19 @@
 
         // New function: Show the login/guest choice modal
         function showLoginChoiceModal() {
+            console.log("showLoginChoiceModal called. Displaying login choice modal.");
             document.getElementById("loginChoiceModal").style.display = "flex";
+        }
+
+        // New function: Close the login/guest choice modal
+        function closeLoginChoiceModal() {
+            console.log("closeLoginChoiceModal called. Hiding login choice modal.");
+            document.getElementById("loginChoiceModal").style.display = "none";
         }
 
         // New function: Handle "Proceed as Guest"
         async function proceedAsGuest() {
+            console.log("proceedAsGuest called.");
             closeLoginChoiceModal(); // Close the choice modal
             // Now, open the seat selection modal as before
             document.getElementById("busDetails").textContent = `${currentBusRoute} at ${currentBusTime} on ${currentTravelDate}`;
@@ -1357,6 +1368,7 @@
 
         // New function: Handle "Login / Sign Up"
         function redirectToLogin() {
+            console.log("redirectToLogin called.");
             closeLoginChoiceModal(); // Close the choice modal
             alert("Please log in or sign up. You will need to search for your bus again after logging in.");
             window.location.href = 'login-register.html'; // Redirect to login page
@@ -1667,72 +1679,6 @@
             }
         }
     </script>
-
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const menuToggle = document.getElementById('mobile-menu');
-    const navLinks = document.getElementById('main-nav');
-
-    if (menuToggle && navLinks) {
-      menuToggle.addEventListener('click', function () {
-        this.classList.toggle('open');
-        navLinks.classList.toggle('open');
-      });
-    }
-  });
-</script>
-
-
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const chatButton = document.getElementById('aiAssistantButton');
-    const chatWindow = document.getElementById('aiAssistantChat');
-    const chatInput = document.getElementById('chatInput');
-    const sendBtn = document.getElementById('sendChatBtn');
-    const chatBody = document.getElementById('chatBody');
-
-    function toggleChat() {
-      if (chatWindow.classList.contains('chat-hidden')) {
-        chatWindow.classList.remove('chat-hidden');
-        setTimeout(() => {
-          chatWindow.classList.add('chat-visible');
-        }, 10);
-      } else {
-        chatWindow.classList.remove('chat-visible');
-        setTimeout(() => {
-          chatWindow.classList.add('chat-hidden');
-        }, 300);
-      }
-    }
-
-    function appendMessage(message, sender) {
-      const msg = document.createElement('p');
-      msg.textContent = message;
-      msg.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
-      chatBody.appendChild(msg);
-      chatBody.scrollTop = chatBody.scrollHeight;
-    }
-
-    function handleChatInput() {
-      const message = chatInput.value.trim();
-      if (message) {
-        appendMessage(message, 'user');
-        chatInput.value = '';
-        setTimeout(() => {
-          appendMessage("Thank you for your message. Our AI assistant feature is under development. Please contact us directly at senerwaalex@gmail.com for immediate assistance.", 'bot');
-        }, 1000);
-      }
-    }
-
-    if (chatButton) chatButton.addEventListener('click', toggleChat);
-    if (sendBtn) sendBtn.addEventListener('click', handleChatInput);
-    if (chatInput) {
-      chatInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') handleChatInput();
-      });
-    }
-  });
-</script>
 
 </body>
 </html>
