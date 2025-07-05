@@ -564,6 +564,15 @@
             left: 0; /* Position correctly over the seat */
             /* Use: Adds a semi-transparent 'X' overlay to visually mark booked seats. */
         }
+        .driver-area {
+            grid-column: 1 / -1; /* Span all columns */
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #002d6b;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
 
         /* Input Fields in Modal */
         #seatModal input[type="text"],
@@ -762,10 +771,7 @@
         }
 
         @media (max-width: 480px) {
-            #seatGrid {
-                grid-template-columns: repeat(2, 1fr); /* 2 columns on very small screens */
-            }
-            /* Use: Changes seat grid to 2 columns on very small screens. */
+            /* Removed specific seatGrid columns for 480px, let JS handle it dynamically */
             .seat-container {
                 width: 45px;
                 height: 45px;
@@ -1356,10 +1362,6 @@
             window.location.href = 'login-register.html'; // Redirect to login page
         }
 
-        function closeLoginChoiceModal() {
-            document.getElementById("loginChoiceModal").style.display = "none";
-        }
-
         function closeModal() {
             document.getElementById("seatModal").style.display = "none";
             // Clear passenger details for next time (important for logged-in user who might cancel)
@@ -1377,29 +1379,75 @@
 
         let unsubscribeSnapshot = null; // To store the unsubscribe function for real-time listener
 
+        // Helper function to create a seat element (Updated to match admin.html)
+        function createSeatElement(parent, seatNumber, bookedSeats) {
+            const seatContainer = document.createElement("div");
+            seatContainer.classList.add("seat-container");
+            seatContainer.setAttribute("data-seat", seatNumber);
+
+            const seatIcon = document.createElement("i");
+            seatIcon.classList.add("fas", "fa-chair", "seat-icon");
+
+            const seatNumSpan = document.createElement("span");
+            seatNumSpan.classList.add("seat-number");
+            seatNumSpan.textContent = `S${seatNumber}`;
+
+            seatContainer.appendChild(seatIcon);
+            seatContainer.appendChild(seatNumSpan);
+
+            if (bookedSeats.includes(seatNumber)) {
+                seatContainer.classList.add("booked");
+                seatContainer.onclick = null; // Make booked seats non-clickable
+            } else {
+                // Check if this seat was previously selected by the user
+                if (selectedSeats.includes(seatNumber)) {
+                    seatContainer.classList.add("selected");
+                }
+                seatContainer.onclick = function () {
+                    const seatNum = parseInt(this.dataset.seat);
+                    if (this.classList.contains("selected")) {
+                        this.classList.remove("selected");
+                        selectedSeats = selectedSeats.filter(s => s !== seatNum);
+                    } else {
+                        this.classList.add("selected");
+                        selectedSeats.push(seatNum);
+                    }
+                    updateSelectedSeatsDisplay();
+                };
+            }
+            parent.appendChild(seatContainer);
+        }
+
         async function generateSeats(totalSeats) {
             const seatGrid = document.getElementById("seatGrid");
             seatGrid.innerHTML = "";
             selectedSeats = [];
             updateSelectedSeatsDisplay();
 
-            // Determine grid layout based on totalSeats
-            if (totalSeats === 32) {
-                seatGrid.style.gridTemplateColumns = "repeat(2, 1fr) 0.5fr repeat(2, 1fr)";
-                seatGrid.style.gap = "10px 5px"; // Row gap, Column gap
-            } else if (totalSeats === 14) {
-                seatGrid.style.gridTemplateColumns = "repeat(2, 1fr)";
-                seatGrid.style.gap = "10px";
-            } else {
-                seatGrid.style.gridTemplateColumns = "repeat(4, 1fr)";
-                seatGrid.style.gap = "12px";
-            }
-
             // Unsubscribe from previous listener if exists
             if (unsubscribeSnapshot) {
                 unsubscribeSnapshot();
                 unsubscribeSnapshot = null;
             }
+
+            // Determine layout based on total seats (copied from admin.html)
+            let seatsInLeftRow = 2;
+            let seatsInRightRow = 2;
+            let gridColumns = "repeat(2, 1fr) 0.5fr repeat(2, 1fr)"; // Default 2-2 layout (5 columns)
+
+            if (totalSeats <= 14) { // Assuming 14-seater or smaller might be 2-1 layout
+                seatsInLeftRow = 2;
+                seatsInRightRow = 1;
+                gridColumns = "repeat(2, 1fr) 0.5fr 1fr"; // 2-1 layout (4 columns)
+            }
+
+            seatGrid.style.gridTemplateColumns = gridColumns;
+
+            // Add a "Front (Driver)" indicator
+            const driverArea = document.createElement('div');
+            driverArea.classList.add('driver-area');
+            driverArea.textContent = 'Front (Driver)';
+            seatGrid.appendChild(driverArea);
 
             // Setup real-time listener for bookings for this specific bus and date
             const bookingsRef = collection(firebaseDb, "bookings");
@@ -1417,43 +1465,41 @@
                 });
 
                 // Re-render seats based on the latest bookedSeatsForThisTrip
-                seatGrid.innerHTML = ""; // Clear current seats
-                for (let i = 1; i <= totalSeats; i++) {
-                    const seatContainer = document.createElement("div");
-                    seatContainer.classList.add("seat-container");
-                    seatContainer.setAttribute("data-seat", i);
+                // Clear all seats except the driver area (if already present)
+                const existingDriverArea = seatGrid.querySelector('.driver-area');
+                seatGrid.innerHTML = '';
+                if (existingDriverArea) {
+                    seatGrid.appendChild(existingDriverArea); // Re-add the driver area
+                } else {
+                    // This case should ideally not happen if driverArea is added once
+                    const newDriverArea = document.createElement('div');
+                    newDriverArea.classList.add('driver-area');
+                    newDriverArea.textContent = 'Front (Driver)';
+                    seatGrid.appendChild(newDriverArea);
+                }
 
-                    const seatIcon = document.createElement("i");
-                    seatIcon.classList.add("fas", "fa-chair", "seat-icon");
-
-                    const seatNumber = document.createElement("span");
-                    seatNumber.classList.add("seat-number");
-                    seatNumber.textContent = `S${i}`;
-
-                    seatContainer.appendChild(seatIcon);
-                    seatContainer.appendChild(seatNumber);
-
-                    if (bookedSeatsForThisTrip.includes(i)) {
-                        seatContainer.classList.add("booked");
-                        seatContainer.onclick = null; // Make booked seats non-clickable
-                    } else {
-                        // Check if this seat was previously selected by the user
-                        if (selectedSeats.includes(i)) {
-                            seatContainer.classList.add("selected");
+                let currentSeatNum = 1;
+                while (currentSeatNum <= totalSeats) {
+                    // Left side seats
+                    for (let j = 0; j < seatsInLeftRow; j++) {
+                        if (currentSeatNum <= totalSeats) {
+                            createSeatElement(seatGrid, currentSeatNum, bookedSeatsForThisTrip);
+                            currentSeatNum++;
                         }
-                        seatContainer.onclick = function () {
-                            const seatNum = parseInt(this.dataset.seat);
-                            if (this.classList.contains("selected")) {
-                                this.classList.remove("selected");
-                                selectedSeats = selectedSeats.filter(s => s !== seatNum);
-                            } else {
-                                this.classList.add("selected");
-                                selectedSeats.push(seatNum);
-                            }
-                            updateSelectedSeatsDisplay();
-                        };
                     }
-                    seatGrid.appendChild(seatContainer);
+
+                    // Aisle
+                    const aisleDiv = document.createElement('div');
+                    aisleDiv.classList.add('aisle-space');
+                    seatGrid.appendChild(aisleDiv);
+
+                    // Right side seats
+                    for (let j = 0; j < seatsInRightRow; j++) {
+                        if (currentSeatNum <= totalSeats) {
+                            createSeatElement(seatGrid, currentSeatNum, bookedSeatsForThisTrip); 
+                            currentSeatNum++;
+                        }
+                    }
                 }
             }, (error) => {
                 console.error('Error fetching booked seats in real-time:', error.message);
