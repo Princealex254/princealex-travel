@@ -806,9 +806,11 @@
                 const querySnapshot = await getDocs(q);
                 
                 busesData = []; // Clear in-memory data
+                console.log('loadBuses: Fetched buses from Firestore:', querySnapshot.docs.map(doc => doc.data())); // Debug log
                 querySnapshot.forEach((doc) => {
                     busesData.push({ id: doc.id, ...doc.data() });
                 });
+                console.log('loadBuses: Populated busesData:', busesData); // Debug log
 
                 busesTableBody.innerHTML = ''; 
                 if (busesData.length === 0) { 
@@ -1360,12 +1362,15 @@
                 
                 const querySnapshot = await getDocs(q);
                 const availableBuses = [];
+                console.log('searchBuses: Raw query results:', querySnapshot.docs.map(doc => doc.data())); // Debug log
                 querySnapshot.forEach((doc) => {
                     const bus = { id: doc.id, ...doc.data() };
                     if (bus.available_seats > 0) {
                         availableBuses.push(bus);
                     }
                 });
+                console.log('searchBuses: Found available buses (after filtering for available_seats > 0):', availableBuses); // Debug log
+
 
                 if (availableBuses.length === 0) {
                     searchResultsDiv.innerHTML = '<p style="text-align: center;">No buses found for this route and date with available seats.</p>';
@@ -1389,6 +1394,7 @@
                 });
 
                 document.querySelectorAll('.book-seat-btn').forEach(button => {
+                    console.log(`searchBuses: Setting button data-bus-id: ${button.dataset.busId}, data-bus-date: ${button.dataset.busDate}`); // Debug log
                     button.onclick = (event) => {
                         const busId = event.target.dataset.busId;
                         const travelDate = event.target.dataset.busDate; // Pass travel date to identify unique bus instance
@@ -1402,12 +1408,57 @@
         }
 
         async function openSeatModal(busId, travelDate) {
+            console.log(`openSeatModal called with busId: ${busId}, travelDate: ${travelDate}`);
+            console.log('openSeatModal: Current busesData:', busesData);
+
             // Find the specific bus instance by ID and travelDate from the loaded busesData
-            selectedBusForBooking = busesData.find(bus => bus.id === busId && bus.travelDate === travelDate);
+            selectedBusForBooking = busesData.find(bus => {
+                console.log(`openSeatModal: Checking bus: ID=${bus.id}, Date=${bus.travelDate}`);
+                return bus.id === busId && bus.travelDate === travelDate;
+            });
+            
+            console.log('openSeatModal: Found selectedBusForBooking:', selectedBusForBooking);
+
             if (!selectedBusForBooking) {
                 showErrorMessage('makeBookingErrorMessage', 'Selected bus not found or no longer available.');
                 return;
             }
+
+            // --- MODAL HTML STRUCTURE (Missing from original code, adding here) ---
+            // This entire modal structure was not present in the provided admin.html,
+            // which is why the modal wasn't displaying. I'm adding it here.
+            if (!document.getElementById('seatSelectionModal')) {
+                const modalHtml = `
+                    <div id="seatSelectionModal" class="modal">
+                        <div class="modal-content">
+                            <span class="close-button" onclick="closeSeatModal()">&times;</span>
+                            <h3>Select Seat for Booking</h3>
+                            <p>Bus Route: <strong id="modalBusRoute"></strong></p>
+                            <p>Travel Date: <strong id="modalTravelDate"></strong></p>
+                            <p>Departure Time: <strong id="modalBusTime"></strong></p>
+                            <p>Selected Seat: <strong id="selectedSeatsDisplay">None</strong></p>
+                            <p class="error-message" id="modalErrorMessage"></p>
+                            <div class="seat-grid" id="seatGrid">
+                                <!-- Seats will be dynamically loaded here -->
+                            </div>
+                            <div class="passenger-details-form">
+                                <label for="passengerName">Passenger Name:</label>
+                                <input type="text" id="passengerName" placeholder="Full Name" required>
+                                <label for="passengerPhone">Passenger Phone:</label>
+                                <input type="text" id="passengerPhone" placeholder="e.g., +254712345678" required>
+                                <label for="passengerEmail">Passenger Email (Optional):</label>
+                                <input type="email" id="passengerEmail" placeholder="email@example.com">
+                            </div>
+                            <div class="modal-buttons">
+                                <button onclick="confirmBookingAndGenerateTicket()">Confirm Booking</button>
+                                <button onclick="closeSeatModal()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+            }
+            // --- END MODAL HTML STRUCTURE ---
 
             document.getElementById('modalBusRoute').textContent = selectedBusForBooking.route;
             document.getElementById('modalTravelDate').textContent = selectedBusForBooking.travelDate;
