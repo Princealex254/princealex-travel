@@ -10,8 +10,8 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // Removed 'collection', 'query', and 'where' as they are not needed for direct document fetch
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Re-added 'collection', 'query', and 'where' for querying by field
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -31,6 +31,11 @@
         window.firebaseDb = db;
         window.doc = doc;
         window.getDoc = getDoc;
+        // Expose new functions for querying
+        window.collection = collection;
+        window.query = query;
+        window.where = where;
+        window.getDocs = getDocs; // Make getDocs available globally
     </script>
     <style>
         /* Re-use CSS from dashboard/booking-success for consistency */
@@ -476,7 +481,7 @@
 
 
             async function loadBookingDetails() {
-                const bookingRef = bookingRefInput.value.trim(); // This `bookingRef` is the document ID
+                const bookingRef = bookingRefInput.value.trim();
                 messageElem.textContent = ''; // Clear previous messages
                 ticketDetailsSection.style.display = 'none'; // Hide details section initially
                 fetchedBookingData = null; // Clear previous data
@@ -491,11 +496,15 @@
                 messageElem.style.color = '#002d6b'; // Set to primary color for searching status
 
                 try {
-                    // Directly fetch the document using the input as the document ID
-                    const bookingDocRef = doc(firebaseDb, "bookings", bookingRef); // Use bookingRef directly as doc ID
-                    const docSnap = await getDoc(bookingDocRef); // Use getDoc for a single document fetch
+                    // Query the 'bookings' collection for a document where 'booking_ref' field matches the input
+                    const bookingsCollectionRef = collection(firebaseDb, "bookings");
+                    // Use where clause to search by the 'booking_ref' field
+                    const q = query(bookingsCollectionRef, where("booking_ref", "==", bookingRef));
+                    const querySnapshot = await getDocs(q); // Use getDocs for a query
 
-                    if (docSnap.exists()) {
+                    if (!querySnapshot.empty) {
+                        // Assuming booking_ref is unique, there should be only one document
+                        const docSnap = querySnapshot.docs[0];
                         const data = docSnap.data();
                         fetchedBookingData = { id: docSnap.id, ...data }; // Store the document ID along with data
 
