@@ -1793,6 +1793,7 @@
                             if (busData && !busData.startsWith("No buses found")) {
                                 additionalContext = `\n\nHere is relevant bus schedule information for ${fromLocation || 'any'} to ${toLocation || 'any'} on ${todayDate}:\n${busData}\n\n`;
                             } else {
+                                // This is the line that was modified based on your request
                                 additionalContext = `\n\nI don't have that specific bus information right now for ${fromLocation || 'your specified origin'} to ${toLocation || 'your specified destination'} on ${todayDate}. Please contact our customer support at senerwaalex@gmail.com or call +254 717 384 875 for further assistance.`;
                             }
                         } catch (error) {
@@ -1826,7 +1827,17 @@ ${additionalContext}`;
                         body: JSON.stringify(payload)
                     });
 
+                    // Check if the response itself was successful (HTTP status 200-299)
+                    if (!response.ok) {
+                        const errorBody = await response.text(); // Get raw error body
+                        console.error(`Gemini API HTTP Error: ${response.status} ${response.statusText}`, errorBody);
+                        typingIndicator.remove();
+                        appendMessage("There was an issue with the AI service. Please try again later. (HTTP Error)", 'bot');
+                        return;
+                    }
+
                     const result = await response.json();
+                    console.log("Gemini API raw result:", result); // Log the full result for debugging
 
                     // Remove typing indicator
                     typingIndicator.remove();
@@ -1839,8 +1850,9 @@ ${additionalContext}`;
                         // Add AI response to chat history
                         chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
                     } else {
-                        appendMessage("Sorry, I couldn't get a response from the AI. Please try again.", 'bot');
-                        console.error("AI response structure unexpected:", result);
+                        // More specific error message if candidates are missing or empty
+                        appendMessage("Sorry, I couldn't get a meaningful response from the AI. The response structure was unexpected. Please try again.", 'bot');
+                        console.error("AI response structure unexpected or empty candidates:", result);
                     }
                 } catch (error) {
                     // Remove typing indicator on error as well
@@ -1848,7 +1860,7 @@ ${additionalContext}`;
                     if (currentTypingIndicator) {
                         currentTypingIndicator.remove();
                     }
-                    appendMessage("There was an error connecting to the AI. Please try again later.", 'bot');
+                    appendMessage("There was an error connecting to the AI. Please check your network connection and try again.", 'bot');
                     console.error("Error calling Gemini API:", error);
                 }
             }
