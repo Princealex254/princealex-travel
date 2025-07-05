@@ -7,33 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode.js/1.0.0/qrcode.min.js"></script>
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
-            authDomain: "princealextravel.firebaseapp.com",
-            projectId: "princealextravel",
-            storageBucket: "princealextravel.firebasestorage.app",
-            messagingSenderId: "947577729462",
-            appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Make Firebase instances and functions globally accessible
-        window.firebaseDb = db;
-        window.doc = doc;
-        window.getDoc = getDoc;
-        window.updateDoc = updateDoc;
-    </script>
     <script>
-        // Global variable to hold the current booking data fetched from Firebase
+        // Global variable to hold the current booking data fetched from Supabase
         let currentBookingData = null;
     </script>
     <style>
@@ -56,7 +31,7 @@
             padding: 0;
             display: flex;
             flex-direction: column;
-            min-height: 100vh; /* Changed from 1vh to 100vh to ensure footer is at bottom */
+            min-height: 1vh;
         }
 
         .header {
@@ -252,11 +227,40 @@
             border-top: 1px solid rgba(255, 255, 255, 0.2);
         }
     </style>
+
+<!-- Firebase App (the core Firebase SDK) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
+    authDomain: "princealextravel.firebaseapp.com",
+    projectId: "princealextravel",
+    storageBucket: "princealextravel.firebasestorage.app",
+    messagingSenderId: "947577729462",
+    appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window.fetchBookingFromFirebase = async (bookingId) => {
+    const docRef = doc(db, "bookings", bookingId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data();
+    } else {
+      return null;
+    }
+  };
+</script>
+
 </head>
 <body>
     <header class="header">
         <div class="header-brand">
-            <img src="mylogo.png" alt="Prince Alex Digital Logo">
+            <img src="Mylogo.png" alt="Prince Alex Digital Logo">
             <h1>Prince Alex Travel Services</h1>
         </div>
         <nav class="nav-links">
@@ -320,9 +324,6 @@
     </footer>
 
     <script>
-        // Global variable to hold the current booking data
-        let currentBookingData = null; 
-
         document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const bookingId = urlParams.get('bookingId');
@@ -344,117 +345,104 @@
                 return;
             }
 
-            try {
-                // Fetch booking data from Firebase
-                const bookingDocRef = doc(firebaseDb, "bookings", bookingId);
-                const docSnap = await getDoc(bookingDocRef);
-
-                if (!docSnap.exists()) {
-                    console.error("Error fetching booking details: No such document!");
-                    bookingDetailsDiv.innerHTML = '<p class="error-message">Booking not found or an error occurred. Please check your Booking ID or try again.</p>';
-                    paymentInfoDiv.style.display = 'none';
-                    downloadTicketBtn.style.display = 'none';
-                    payNowBtn.style.display = 'none';
-                    bookingTitle.textContent = 'Booking Not Found';
-                    return;
-                }
-
-                currentBookingData = { id: docSnap.id, ...docSnap.data() }; // Store the fetched booking for other functions
-
-                // Update booking details display
-                bookingReferenceSpan.textContent = currentBookingData.booking_ref; // Use booking_ref from Firestore
-                document.getElementById('displayRoute').textContent = `${currentBookingData.bus_route}`;
-                document.getElementById('displayTime').textContent = `${currentBookingData.bus_time}`;
-                document.getElementById('displayDate').textContent = `${currentBookingData.travel_date}`;
-                document.getElementById('displaySeat').textContent = `${currentBookingData.seat_number}`;
-                document.getElementById('displayPrice').textContent = `Ksh ${currentBookingData.price.toFixed(2)}`;
-                document.getElementById('displayName').textContent = `${currentBookingData.passenger_name}`;
-                document.getElementById('displayPhone').textContent = `${currentBookingData.passenger_phone}`;
-                document.getElementById('displayEmail').textContent = `${currentBookingData.passenger_email || 'N/A'}`;
-
-                // Update status badge and button visibility
-                statusBadgeSpan.textContent = currentBookingData.status.toUpperCase();
-                statusBadgeSpan.className = 'status-badge'; // Reset classes
-                if (currentBookingData.status === 'paid') {
-                    statusBadgeSpan.classList.add('paid');
-                    payNowBtn.style.display = 'none';
-                    downloadTicketBtn.style.display = 'block';
-                    paymentInfoDiv.style.display = 'none'; // Hide payment info if already paid
-                    bookingTitle.textContent = 'Booking Confirmed!';
-                    document.querySelector('.booking-summary-container .icon').style.color = 'var(--success-color)';
-                } else if (currentBookingData.status === 'pending') {
-                    statusBadgeSpan.classList.add('pending');
-                    payNowBtn.style.display = 'block';
-                    downloadTicketBtn.style.display = 'none';
-                    paymentInfoDiv.style.display = 'block'; // Show payment info if pending
-                    bookingTitle.textContent = 'Payment Pending';
-                    document.querySelector('.booking-summary-container .icon').style.color = 'var(--pending-color)'; // Change icon color for pending
-                } else { // e.g., 'cancelled'
-                    statusBadgeSpan.classList.add('error'); // Use error style for cancelled
-                    payNowBtn.style.display = 'none';
-                    downloadTicketBtn.style.display = 'none';
-                    paymentInfoDiv.style.display = 'none';
-                    bookingTitle.textContent = 'Booking Status: ' + currentBookingData.status.toUpperCase();
-                    document.querySelector('.booking-summary-container .icon').style.color = 'var(--error-color)'; // Change icon color for error
-                }
-
-            } catch (error) {
-                console.error("An unexpected error occurred during booking data fetch:", error);
-                bookingDetailsDiv.innerHTML = '<p class="error-message">An unexpected error occurred. Please try again later.</p>';
+            
+            const fetchedBooking = await window.fetchBookingFromFirebase(bookingId);
+            if (!fetchedBooking) {
+                bookingDetailsDiv.innerHTML = '<p class="error-message">Booking not found. Please try again.</p>';
                 paymentInfoDiv.style.display = 'none';
                 downloadTicketBtn.style.display = 'none';
                 payNowBtn.style.display = 'none';
-                bookingTitle.textContent = 'Error';
+                bookingTitle.textContent = 'Booking Not Found';
+                return;
+            }
+            currentBookingData = { id: bookingId, ...fetchedBooking };  // Include the ID in the data
+
+            // For now, let's simulate some data
+            // This is a placeholder for where actual data fetching would occur
+            const simulatedBooking = {
+                id: bookingId,
+                busRoute: 'Nairobi - Mombasa',
+                busTime: '08:00 AM',
+                travelDate: '2025-07-15',
+                seatNumber: 'A1',
+                price: 2500.00,
+                passengerName: 'John Doe',
+                passengerPhone: '+254712345678',
+                passengerEmail: 'john.doe@example.com',
+                status: 'pending', // Can be 'pending' or 'paid'
+                bookingDate: '2025-07-01',
+                passengerID: '12345678',
+                passengerGender: 'Male',
+                busId: 'BUS001'
+            };
+
+            currentBookingData = simulatedBooking; // Store the fetched booking for other functions
+
+            // Update booking details display
+            bookingReferenceSpan.textContent = currentBookingData.id;
+            document.getElementById('displayRoute').textContent = `${currentBookingData.busRoute}`;
+            document.getElementById('displayTime').textContent = `${currentBookingData.busTime}`;
+            document.getElementById('displayDate').textContent = `${currentBookingData.travelDate}`;
+            document.getElementById('displaySeat').textContent = `${currentBookingData.seatNumber}`;
+            document.getElementById('displayPrice').textContent = `Ksh ${currentBookingData.price.toFixed(2)}`;
+            document.getElementById('displayName').textContent = `${currentBookingData.passengerName}`;
+            document.getElementById('displayPhone').textContent = `${currentBookingData.passengerPhone}`;
+            document.getElementById('displayEmail').textContent = `${currentBookingData.passengerEmail}`;
+
+            // Update status badge
+            statusBadgeSpan.textContent = currentBookingData.status.toUpperCase();
+            statusBadgeSpan.className = 'status-badge';
+            if (currentBookingData.status === 'paid') {
+                statusBadgeSpan.classList.add('paid');
+                payNowBtn.style.display = 'none';
+                downloadTicketBtn.style.display = 'block';
+                paymentInfoDiv.style.display = 'none'; // Hide payment info if already paid
+            } else {
+                statusBadgeSpan.classList.add('pending');
+                payNowBtn.style.display = 'block';
+                downloadTicketBtn.style.display = 'none';
+                paymentInfoDiv.style.display = 'block'; // Show payment info if pending
             }
         });
 
         async function simulateSTKPush() {
             if (!currentBookingData) {
-                showCustomAlert('Booking data not loaded. Please refresh the page.');
+                alert('Booking data not loaded. Please refresh the page.');
                 return;
             }
 
             if (currentBookingData.status === 'paid') {
-                showCustomAlert('This booking has already been paid for.');
+                alert('This booking has already been paid for.');
                 return;
             }
 
-            if (!currentBookingData.passenger_phone || !currentBookingData.price) {
-                showCustomAlert('Phone number or price missing for STK push. Cannot proceed. Please ensure your phone number and price are correctly saved with the booking.');
+            if (!currentBookingData.passengerPhone || !currentBookingData.price) {
+                alert('Phone number or price missing for STK push. Cannot proceed. Please ensure your phone number and price are correctly saved with the booking.');
                 return;
             }
 
-            const confirmPayment = await showCustomConfirm(`Initiating M-Pesa STK Push to ${currentBookingData.passenger_phone} for Ksh ${currentBookingData.price.toFixed(2)}. Please check your phone for the prompt. (Click OK to simulate successful payment)`);
+            const confirmPayment = confirm(`Initiating M-Pesa STK Push to ${currentBookingData.passengerPhone} for Ksh ${currentBookingData.price.toFixed(2)}. Please check your phone for the prompt. (Click OK to simulate successful payment)`);
 
             if (confirmPayment) {
-                try {
-                    // Update booking status to 'paid' in Firebase
-                    const bookingDocRef = doc(firebaseDb, "bookings", currentBookingData.id);
-                    await updateDoc(bookingDocRef, {
-                        status: 'paid',
-                        last_updated: new Date().toISOString()
-                    });
-
-                    showCustomAlert('Payment successful! Your booking status has been updated to PAID. You can now download your ticket.');
-                    window.location.reload(); // Refresh to reflect updated status and enable download
-                } catch (error) {
-                    console.error("Error updating booking status:", error.message);
-                    showCustomAlert('Payment simulation failed: Could not update booking status. Please contact support.');
-                    return;
-                }
+                // Simulate successful payment: In a real app, this would involve a backend call
+                // and then updating the booking status in your database.
+                // For this demonstration, we just update the local status and refresh.
+                currentBookingData.status = 'paid';
+                alert('Payment successful! Your booking status has been updated to PAID. You can now download your ticket.');
+                window.location.reload(); // Refresh to reflect updated status and enable download
             } else {
-                showCustomAlert('STK Push cancelled or failed. Please try again or contact support.');
+                alert('STK Push cancelled or failed. Please try again or contact support.');
             }
         }
 
-        async function generatePDF() {
+        function generatePDF() {
             if (!currentBookingData) {
-                showCustomAlert('Booking data not loaded. Please refresh the page.');
+                alert('Booking data not loaded. Please refresh the page.');
                 return;
             }
 
             if (currentBookingData.status !== 'paid') {
-                showCustomAlert('Ticket can only be downloaded after payment is confirmed.');
+                alert('Ticket can only be downloaded after payment is confirmed.');
                 return;
             }
 
@@ -465,43 +453,48 @@
             const lineHeight = 7;
             const leftMargin = 20;
 
-            // Define colors (matching CSS variables, directly from the CSS in the HTML)
-            const primaryColor = '#002d6b';
-            const accentColor = '#c69214';
-            const darkTextColor = '#1a1a1a';
-            const secondaryTextColor = '#555';
+            doc.setFontSize(22);
+            doc.text("Prince Alex Travel Services - E-Ticket", leftMargin, y);
+            y += 15;
 
+            doc.setFontSize(16);
+            doc.text("Booking Confirmation", leftMargin, y);
+            y += 10;
 
-            // --- 1. Header with Logo and QR Code ---
-            // Add Logo
-            const img = new Image();
-            img.src = 'mylogo.png'; // Ensure this path is correct
-            await new Promise((resolve, reject) => {
-                img.onload = () => resolve();
-                img.onerror = () => {
-                    console.error("Error loading logo image: mylogo.png. Please ensure the file exists and the path is correct.");
-                    // Optionally, you can add a fallback or skip adding the image
-                    resolve(); // Resolve even on error to allow PDF generation to continue
-                };
-            });
-            if (img.complete && img.naturalWidth !== 0) { // Check if image loaded successfully
-                doc.addImage(img, 'PNG', 15, y, 40, 40); // x, y, width, height
-            } else {
-                console.warn("Logo image not loaded, skipping addition to PDF.");
-            }
+            doc.setFontSize(12);
+            doc.text(`Booking Reference: ${currentBookingData.id}`, leftMargin, y); y += lineHeight;
+            doc.text(`Status: ${currentBookingData.status.toUpperCase()}`, leftMargin, y); y += lineHeight;
+            doc.text(`Booking Date: ${currentBookingData.bookingDate}`, leftMargin, y); y += 15;
 
-
-            // Title
-            doc.setFontSize(24);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Prince Alex Travel Services", 60, y + 15);
             doc.setFontSize(14);
-            doc.setFont("helvetica", "normal");
-            doc.text("E-Ticket & Booking Confirmation", 60, y + 25);
+            doc.text("Passenger Details:", leftMargin, y);
+            y += 10;
+            doc.setFontSize(12);
+            doc.text(`Name: ${currentBookingData.passengerName}`, leftMargin, y); y += lineHeight;
+            doc.text(`ID/Passport: ${currentBookingData.passengerID || 'N/A'}`, leftMargin, y); y += lineHeight;
+            doc.text(`Gender: ${currentBookingData.passengerGender || 'N/A'}`, leftMargin, y); y += lineHeight;
+            doc.text(`Phone: ${currentBookingData.passengerPhone}`, leftMargin, y); y += lineHeight;
+            doc.text(`Email: ${currentBookingData.passengerEmail}`, leftMargin, y); y += 15;
 
-            // Generate QR Code
-            const qrCodeData = currentBookingData.booking_ref; // Data to encode in QR code
+            doc.setFontSize(14);
+            doc.text("Journey Details:", leftMargin, y);
+            y += 10;
+            doc.setFontSize(12);
+            doc.text(`Route: ${currentBookingData.busRoute}`, leftMargin, y); y += lineHeight;
+            doc.text(`Travel Date: ${currentBookingData.travelDate}`, leftMargin, y); y += lineHeight;
+            doc.text(`Departure Time: ${currentBookingData.busTime}`, leftMargin, y); y += lineHeight;
+            doc.text(`Bus ID: ${currentBookingData.busId || 'N/A'}`, leftMargin, y); y += lineHeight;
+            doc.text(`Seat Number: ${currentBookingData.seatNumber}`, leftMargin, y); y += 15;
+
+            doc.setFontSize(14);
+            doc.text("Payment Summary:", leftMargin, y);
+            y += 10;
+            doc.setFontSize(12);
+            doc.text(`Amount: Ksh ${currentBookingData.price.toFixed(2)}`, leftMargin, y); y += lineHeight;
+            doc.text(`Payment Status: ${currentBookingData.status.toUpperCase()}`, leftMargin, y); y += 15;
+
+            // QR Code Generation
+            const qrCodeData = currentBookingData.id; // Data to encode in QR code
             const qrCodeSize = 50; // Size of the QR code image
 
             // Create a temporary div to render the QR code
@@ -509,165 +502,39 @@
             qrCodeDiv.style.display = 'none'; // Keep it hidden
             document.body.appendChild(qrCodeDiv);
 
-            let qrCodeImgData = '';
-            try {
-                new QRCode(qrCodeDiv, {
-                    text: qrCodeData,
-                    width: qrCodeSize,
-                    height: qrCodeSize,
-                    colorDark : primaryColor, // Use company color for QR code
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
+            // Generate QR code
+            new QRCode(qrCodeDiv, {
+                text: qrCodeData,
+                width: qrCodeSize,
+                height: qrCodeSize,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
 
-                // Wait a tiny bit for QR code to render to canvas/img
-                await new Promise(resolve => setTimeout(resolve, 50));
-                qrCodeImgData = qrCodeDiv.querySelector('canvas').toDataURL("image/png");
+            // Wait for a short moment for the QR code to render (it's async)
+            setTimeout(() => {
+                const qrCodeImg = qrCodeDiv.querySelector('img') || qrCodeDiv.querySelector('canvas');
+                if (qrCodeImg) {
+                    const qrCodeDataURL = qrCodeImg.tagName === 'IMG' ? qrCodeImg.src : qrCodeImg.toDataURL('image/png');
 
-            } catch (qrError) {
-                console.error("Error generating QR code:", qrError);
-            } finally {
+                    // Add QR code to PDF
+                    // Position it on the right side, adjust coordinates as needed
+                    const imgX = doc.internal.pageSize.width - leftMargin - qrCodeSize;
+                    const imgY = 20; // Top right, similar to title
+                    doc.addImage(qrCodeDataURL, 'PNG', imgX, imgY, qrCodeSize, qrCodeSize);
+                }
+
                 // Clean up the temporary div
                 document.body.removeChild(qrCodeDiv);
-            }
 
-            if (qrCodeImgData) {
-                 doc.addImage(qrCodeImgData, 'PNG', 160, y, 40, 40); // x, y, width, height
-            } else {
-                console.warn("QR Code image data not generated, skipping addition to PDF.");
-            }
-
-
-            y += 55; // Move Y position down after header content
-
-            // --- Drawing the main ticket body container ---
-            doc.setDrawColor(primaryColor);
-            doc.setLineWidth(1.5);
-            doc.line(10, y, 200, y); // Horizontal line below header
-
-            y += 10; // Space after line
-
-            // --- 2. Booking Reference (Prominent) ---
-            doc.setFontSize(18);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(accentColor);
-            doc.text(`Booking Reference: ${currentBookingData.booking_ref}`, 20, y);
-            y += 15;
-
-            // --- 3. Passenger Details Section ---
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Passenger Details:", 20, y);
-            y += 8;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text(`Name: ${currentBookingData.passenger_name}`, 20, y); y += lineHeight;
-            doc.text(`Phone: ${currentBookingData.passenger_phone}`, 20, y); y += lineHeight;
-            doc.text(`Email: ${currentBookingData.passenger_email || 'N/A'}`, 20, y); y += 12;
-
-            // --- 4. Journey Details Section ---
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Journey Details:", 20, y);
-            y += 8;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text(`Route: ${currentBookingData.bus_route}`, 20, y); y += lineHeight;
-            doc.text(`Travel Date: ${currentBookingData.travel_date}`, 20, y); y += lineHeight;
-            doc.text(`Departure Time: ${currentBookingData.bus_time}`, 20, y); y += lineHeight;
-            doc.text(`Bus ID: ${currentBookingData.bus_id || 'N/A'}`, 20, y); y += lineHeight;
-            doc.text(`Seat Number: ${currentBookingData.seat_number}`, 20, y); y += 12;
-
-            // --- 5. Payment Summary Section ---
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Payment Summary:", 20, y);
-            y += 8;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text(`Amount: Ksh ${currentBookingData.price.toFixed(2)}`, 20, y); y += lineHeight;
-            doc.text(`Payment Status: ${currentBookingData.status.toUpperCase()}`, 20, y); y += 12;
-            doc.text(`Booking Date: ${new Date(currentBookingData.booking_date).toLocaleDateString()}`, 20, y); y += 12;
-
-            // --- 6. Special Note for PENDING Status ---
-            if (currentBookingData.status.toUpperCase() === 'PENDING') {
                 doc.setFontSize(10);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(200, 0, 0); // Red color for warning
-                doc.text("NOTE: This ticket is PENDING PAYMENT. Please complete payment to validate.", 20, y);
-                y += 5;
-                doc.text("Contact support for assistance: +254 717 384 875", 20, y);
-                doc.setTextColor(darkTextColor); // Reset color
-                y += 15;
-            }
+                doc.setTextColor(100);
+                doc.text("Thank you for choosing Prince Alex Travel Services!", leftMargin, y);
+                doc.text("For support, contact senerwaalex@gmail.com or +254 717 384 875", leftMargin, y + 5);
 
-            // --- 7. Footer ---
-            y = doc.internal.pageSize.height - 25; // Position footer from bottom
-            doc.setDrawColor(primaryColor);
-            doc.setLineWidth(0.5);
-            doc.line(10, y, 200, y); // Horizontal line above footer
-            y += 5;
-
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text("Prince Alex Travel Services | Email: senerwaalex@gmail.com | Phone: +254 717 384 875", doc.internal.pageSize.width / 2, y, { align: "center" });
-            y += 5;
-            doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, y, { align: "center" });
-
-
-            doc.save(`ticket-${currentBookingData.booking_ref}.pdf`);
-        }
-
-        // Custom Alert/Confirm Modals (replaces browser's alert/confirm)
-        function showCustomAlert(message) {
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
-                align-items: center; z-index: 1001;
-            `;
-            modal.innerHTML = `
-                <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                    <p style="margin-bottom: 20px; font-size: 1.1em;">${message}</p>
-                    <button style="background-color: var(--primary-color); color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.parentNode.parentNode.remove()">OK</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        function showCustomConfirm(message) {
-            return new Promise(resolve => {
-                const modal = document.createElement('div');
-                modal.style.cssText = `
-                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                    background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
-                    align-items: center; z-index: 1001;
-                `;
-                modal.innerHTML = `
-                    <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                        <p style="margin-bottom: 20px; font-size: 1.1em;">${message}</p>
-                        <button id="confirmYes" style="background-color: var(--success-color); color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Yes</button>
-                        <button id="confirmNo" style="background-color: var(--error-color); color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">No</button>
-                    </div>
-                `;
-                document.body.appendChild(modal);
-
-                document.getElementById('confirmYes').onclick = () => {
-                    modal.remove();
-                    resolve(true);
-                };
-                document.getElementById('confirmNo').onclick = () => {
-                    modal.remove();
-                    resolve(false);
-                };
-            });
+                doc.save(`ticket-${currentBookingData.id}.pdf`);
+            }, 100); // Small delay to ensure QR code renders
         }
     </script>
 </body>
