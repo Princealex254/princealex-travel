@@ -10,7 +10,8 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Added 'collection', 'query', and 'where' for querying by field
+        import { getFirestore, doc, getDoc, collection, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -30,6 +31,10 @@
         window.firebaseDb = db;
         window.doc = doc;
         window.getDoc = getDoc;
+        // Expose new functions for querying
+        window.collection = collection;
+        window.query = query;
+        window.where = where;
     </script>
     <style>
         /* Re-use CSS from dashboard/booking-success for consistency */
@@ -450,6 +455,9 @@
             const mobileMenuToggle = document.getElementById('mobile-menu'); // Get hamburger icon
             const mainNav = document.getElementById('main-nav'); // Get nav links container
 
+            // Variable to store the fetched booking data, including its Firestore document ID
+            let fetchedBookingData = null;
+
 
             lookupTicketBtn.addEventListener('click', loadBookingDetails);
             downloadTicketBtn.addEventListener('click', downloadTicket);
@@ -475,6 +483,7 @@
                 const bookingRef = bookingRefInput.value.trim();
                 messageElem.textContent = ''; // Clear previous messages
                 ticketDetailsSection.style.display = 'none'; // Hide details section initially
+                fetchedBookingData = null; // Clear previous data
 
                 if (!bookingRef) {
                     messageElem.textContent = 'Please enter a booking reference.';
@@ -486,13 +495,18 @@
                 messageElem.style.color = '#002d6b'; // Set to primary color for searching status
 
                 try {
-                    // Fetch booking data from Firebase
-                    const bookingDocRef = doc(firebaseDb, "bookings", bookingRef.toUpperCase()); // Assuming booking IDs are stored in uppercase
-                    const docSnap = await getDoc(bookingDocRef);
+                    // Query the 'bookings' collection for a document where 'booking_ref' field matches the input
+                    const bookingsCollectionRef = collection(firebaseDb, "bookings");
+                    const q = query(bookingsCollectionRef, where("booking_ref", "==", bookingRef.toUpperCase())); // Assuming booking_ref is stored in uppercase
+                    const querySnapshot = await getDocs(q); // Use getDocs for a query
 
-                    if (docSnap.exists()) {
+                    if (!querySnapshot.empty) {
+                        // Assuming booking_ref is unique, there should be only one document
+                        const docSnap = querySnapshot.docs[0];
                         const data = docSnap.data();
-                        document.getElementById('refId').textContent = data.booking_ref; // Use booking_ref
+                        fetchedBookingData = { id: docSnap.id, ...data }; // Store the document ID along with data
+
+                        document.getElementById('refId').textContent = data.booking_ref;
                         document.getElementById('passengerName').textContent = data.passenger_name;
                         document.getElementById('passengerPhone').textContent = data.passenger_phone;
                         document.getElementById('passengerEmail').textContent = data.passenger_email || 'N/A';
@@ -520,190 +534,180 @@
             }
 
             async function downloadTicket() {
-                try {
-                    const bookingRef = document.getElementById('refId').textContent;
-                    // Fetch the actual booking data again to ensure consistency and avoid relying on displayed text
-                    const bookingDocRef = doc(firebaseDb, "bookings", bookingRef.toUpperCase()); // Use the Firestore ID from the displayed refId
-                    const docSnap = await getDoc(bookingDocRef);
-
-                    if (!docSnap.exists()) {
-                        console.error("Error fetching booking for PDF generation: No such document!");
-                        showCustomAlert("Failed to retrieve booking details for PDF. Please try again.");
-                        return;
-                    }
-                    const booking = { id: docSnap.id, ...docSnap.data() }; // Get data including Firestore ID
-
-                    if (booking.status !== 'paid') {
-                        showCustomAlert('Ticket can only be downloaded after payment is confirmed.');
-                        return;
-                    }
-
-                    const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
-
-                    // Define colors (matching CSS variables, directly from the CSS in the HTML)
-                    const primaryColor = '#002d6b';
-                    const accentColor = '#c69214';
-                    const darkTextColor = '#1a1a1a';
-                    const secondaryTextColor = '#555';
-
-                    let yPos = 20; // Initial Y position for content
-
-                    // --- 1. Header with Logo and QR Code ---
-                    // Add Logo
-                    const img = new Image();
-                    img.src = 'mylogo.png'; // Ensure this path is correct
-                    await new Promise((resolve, reject) => {
-                        img.onload = () => resolve();
-                        img.onerror = () => {
-                            console.error("Error loading logo image: Mylogo.png. Please ensure the file exists and the path is correct.");
-                            // Optionally, you can add a fallback or skip adding the image
-                            resolve(); // Resolve even on error to allow PDF generation to continue
-                        };
-                    });
-                    if (img.complete && img.naturalWidth !== 0) { // Check if image loaded successfully
-                        doc.addImage(img, 'PNG', 15, yPos, 40, 40); // x, y, width, height
-                    } else {
-                        console.warn("Logo image not loaded, skipping addition to PDF.");
-                    }
-
-
-                    // Title
-                    doc.setFontSize(24);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(primaryColor);
-                    doc.text("Prince Alex Travel Services", 60, yPos + 15);
-                    doc.setFontSize(14);
-                    doc.setFont("helvetica", "normal");
-                    doc.text("E-Ticket & Booking Confirmation", 60, yPos + 25);
-
-                    // Generate QR Code
-                    const qrCodeData = booking.booking_ref; // Data to encode in QR code
-                    // Create a temporary div to render QR code into
-                    const qrCodeContainer = document.createElement('div');
-                    qrCodeContainer.style.display = 'none'; // Hide it
-                    document.body.appendChild(qrCodeContainer);
-
-                    let qrCodeImgData = '';
-                    try {
-                        new QRCode(qrCodeContainer, {
-                            text: qrCodeData,
-                            width: 80,
-                            height: 80,
-                            colorDark : primaryColor, // Use company color for QR code
-                            colorLight : "#ffffff",
-                            correctLevel : QRCode.CorrectLevel.H
-                        });
-
-                        // Wait a tiny bit for QR code to render to canvas/img
-                        await new Promise(resolve => setTimeout(resolve, 50));
-                        qrCodeImgData = qrCodeContainer.querySelector('canvas').toDataURL("image/png");
-
-                    } catch (qrError) {
-                        console.error("Error generating QR code:", qrError);
-                    } finally {
-                        // Clean up the temporary div
-                        document.body.removeChild(qrCodeContainer);
-                    }
-
-                    if (qrCodeImgData) {
-                         doc.addImage(qrCodeImgData, 'PNG', 160, yPos, 40, 40); // x, y, width, height
-                    } else {
-                        console.warn("QR Code image data not generated, skipping addition to PDF.");
-                    }
-
-
-                    yPos += 55; // Move Y position down after header content
-
-                    // --- Drawing the main ticket body container ---
-                    doc.setDrawColor(primaryColor);
-                    doc.setLineWidth(1.5);
-                    doc.line(10, yPos, 200, yPos); // Horizontal line below header
-
-                    yPos += 10; // Space after line
-
-                    // --- 2. Booking Reference (Prominent) ---
-                    doc.setFontSize(18);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(accentColor);
-                    doc.text(`Booking Reference: ${booking.booking_ref}`, 20, yPos);
-                    yPos += 15;
-
-                    // --- 3. Passenger Details Section ---
-                    doc.setFontSize(14);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(primaryColor);
-                    doc.text("Passenger Details:", 20, yPos);
-                    yPos += 8;
-                    doc.setFontSize(12);
-                    doc.setFont("helvetica", "normal");
-                    doc.setTextColor(darkTextColor);
-                    doc.text(`Name: ${booking.passenger_name}`, 20, yPos); yPos += 7;
-                    doc.text(`Phone: ${booking.passenger_phone}`, 20, yPos); yPos += 7;
-                    doc.text(`Email: ${booking.passenger_email || 'N/A'}`, 20, yPos); yPos += 12;
-
-                    // --- 4. Journey Details Section ---
-                    doc.setFontSize(14);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(primaryColor);
-                    doc.text("Journey Details:", 20, yPos);
-                    yPos += 8;
-                    doc.setFontSize(12);
-                    doc.setFont("helvetica", "normal");
-                    doc.setTextColor(darkTextColor);
-                    doc.text(`Route: ${booking.bus_route}`, 20, yPos); yPos += 7;
-                    doc.text(`Travel Date: ${booking.travel_date}`, 20, yPos); yPos += 7;
-                    doc.text(`Departure Time: ${booking.bus_time}`, 20, yPos); yPos += 7;
-                    doc.text(`Bus ID: ${booking.bus_id}`, 20, yPos); yPos += 7;
-                    doc.text(`Seat Number: ${booking.seat_number}`, 20, yPos); yPos += 12;
-
-                    // --- 5. Payment Summary Section ---
-                    doc.setFontSize(14);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(primaryColor);
-                    doc.text("Payment Summary:", 20, yPos);
-                    yPos += 8;
-                    doc.setFontSize(12);
-                    doc.setFont("helvetica", "normal");
-                    doc.setTextColor(darkTextColor);
-                    doc.text(`Amount: Ksh ${booking.price.toFixed(2)}`, 20, yPos); yPos += 7;
-                    doc.text(`Payment Status: ${booking.status.toUpperCase()}`, 20, yPos); yPos += 12;
-                    doc.text(`Booking Date: ${new Date(booking.booking_date).toLocaleDateString()}`, 20, yPos); yPos += 12;
-
-                    // --- 6. Special Note for PENDING Status ---
-                    if (booking.status.toUpperCase() === 'PENDING') {
-                        doc.setFontSize(10);
-                        doc.setFont("helvetica", "bold");
-                        doc.setTextColor(200, 0, 0); // Red color for warning
-                        doc.text("NOTE: This ticket is PENDING PAYMENT. Please complete payment to validate.", 20, yPos);
-                        yPos += 5;
-                        doc.text("Contact support for assistance: +254 717 384 875", 20, yPos);
-                        doc.setTextColor(darkTextColor); // Reset color
-                        yPos += 15;
-                    }
-
-                    // --- 7. Footer ---
-                    yPos = doc.internal.pageSize.height - 25; // Position footer from bottom
-                    doc.setDrawColor(primaryColor);
-                    doc.setLineWidth(0.5);
-                    doc.line(10, yPos, 200, yPos); // Horizontal line above footer
-                    yPos += 5;
-
-                    doc.setFontSize(9);
-                    doc.setFont("helvetica", "normal");
-                    doc.setTextColor(darkTextColor);
-                    doc.text("Prince Alex Travel Services | Email: senerwaalex@gmail.com | Phone: +254 717 384 875", doc.internal.pageSize.width / 2, yPos, { align: "center" });
-                    yPos += 5;
-                    doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
-
-
-                    doc.save(`PrinceAlex_Ticket_${booking.booking_ref}.pdf`);
-                    console.log("PDF download initiated successfully.");
-
-                } catch (error) {
-                    console.error("Error during PDF generation:", error);
-                    showCustomAlert("Failed to generate PDF. Please try again or contact support.");
+                if (!fetchedBookingData) {
+                    showCustomAlert("No ticket details available to download. Please search for a ticket first.");
+                    return;
                 }
+
+                const booking = fetchedBookingData; // Use the already fetched data
+
+                if (booking.status !== 'paid') {
+                    showCustomAlert('Ticket can only be downloaded after payment is confirmed.');
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                // Define colors (matching CSS variables, directly from the CSS in the HTML)
+                const primaryColor = '#002d6b';
+                const accentColor = '#c69214';
+                const darkTextColor = '#1a1a1a';
+                const secondaryTextColor = '#555';
+
+                let yPos = 20; // Initial Y position for content
+
+                // --- 1. Header with Logo and QR Code ---
+                // Add Logo
+                const img = new Image();
+                img.src = 'mylogo.png'; // Ensure this path is correct
+                await new Promise((resolve, reject) => {
+                    img.onload = () => resolve();
+                    img.onerror = () => {
+                        console.error("Error loading logo image: Mylogo.png. Please ensure the file exists and the path is correct.");
+                        // Optionally, you can add a fallback or skip adding the image
+                        resolve(); // Resolve even on error to allow PDF generation to continue
+                    };
+                });
+                if (img.complete && img.naturalWidth !== 0) { // Check if image loaded successfully
+                    doc.addImage(img, 'PNG', 15, yPos, 40, 40); // x, y, width, height
+                } else {
+                    console.warn("Logo image not loaded, skipping addition to PDF.");
+                }
+
+
+                // Title
+                doc.setFontSize(24);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(primaryColor);
+                doc.text("Prince Alex Travel Services", 60, yPos + 15);
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "normal");
+                doc.text("E-Ticket & Booking Confirmation", 60, yPos + 25);
+
+                // Generate QR Code
+                const qrCodeData = booking.booking_ref; // Data to encode in QR code
+                // Create a temporary div to render QR code into
+                const qrCodeContainer = document.createElement('div');
+                qrCodeContainer.style.display = 'none'; // Hide it
+                document.body.appendChild(qrCodeContainer);
+
+                let qrCodeImgData = '';
+                try {
+                    new QRCode(qrCodeContainer, {
+                        text: qrCodeData,
+                        width: 80,
+                        height: 80,
+                        colorDark : primaryColor, // Use company color for QR code
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+
+                    // Wait a tiny bit for QR code to render to canvas/img
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    qrCodeImgData = qrCodeContainer.querySelector('canvas').toDataURL("image/png");
+
+                } catch (qrError) {
+                    console.error("Error generating QR code:", qrError);
+                } finally {
+                    // Clean up the temporary div
+                    document.body.removeChild(qrCodeContainer);
+                }
+
+                if (qrCodeImgData) {
+                     doc.addImage(qrCodeImgData, 'PNG', 160, yPos, 40, 40); // x, y, width, height
+                } else {
+                    console.warn("QR Code image data not generated, skipping addition to PDF.");
+                }
+
+
+                yPos += 55; // Move Y position down after header content
+
+                // --- Drawing the main ticket body container ---
+                doc.setDrawColor(primaryColor);
+                doc.setLineWidth(1.5);
+                doc.line(10, yPos, 200, yPos); // Horizontal line below header
+
+                yPos += 10; // Space after line
+
+                // --- 2. Booking Reference (Prominent) ---
+                doc.setFontSize(18);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(accentColor);
+                doc.text(`Booking Reference: ${booking.booking_ref}`, 20, yPos);
+                yPos += 15;
+
+                // --- 3. Passenger Details Section ---
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(primaryColor);
+                doc.text("Passenger Details:", 20, yPos);
+                yPos += 8;
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(darkTextColor);
+                doc.text(`Name: ${booking.passenger_name}`, 20, yPos); yPos += 7;
+                doc.text(`Phone: ${booking.passenger_phone}`, 20, yPos); yPos += 7;
+                doc.text(`Email: ${booking.passenger_email || 'N/A'}`, 20, yPos); yPos += 12;
+
+                // --- 4. Journey Details Section ---
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(primaryColor);
+                doc.text("Journey Details:", 20, yPos);
+                yPos += 8;
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(darkTextColor);
+                doc.text(`Route: ${booking.bus_route}`, 20, yPos); yPos += 7;
+                doc.text(`Travel Date: ${booking.travel_date}`, 20, yPos); yPos += 7;
+                doc.text(`Departure Time: ${booking.bus_time}`, 20, yPos); yPos += 7;
+                doc.text(`Bus ID: ${booking.bus_id}`, 20, yPos); yPos += 7;
+                doc.text(`Seat Number: ${booking.seat_number}`, 20, yPos); yPos += 12;
+
+                // --- 5. Payment Summary Section ---
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(primaryColor);
+                doc.text("Payment Summary:", 20, yPos);
+                yPos += 8;
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(darkTextColor);
+                doc.text(`Amount: Ksh ${booking.price.toFixed(2)}`, 20, yPos); yPos += 7;
+                doc.text(`Payment Status: ${booking.status.toUpperCase()}`, 20, yPos); yPos += 12;
+                doc.text(`Booking Date: ${new Date(booking.booking_date).toLocaleDateString()}`, 20, yPos); yPos += 12;
+
+                // --- 6. Special Note for PENDING Status ---
+                if (booking.status.toUpperCase() === 'PENDING') {
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(200, 0, 0); // Red color for warning
+                    doc.text("NOTE: This ticket is PENDING PAYMENT. Please complete payment to validate.", 20, yPos);
+                    yPos += 5;
+                    doc.text("Contact support for assistance: +254 717 384 875", 20, yPos);
+                    doc.setTextColor(darkTextColor); // Reset color
+                    yPos += 15;
+                }
+
+                // --- 7. Footer ---
+                yPos = doc.internal.pageSize.height - 25; // Position footer from bottom
+                doc.setDrawColor(primaryColor);
+                doc.setLineWidth(0.5);
+                doc.line(10, yPos, 200, yPos); // Horizontal line above footer
+                yPos += 5;
+
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(darkTextColor);
+                doc.text("Prince Alex Travel Services | Email: senerwaalex@gmail.com | Phone: +254 717 384 875", doc.internal.pageSize.width / 2, yPos, { align: "center" });
+                yPos += 5;
+                doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
+
+
+                doc.save(`PrinceAlex_Ticket_${booking.booking_ref}.pdf`);
+                console.log("PDF download initiated successfully.");
+
             }
 
             // Custom Alert (replaces browser's alert)
