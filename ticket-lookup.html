@@ -497,7 +497,8 @@
                 try {
                     // Query the 'bookings' collection for a document where 'booking_ref' field matches the input
                     const bookingsCollectionRef = collection(firebaseDb, "bookings");
-                    const q = query(bookingsCollectionRef, where("booking_ref", "==", bookingRef.toUpperCase())); // Assuming booking_ref is stored in uppercase
+                    // Removed .toUpperCase() here to match the exact case as stored in Firestore
+                    const q = query(bookingsCollectionRef, where("booking_ref", "==", bookingRef));
                     const querySnapshot = await getDocs(q); // Use getDocs for a query
 
                     if (!querySnapshot.empty) {
@@ -527,7 +528,7 @@
                         messageElem.style.color = 'red';
                     }
                 } catch (error) {
-                    console.error("An unexpected error occurred:", error);
+                    console.error("An unexpected error occurred:", error); // Log the actual error for debugging
                     messageElem.textContent = 'An unexpected error occurred. Please try again later.';
                     messageElem.style.color = 'red';
                 }
