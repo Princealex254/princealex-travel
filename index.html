@@ -1793,7 +1793,6 @@
                             if (busData && !busData.startsWith("No buses found")) {
                                 additionalContext = `\n\nHere is relevant bus schedule information for ${fromLocation || 'any'} to ${toLocation || 'any'} on ${todayDate}:\n${busData}\n\n`;
                             } else {
-                                // This is the line that was modified based on your request
                                 additionalContext = `\n\nI don't have that specific bus information right now for ${fromLocation || 'your specified origin'} to ${toLocation || 'your specified destination'} on ${todayDate}. Please contact our customer support at senerwaalex@gmail.com or call +254 717 384 875 for further assistance.`;
                             }
                         } catch (error) {
@@ -1850,9 +1849,19 @@ ${additionalContext}`;
                         // Add AI response to chat history
                         chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
                     } else {
-                        // More specific error message if candidates are missing or empty
-                        appendMessage("Sorry, I couldn't get a meaningful response from the AI. The response structure was unexpected. Please try again.", 'bot');
-                        console.error("AI response structure unexpected or empty candidates:", result);
+                        // Check for prompt feedback (e.g., safety issues)
+                        if (result.promptFeedback && result.promptFeedback.blockReason) {
+                            appendMessage(`Sorry, I cannot respond to that query. It was blocked due to: ${result.promptFeedback.blockReason}. Please try rephrasing your question.`, 'bot');
+                            console.warn("Gemini API blocked response:", result.promptFeedback);
+                        } else if (result.candidates && result.candidates.length > 0 && result.candidates[0].finishReason) {
+                            // Check for finish reason if no content was generated
+                            appendMessage(`Sorry, I couldn't generate a complete response for that. Reason: ${result.candidates[0].finishReason}. Please try again.`, 'bot');
+                            console.warn("Gemini API finished without content:", result.candidates[0].finishReason);
+                        } else {
+                            // Generic error if structure is unexpected
+                            appendMessage("Sorry, I couldn't get a meaningful response from the AI. The response structure was unexpected. Please try again.", 'bot');
+                            console.error("AI response structure unexpected or empty candidates:", result);
+                        }
                     }
                 } catch (error) {
                     // Remove typing indicator on error as well
