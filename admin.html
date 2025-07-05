@@ -442,13 +442,22 @@
         }
         .aisle-space {
             /* This creates the visual gap for the aisle */
-            background-color: #f0f2f5; /* Match body background or transparent */
+            background-color: transparent; /* Changed to transparent for a cleaner look */
             border: none;
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 0.7em;
             color: #666;
+        }
+        .driver-area {
+            grid-column: 1 / -1; /* Span all columns */
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #002d6b;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
         }
         .modal-content input, .modal-content select {
             width: calc(100% - 40px);
@@ -1545,6 +1554,13 @@
 
             seatGrid.style.gridTemplateColumns = gridColumns;
 
+            // Add a "Front (Driver)" indicator
+            const driverArea = document.createElement('div');
+            driverArea.classList.add('driver-area');
+            driverArea.textContent = 'Front (Driver)';
+            seatGrid.appendChild(driverArea);
+
+
             // Setup real-time listener for bookings for this specific bus and date
             const bookingsRef = collection(firebaseDb, "bookings");
             const q = query(bookingsRef, 
@@ -1561,13 +1577,26 @@
                 });
 
                 // Re-render seats based on the latest bookedSeatsForThisTrip
-                seatGrid.innerHTML = ""; // Clear current seats
+                // Clear all seats except the driver area (if already present)
+                const existingDriverArea = seatGrid.querySelector('.driver-area');
+                seatGrid.innerHTML = '';
+                if (existingDriverArea) {
+                    seatGrid.appendChild(existingDriverArea); // Re-add the driver area
+                } else {
+                    // This case should ideally not happen if driverArea is added once
+                    const newDriverArea = document.createElement('div');
+                    newDriverArea.classList.add('driver-area');
+                    newDriverArea.textContent = 'Front (Driver)';
+                    seatGrid.appendChild(newDriverArea);
+                }
+
+
                 let currentSeatNum = 1;
                 // Calculate rows needed, ensuring we don't go over totalSeats
                 const seatsPerRowExcludingAisle = seatsInLeftRow + seatsInRightRow;
-                const numRows = Math.ceil(totalSeats / seatsPerRowExcludingAisle);
-
-                for (let i = 0; i < numRows; i++) {
+                
+                // Ensure we handle the case where totalSeats is not perfectly divisible
+                while (currentSeatNum <= totalSeats) {
                     // Left side seats
                     for (let j = 0; j < seatsInLeftRow; j++) {
                         if (currentSeatNum <= totalSeats) {
@@ -1584,7 +1613,7 @@
                     // Right side seats
                     for (let j = 0; j < seatsInRightRow; j++) {
                         if (currentSeatNum <= totalSeats) {
-                            createSeatElement(seatDiv, currentSeatNum, bookedSeatsForThisTrip); // FIX: Should be seatGrid, not seatDiv
+                            createSeatElement(seatGrid, currentSeatNum, bookedSeatsForThisTrip); // Corrected: seatGrid instead of seatDiv
                             currentSeatNum++;
                         }
                     }
