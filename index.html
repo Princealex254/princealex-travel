@@ -1808,16 +1808,12 @@
 
 
                 // Construct the full prompt for Gemini
-                const fullPrompt = `You are a helpful AI assistant for Prince Alex Travel. Answer the user's question based on the provided context. If the context does not contain the answer, state that you don't have that specific information but can help with general travel queries. If the user asks to speak to an agent or for human help, provide the contact details directly.
-
-User's query: "${promptText}"
-${additionalContext}`;
-
-                chatHistory.push({ role: "user", parts: [{ text: fullPrompt }] });
+                let chatHistoryForGemini = [];
+                chatHistoryForGemini.push({ role: "user", parts: [{ text: promptText + additionalContext }] });
 
                 try {
-                    const payload = { contents: chatHistory };
-                    const apiKey = ""; // Canvas will automatically provide the API key
+                    const payload = { contents: chatHistoryForGemini };
+                    const apiKey = ""; // Canvas will automatically provide the API key for gemini-2.0-flash
                     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
                     const response = await fetch(apiUrl, {
@@ -1831,7 +1827,7 @@ ${additionalContext}`;
                         const errorBody = await response.text(); // Get raw error body
                         console.error(`Gemini API HTTP Error: ${response.status} ${response.statusText}`, errorBody);
                         typingIndicator.remove();
-                        appendMessage("There was an issue with the AI service. Please try again later. (HTTP Error)", 'bot');
+                        appendMessage(`There was an issue with the AI service. Please try again later. (HTTP Error: ${response.status})`, 'bot');
                         return;
                     }
 
