@@ -1027,8 +1027,7 @@
                     <option>Kisumu</option>
                     <option>Eldoret</option>
                     <option>Mombasa</option>
-                    <option>Nakuru</option>
-                    <option>Kericho</option>
+                    <option>Nakuru</                    <option>Kericho</option>
                     <option>Kakamega</option>
                     <option>Kitale</option>
                     <option>Nyeri</option>
@@ -1124,7 +1123,7 @@
             <button class="chat-close-btn" onclick="toggleChat()">&times;</button>
         </div>
         <div class="chat-body" id="chatBody">
-            <p class="bot-message">Hello! How can I assist you with your travel plans today?</p>
+            <p class="bot-message">Hello! I am your Prince Alex Travel AI Assistant. I can answer general questions about travel or provide information about bus routes if you tell me the origin and destination. How can I assist you today?</p>
         </div>
         <div class="chat-footer">
             <input type="text" placeholder="Type your message..." id="chatInput" />
@@ -1214,13 +1213,30 @@
         async function logout() {
             try {
                 await signOutFirebase(firebaseAuth); // Use the globally exposed signOutFirebase
-                alert('Logged out successfully!');
+                displayCustomMessage('Logged out successfully!');
                 // onAuthStateChanged will handle updating links and currentUser to null
                 window.location.href = 'index.html'; // Redirect to home page after logout
             } catch (error) {
                 console.error('Error logging out:', error.message);
-                alert('Error logging out: ' + error.message);
+                displayCustomMessage('Error logging out: ' + error.message);
             }
+        }
+
+        // Custom message display function (replaces alert and confirm)
+        function displayCustomMessage(message, type = 'alert') {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
+                align-items: center; z-index: 10002; /* Higher than other modals */
+            `;
+            modal.innerHTML = `
+                <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    <p style="margin-bottom: 20px; font-size: 1.1em;">${message}</p>
+                    <button style="background-color: #002d6b; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.parentNode.parentNode.remove()">OK</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
         }
 
 
@@ -1235,7 +1251,7 @@
             resultsContainer.classList.add('active'); // Show results section
 
             if (from === to) {
-                resultsContainer.innerHTML += '<p style="color: red; text-align: center;">Please choose different origin and destination.</p>';
+                displayCustomMessage('Please choose different origin and destination.');
                 return;
             }
 
@@ -1312,7 +1328,7 @@
             const currentAvailableSeats = parseInt(event.target.dataset.availableSeats);
 
             if (currentAvailableSeats <= 0) {
-                alert("Sorry, this bus is fully booked. Please choose another one.");
+                displayCustomMessage("Sorry, this bus is fully booked. Please choose another one.");
                 return;
             }
 
@@ -1370,7 +1386,7 @@
         function redirectToLogin() {
             console.log("redirectToLogin called.");
             closeLoginChoiceModal(); // Close the choice modal
-            alert("Please log in or sign up. You will need to search for your bus again after logging in.");
+            displayCustomMessage("Please log in or sign up. You will need to search for your bus again after logging in.");
             window.location.href = 'login-register.html'; // Redirect to login page
         }
 
@@ -1515,7 +1531,7 @@
                 }
             }, (error) => {
                 console.error('Error fetching booked seats in real-time:', error.message);
-                alert('Error fetching seat availability. Please try again.');
+                displayCustomMessage('Error fetching seat availability. Please try again.');
             });
         }
 
@@ -1529,22 +1545,59 @@
             }
         }
 
+        // Helper function for email validation
+        function isValidEmail(email) {
+            const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            return re.test(String(email).toLowerCase());
+        }
+
+        // Helper function for phone number validation
+        function isValidPhoneNumber(phone) {
+            // This regex allows for numbers, spaces, hyphens, and can start with a '+'
+            const re = /^\+?[0-9\s-]{7,20}$/; 
+            return re.test(String(phone));
+        }
 
         async function confirmBooking() {
-            const name = document.getElementById("passengerName").value;
-            const idNumber = document.getElementById("passengerID").value;
+            const name = document.getElementById("passengerName").value.trim();
+            const idNumber = document.getElementById("passengerID").value.trim();
             const gender = document.getElementById("passengerGender").value;
-            const phone = document.getElementById("passengerPhone").value;
-            const email = document.getElementById("passengerEmail").value;
+            const phone = document.getElementById("passengerPhone").value.trim();
+            const email = document.getElementById("passengerEmail").value.trim();
             
             if (selectedSeats.length === 0) {
-                alert("Please select at least one seat.");
+                displayCustomMessage("Please select at least one seat.");
                 return;
             }
-            if (!name || !idNumber || !gender || !phone || !email) {
-                alert("Please fill all required passenger details.");
+            if (!name) {
+                displayCustomMessage("Please enter your Full Name.");
                 return;
             }
+            if (!idNumber) {
+                displayCustomMessage("Please enter your ID Number.");
+                return;
+            }
+            if (gender === "") {
+                displayCustomMessage("Please select your Gender.");
+                return;
+            }
+            if (!phone) {
+                displayCustomMessage("Please enter your Phone Number.");
+                return;
+            }
+            if (!isValidPhoneNumber(phone)) {
+                displayCustomMessage("Please enter a valid Phone Number (e.g., +254712345678 or 0712345678).");
+                return;
+            }
+            if (!email) {
+                displayCustomMessage("Please enter your Email Address.");
+                return;
+            }
+            if (!isValidEmail(email)) {
+                displayCustomMessage("Please enter a valid Email Address.");
+                return;
+            }
+
 
             const bookingsToInsert = [];
             let lastBookingRef = null;
@@ -1554,7 +1607,7 @@
             const busDocSnap = await getDoc(busDocRef);
 
             if (!busDocSnap.exists()) {
-                alert("Error: Bus details not found. Please try searching again.");
+                displayCustomMessage("Error: Bus details not found. Please try searching again.");
                 return;
             }
             const busData = busDocSnap.data();
@@ -1571,12 +1624,12 @@
 
             for (const seatNumber of selectedSeats) {
                 if (currentlyBookedSeats.has(seatNumber)) {
-                    alert(`Seat ${seatNumber} has just been booked by someone else. Please select another seat.`);
+                    displayCustomMessage(`Seat ${seatNumber} has just been booked by someone else. Please select another seat.`);
                     generateSeats(currentTotalSeats); // Re-render seat grid with updated status
                     return;
                 }
                 if (currentAvailableSeats <= 0) {
-                    alert("Not enough available seats on this bus for your selection. Please adjust your seats.");
+                    displayCustomMessage("Not enough available seats on this bus for your selection. Please adjust your seats.");
                     generateSeats(currentTotalSeats); // Re-render seat grid with updated status
                     return;
                 }
@@ -1624,12 +1677,12 @@
                 // If successful, store the last booking reference and redirect
                 localStorage.setItem('lastBookingRef', lastBookingRef); // Store the ID of the last booking in the batch
 
-                alert(`Booking confirmed for seat(s): ${selectedSeats.sort((a, b) => a - b).join(', ')}! Redirecting to payment page.`);
+                displayCustomMessage(`Booking confirmed for seat(s): ${selectedSeats.sort((a, b) => a - b).join(', ')}! Redirecting to payment page.`);
                 closeModal();
                 window.location.href = 'booking-success.html';
             } catch (error) {
                 console.error('Error confirming booking:', error.message);
-                alert('Error confirming booking: ' + error.message);
+                displayCustomMessage('Error confirming booking: ' + error.message);
             }
         }
 
@@ -1656,6 +1709,9 @@
             }
         }
 
+        // Variable to store chat history for the AI assistant
+        let chatHistory = [];
+
         // New functions for chat
         function appendMessage(message, sender) {
             const chatBody = document.getElementById('chatBody');
@@ -1666,16 +1722,135 @@
             chatBody.scrollTop = chatBody.scrollHeight; // Scroll to bottom
         }
 
-        function handleChatInput() {
+        // Function to search buses for the AI assistant
+        async function searchBusesForAI(from, to, date) {
+            const busesRef = collection(firebaseDb, "buses");
+            // Capitalize first letter of from/to for consistent querying with Firestore data
+            const capitalizedFrom = from.charAt(0).toUpperCase() + from.slice(1).toLowerCase();
+            const capitalizedTo = to.charAt(0).toUpperCase() + to.slice(1).toLowerCase();
+
+            const q = query(busesRef,
+                            where("origin", "==", capitalizedFrom),
+                            where("destination", "==", capitalizedTo),
+                            where("travelDate", "==", date));
+
+            try {
+                const querySnapshot = await getDocs(q);
+                const buses = [];
+                querySnapshot.forEach((doc) => {
+                    buses.push(doc.data());
+                });
+
+                if (buses.length === 0) {
+                    return `No buses found from ${capitalizedFrom} to ${capitalizedTo} on ${date}.`;
+                }
+
+                let formattedData = `Available buses from ${capitalizedFrom} to ${capitalizedTo} on ${date}:\n`;
+                buses.forEach(bus => {
+                    formattedData += `- Bus departing at ${bus.time}, Price: Ksh ${bus.price}, Available Seats: ${bus.available_seats} (Total: ${bus.totalSeats})\n`;
+                });
+                return formattedData;
+
+            } catch (error) {
+                console.error("Error fetching bus data for AI:", error);
+                return null; // Indicate error
+            }
+        }
+
+        async function handleChatInput() {
             const chatInput = document.getElementById('chatInput');
             const message = chatInput.value.trim();
             if (message) {
                 appendMessage(message, 'user');
                 chatInput.value = '';
-                // Simulate bot response
-                setTimeout(() => {
-                    appendMessage("Thank you for your message. Our AI assistant feature is under development. Please contact us directly at senerwaalex@gmail.com for immediate assistance.", 'bot');
-                }, 1000);
+
+                // Show typing indicator
+                const chatBody = document.getElementById('chatBody');
+                const typingIndicator = document.createElement('p');
+                typingIndicator.classList.add('bot-message');
+                typingIndicator.textContent = 'AI is typing...';
+                typingIndicator.id = 'typingIndicator';
+                chatBody.appendChild(typingIndicator);
+                chatBody.scrollTop = chatBody.scrollHeight;
+
+                let promptText = message;
+                let additionalContext = "";
+                const todayDate = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
+
+                // Simple detection for bus route queries
+                const busQueryMatch = message.toLowerCase().match(/(?:bus|route|ticket|fare|price|seats)\s+(?:from\s+([\w\s]+))?\s*(?:to\s+([\w\s]+))?/);
+
+                if (busQueryMatch) {
+                    let fromLocation = busQueryMatch[1] ? busQueryMatch[1].trim() : '';
+                    let toLocation = busQueryMatch[2] ? busQueryMatch[2].trim() : '';
+
+                    // Attempt to infer locations if only one is provided or if general query
+                    if (!fromLocation && !toLocation) {
+                        additionalContext = "\n\nTo get specific bus information, please tell me the origin and destination, for example: 'buses from Nairobi to Kisumu'.";
+                    } else {
+                        try {
+                            const busData = await searchBusesForAI(fromLocation, toLocation, todayDate);
+                            if (busData && !busData.startsWith("No buses found")) {
+                                additionalContext = `\n\nHere is relevant bus schedule information for ${fromLocation || 'any'} to ${toLocation || 'any'} on ${todayDate}:\n${busData}\n\n`;
+                            } else {
+                                additionalContext = `\n\nI don't have that specific bus information right now for ${fromLocation || 'your specified origin'} to ${toLocation || 'your specified destination'} on ${todayDate}. Please contact our customer support at senerwaalex@gmail.com or call +254 717 384 875 for further assistance.`;
+                            }
+                        } catch (error) {
+                            console.error("Error fetching bus data for AI:", error);
+                            additionalContext = "\n\nI had trouble looking up bus information right now. Please try again later or contact support at senerwaalex@gmail.com or call +254 717 384 875.";
+                        }
+                    }
+                } else if (message.toLowerCase().includes("chat with agent") || message.toLowerCase().includes("speak to someone") || message.toLowerCase().includes("human help")) {
+                    additionalContext = "\n\nI understand you'd like to speak with a human agent. Please contact our customer support directly at senerwaalex@gmail.com or call +254 717 384 875. They will be happy to assist you.";
+                } else if (message.toLowerCase().includes("contact") || message.toLowerCase().includes("support")) {
+                    additionalContext = "\n\nYou can reach our customer support at senerwaalex@gmail.com or call +254 717 384 875.";
+                }
+
+
+                // Construct the full prompt for Gemini
+                const fullPrompt = `You are a helpful AI assistant for Prince Alex Travel. Answer the user's question based on the provided context. If the context does not contain the answer, state that you don't have that specific information but can help with general travel queries. If the user asks to speak to an agent or for human help, provide the contact details directly.
+
+User's query: "${promptText}"
+${additionalContext}`;
+
+                chatHistory.push({ role: "user", parts: [{ text: fullPrompt }] });
+
+                try {
+                    const payload = { contents: chatHistory };
+                    const apiKey = ""; // Canvas will automatically provide the API key
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+
+                    // Remove typing indicator
+                    typingIndicator.remove();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const aiResponse = result.candidates[0].content.parts[0].text;
+                        appendMessage(aiResponse, 'bot');
+                        // Add AI response to chat history
+                        chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+                    } else {
+                        appendMessage("Sorry, I couldn't get a response from the AI. Please try again.", 'bot');
+                        console.error("AI response structure unexpected:", result);
+                    }
+                } catch (error) {
+                    // Remove typing indicator on error as well
+                    const currentTypingIndicator = document.getElementById('typingIndicator');
+                    if (currentTypingIndicator) {
+                        currentTypingIndicator.remove();
+                    }
+                    appendMessage("There was an error connecting to the AI. Please try again later.", 'bot');
+                    console.error("Error calling Gemini API:", error);
+                }
             }
         }
     </script>
