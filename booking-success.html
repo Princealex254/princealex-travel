@@ -347,7 +347,15 @@
 
             
             const fetchedBooking = await window.fetchBookingFromFirebase(bookingId);
-            if (!fetchedBooking) {
+            if (!fetchedBooking || !fetchedBooking.bookingData) {
+                bookingDetailsDiv.innerHTML = '<p class="error-message">Booking not found or bookingData missing. Please try again.</p>';
+                paymentInfoDiv.style.display = 'none';
+                downloadTicketBtn.style.display = 'none';
+                payNowBtn.style.display = 'none';
+                bookingTitle.textContent = 'Booking Not Found';
+                return;
+            }
+            currentBookingData = { id: bookingId, ...fetchedBooking.bookingData };  // Extract from nested bookingData
                 bookingDetailsDiv.innerHTML = '<p class="error-message">Booking not found. Please try again.</p>';
                 paymentInfoDiv.style.display = 'none';
                 downloadTicketBtn.style.display = 'none';
