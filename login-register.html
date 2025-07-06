@@ -5,21 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login / Register - Prince Alex Travel Services</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import {
-            getAuth,
-            createUserWithEmailAndPassword,
-            signInWithEmailAndPassword,
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
             sendPasswordResetEmail,
-            onAuthStateChanged
+            onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import {
-            getFirestore,
-            doc,
-            setDoc,
-            // NEW: Import addDoc and collection for sending emails
-            collection, addDoc
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
@@ -27,10 +26,9 @@
             apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
             authDomain: "princealextravel.firebaseapp.com",
             projectId: "princealextravel",
-            storageBucket: "princealextravel.appspot.com",
-            messagingSenderId: "305284144445",
-            appId: "1:305284144445:web:5d2a931969a5a73e6cf1e4",
-            measurementId: "G-G439H80252"
+            storageBucket: "princealextravel.firebasestorage.app",
+            messagingSenderId: "947577729462",
+            appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
         };
 
         // Initialize Firebase
@@ -38,166 +36,405 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Make addDoc and collection globally accessible if they are used in inline scripts
-        window.addDoc = addDoc;
-        window.collection = collection;
+        // Make Firebase instances globally accessible for inline scripts if needed,
+        // though it's better to keep logic within modules or pass them.
+        // For simplicity in this migration, we'll attach them to window.
+        window.firebaseApp = app;
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.sendPasswordResetEmail = sendPasswordResetEmail;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.setDoc = setDoc;
+        window.doc = doc;
 
-        // Message display helper
+        // Initial Auth State Check
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in, redirect them
+                window.location.href = 'index.html'; // Or user dashboard
+            }
+        });
+    </script>
+    <style>
+        /* Reusing common styles from your existing index.html */
+        :root {
+            --primary-color: #002d6b;
+            --accent-color: #c69214;
+            --light-bg: #f5f7fa;
+            --text-dark: #1a1a1a;
+            --success-color: #28a745; /* Added for validation feedback */
+            --error-color: #dc3545;   /* Added for validation feedback */
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative; /* Added to make positioning of .back-home-button relative to body */
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            /* Removed position: relative; as the button is now outside */
+        }
+        .form-tabs {
+            display: flex;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #eee;
+        }
+        .tab-button {
+            flex: 1;
+            padding: 12px 0;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .tab-button.active {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .tab-button:hover:not(.active) {
+            color: var(--accent-color);
+        }
+        .form-section {
+            padding: 10px 0;
+        }
+        .hidden {
+            display: none;
+        }
+        h2 {
+            color: var(--primary-color);
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+            text-align: left;
+        }
+        .form-group input {
+            width: calc(100% - 22px);
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        .form-group input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: var(--accent-color);
+            transform: translateY(-2px);
+        }
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
+        }
+        .password-strength {
+            font-size: 0.85em;
+            margin-top: 5px;
+            padding: 5px;
+            border-radius: 3px;
+            text-align: center;
+        }
+        .strength-weak {
+            color: var(--error-color);
+            background-color: #f8d7da;
+        }
+        .strength-medium {
+            color: orange;
+            background-color: #fff3cd;
+        }
+        .strength-strong {
+            color: var(--success-color);
+            background-color: #d4edda;
+        }
+        .forgot-password {
+            display: block;
+            margin-top: 15px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+        /* Style for the back home button */
+        .back-home-button {
+            position: absolute;
+            top: 5px; /* Adjusted to be even higher */
+            left: 5px; /* Adjusted for more space from the left edge */
+            background: none;
+            border: none;
+            font-size: 1.8em; /* Slightly larger icon */
+            color: var(--primary-color);
+            cursor: pointer;
+            transition: color 0.3s ease;
+            padding: 10px; /* Increased padding for better click area */
+            z-index: 10; /* Ensure it's above other elements */
+        }
+        .back-home-button:hover {
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Back Home Button - Moved outside the container -->
+    <button class="back-home-button" onclick="window.location.href='index.html'">
+        <i class="fas fa-arrow-left"></i>
+    </button>
+
+    <div class="container">
+        <div class="form-tabs">
+            <button class="tab-button active" id="loginTabBtn" onclick="showForm('login')">Login</button>
+            <button class="tab-button" id="registerTabBtn" onclick="showForm('register')">Register</button>
+            <button class="tab-button" id="resetTabBtn" onclick="showForm('reset')">Reset Password</button>
+        </div>
+
+        <div id="loginForm" class="form-section">
+            <h2>Login to Your Account</h2>
+            <div class="form-group">
+                <label for="loginEmail">Email:</label>
+                <input type="email" id="loginEmail" placeholder="Your Email" required oninput="validateInput(this, 'email')">
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">Password:</label>
+                <input type="password" id="loginPassword" placeholder="Your Password" required>
+            </div>
+            <p id="loginMessage" class="message hidden"></p>
+            <button onclick="login()">Login</button>
+            <a href="#" class="forgot-password" onclick="showForm('reset'); return false;">Forgot Password?</a>
+        </div>
+
+        <div id="registerForm" class="form-section hidden">
+            <h2>Create New Account</h2>
+            <div class="form-group">
+                <label for="registerFullName">Full Names:</label>
+                <input type="text" id="registerFullName" placeholder="Your Full Names" required>
+            </div>
+            <div class="form-group">
+                <label for="registerPhoneNumber">Phone Number:</label>
+                <input type="tel" id="registerPhoneNumber" placeholder="e.g., +254712345678" required>
+            </div>
+            <div class="form-group">
+                <label for="registerIdNumber">ID Number:</label>
+                <input type="text" id="registerIdNumber" placeholder="Your ID Number" required>
+            </div>
+            <div class="form-group">
+                <label for="registerEmail">Email:</label>
+                <input type="email" id="registerEmail" placeholder="Your Email" required oninput="validateInput(this, 'email')">
+            </div>
+            <div class="form-group">
+                <label for="registerPassword">Password:</label>
+                <input type="password" id="registerPassword" placeholder="Minimum 6 characters" required oninput="checkPasswordStrength()">
+                <p id="passwordStrength" class="password-strength hidden"></p>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password:</label>
+                <input type="password" id="confirmPassword" placeholder="Confirm Your Password" required oninput="checkPasswordMatch()">
+                <p id="passwordMatchStatus" class="password-strength hidden"></p>
+            </div>
+            <p id="registerMessage" class="message hidden"></p>
+            <button onclick="register()">Register</button>
+        </div>
+
+        <div id="resetForm" class="form-section hidden">
+            <h2>Reset Your Password</h2>
+            <p>Enter your email address and we'll send you a link to reset your password.</p>
+            <div class="form-group">
+                <label for="resetEmail">Email:</label>
+                <input type="email" id="resetEmail" placeholder="Your Email" required oninput="validateInput(this, 'email')">
+            </div>
+            <p id="resetMessage" class="message hidden"></p>
+            <button onclick="resetPassword()">Send Reset Link</button>
+        </div>
+    </div>
+
+    <script>
+        // Function to display messages (success/error)
         function displayMessage(elementId, message, type) {
-            const element = document.getElementById(elementId);
-            element.textContent = message;
-            element.className = `message ${type}`;
-            element.style.display = 'block';
+            const messageElement = document.getElementById(elementId);
+            messageElement.textContent = message;
+            messageElement.className = `message ${type}`;
+            messageElement.classList.remove('hidden');
             setTimeout(() => {
-                element.style.display = 'none';
+                messageElement.classList.add('hidden');
             }, 5000); // Hide after 5 seconds
         }
 
-        // Toggle between login and registration forms
-        function showLoginForm() {
-            document.getElementById('loginForm').classList.remove('hidden');
-            document.getElementById('registerForm').classList.add('hidden');
-            document.getElementById('resetPasswordForm').classList.add('hidden');
-            document.getElementById('toggleLink').textContent = 'Don\'t have an account? Register';
-            document.getElementById('toggleLink').onclick = showRegisterForm;
-            document.getElementById('loginErrorMessage').style.display = 'none';
-            document.getElementById('loginSuccessMessage').style.display = 'none';
+        // --- Form Tab Switching ---
+        function showForm(formType) {
+            document.querySelectorAll('.form-section').forEach(form => {
+                form.classList.add('hidden');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(`${formType}Form`).classList.remove('hidden');
+            document.getElementById(`${formType}TabBtn`).classList.add('active');
+
+            // Clear messages when switching tabs
+            document.querySelectorAll('.message').forEach(msg => msg.classList.add('hidden'));
         }
 
-        function showRegisterForm() {
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('registerForm').classList.remove('hidden');
-            document.getElementById('resetPasswordForm').classList.add('hidden');
-            document.getElementById('toggleLink').textContent = 'Already have an account? Login';
-            document.getElementById('toggleLink').onclick = showLoginForm;
-            document.getElementById('registerErrorMessage').style.display = 'none';
-            document.getElementById('registerSuccessMessage').style.display = 'none';
-        }
-
-        function showResetPasswordForm() {
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('registerForm').classList.add('hidden');
-            document.getElementById('resetPasswordForm').classList.remove('hidden');
-            document.getElementById('toggleLink').textContent = 'Back to Login';
-            document.getElementById('toggleLink').onclick = showLoginForm;
-            document.getElementById('resetPasswordMessage').style.display = 'none';
-        }
-
-        // Login User
-        async function loginUser() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                displayMessage('loginSuccessMessage', 'Login successful! Redirecting...', 'success');
-                // Redirect to the main page or dashboard
-                window.location.href = 'index.html'; // Assuming index.html is your main page
-            } catch (error) {
-                console.error("Error during login:", error);
-                let errorMessage = "Login failed. Please check your credentials.";
-                if (error.code === 'auth/invalid-credential') { // New Firebase 10+ error code
-                    errorMessage = "Invalid email or password.";
-                } else if (error.code === 'auth/user-not-found') {
-                    errorMessage = "No user found with this email.";
-                } else if (error.code === 'auth/wrong-password') { // Older error code, still good to check
-                    errorMessage = "Invalid password.";
-                } else if (error.code === 'auth/too-many-requests') {
-                    errorMessage = "Too many failed login attempts. Please try again later.";
-                }
-                displayMessage('loginErrorMessage', errorMessage, 'error');
-            }
-        }
-
-        // Register User
-        async function registerUser() {
-            const email = document.getElementById('registerEmail').value;
+        // --- User Registration ---
+        async function register() {
+            const fullName = document.getElementById('registerFullName').value.trim();
+            const phoneNumber = document.getElementById('registerPhoneNumber').value.trim();
+            const idNumber = document.getElementById('registerIdNumber').value.trim();
+            const email = document.getElementById('registerEmail').value.trim();
             const password = document.getElementById('registerPassword').value;
-            const username = document.getElementById('registerUsername').value; // Assuming you have a username field
+            const confirmPassword = document.getElementById('confirmPassword').value;
 
-            // Input validation checks
+            if (!fullName || !phoneNumber || !idNumber) {
+                displayMessage('registerMessage', 'Please fill in all personal details.', 'error');
+                return;
+            }
             if (!validateEmail(email)) {
-                displayMessage('registerErrorMessage', 'Invalid email format.', 'error');
+                displayMessage('registerMessage', 'Please enter a valid email address.', 'error');
                 return;
             }
             if (password.length < 6) {
-                displayMessage('registerErrorMessage', 'Password must be at least 6 characters long.', 'error');
+                displayMessage('registerMessage', 'Password must be at least 6 characters long.', 'error');
                 return;
             }
-            if (password !== document.getElementById('confirmPassword').value) {
-                displayMessage('registerErrorMessage', 'Passwords do not match.', 'error');
+            if (password !== confirmPassword) {
+                displayMessage('registerMessage', 'Passwords do not match.', 'error');
                 return;
             }
 
             try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                // Step 1: Register user with Firebase Auth
+                const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
                 const user = userCredential.user;
 
-                // Save user profile to Firestore
-                await setDoc(doc(db, "users", user.uid), {
-                    email: user.email,
-                    username: username, // Save the username
+                // Step 2: Insert additional profile data into 'users' collection in Firestore
+                await setDoc(doc(firebaseDb, "users", user.uid), {
+                    fullName: fullName,
+                    phoneNumber: phoneNumber,
+                    idNumber: idNumber,
+                    email: email, // Store email in profile for easy access
                     createdAt: new Date().toISOString()
                 });
 
-                // NEW: Send welcome email after successful registration
-                await addDoc(collection(db, "mail"), {
-                    to: email,
-                    message: {
-                        subject: "Welcome to Prince Alex Travel Services!",
-                        html: `
-                            <p>Dear ${username || 'Valued Customer'},</p>
-                            <p>Welcome to Prince Alex Travel! We're excited to have you on board.</p>
-                            <p>You can now log in to your account and start booking your next journey.</p>
-                            <p><a href="${window.location.origin}/login-register.html" style="background-color: #002d6b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Log In Now</a></p>
-                            <p>If you have any questions, feel free to contact us.</p>
-                            <p>Best regards,<br>Prince Alex Travel Team</p>
-                            <hr>
-                            <p style="font-size: 0.8em; color: #777;">&copy; 2025 Prince Alex Digital. All rights reserved.</p>
-                        `,
-                    },
-                });
-                console.log("Welcome email queued successfully.");
-
-                displayMessage('registerSuccessMessage', 'Registration successful! Welcome email sent.', 'success');
-                // Optional: Automatically log in or redirect after registration
-                // window.location.href = 'index.html';
-
+                displayMessage('registerMessage', 'Registration successful! You can now log in.', 'success');
+                // Optional: automatically switch to login form after a delay
+                setTimeout(() => showForm('login'), 3000);
             } catch (error) {
-                console.error("Error during registration:", error);
-                let errorMessage = "Registration failed. Please try again.";
-                if (error.code === 'auth/email-already-in-use') {
-                    errorMessage = "This email is already in use.";
-                } else if (error.code === 'auth/weak-password') {
-                    errorMessage = "Password is too weak. Please choose a stronger one.";
-                }
-                displayMessage('registerErrorMessage', errorMessage, 'error');
+                displayMessage('registerMessage', 'Registration failed: ' + error.message, 'error');
             }
         }
 
-        // Password Reset
-        async function resetPassword() {
-            const email = document.getElementById('resetEmail').value;
+        // --- User Login ---
+        async function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
 
             if (!validateEmail(email)) {
-                displayMessage('resetPasswordMessage', 'Please enter a valid email address.', 'error');
+                displayMessage('loginMessage', 'Please enter a valid email address.', 'error');
                 return;
             }
 
             try {
-                await sendPasswordResetEmail(auth, email);
-                displayMessage('resetPasswordMessage', 'Password reset email sent. Please check your inbox.', 'success');
+                await signInWithEmailAndPassword(firebaseAuth, email, password);
+                displayMessage('loginMessage', 'Login successful! Redirecting...', 'success');
+                // Redirect to the main page or user dashboard
+                window.location.href = 'index.html'; // Or your dashboard page
             } catch (error) {
-                console.error("Error sending password reset email:", error);
-                let errorMessage = "Error sending reset email. Please try again.";
-                if (error.code === 'auth/user-not-found') {
-                    errorMessage = "No user found with that email address.";
-                }
-                displayMessage('resetPasswordMessage', errorMessage, 'error');
+                displayMessage('loginMessage', 'Login failed: ' + error.message, 'error');
             }
         }
 
-        // Real-time password match check for registration
+        // --- Password Reset ---
+        async function resetPassword() {
+            const email = document.getElementById('resetEmail').value.trim();
+
+            if (!validateEmail(email)) {
+                displayMessage('resetMessage', 'Please enter a valid email address.', 'error');
+                return;
+            }
+
+            try {
+                await sendPasswordResetEmail(firebaseAuth, email);
+                displayMessage('resetMessage', 'If an account with this email exists, a password reset link has been sent to it.', 'success');
+            } catch (error) {
+                displayMessage('resetMessage', 'Password reset failed: ' + error.message, 'error');
+            }
+        }
+
+        // --- Password Strength/Match Checks ---
+        function checkPasswordStrength() {
+            const passwordInput = document.getElementById('registerPassword');
+            const passwordStrength = document.getElementById('passwordStrength');
+            const password = passwordInput.value;
+
+            let strength = 0;
+            if (password.length >= 6) strength += 1;
+            if (password.match(/[a-z]/)) strength += 1;
+            if (password.match(/[A-Z]/)) strength += 1;
+            if (password.match(/[0-9]/)) strength += 1;
+            if (password.match(/[^a-zA-Z0-9]/)) strength += 1;
+
+            passwordStrength.classList.remove('hidden');
+            if (strength < 3) {
+                passwordStrength.textContent = 'Weak';
+                passwordStrength.className = 'password-strength strength-weak';
+            } else if (strength < 5) {
+                passwordStrength.textContent = 'Medium';
+                passwordStrength.className = 'password-strength strength-medium';
+            } else {
+                passwordStrength.textContent = 'Strong';
+                passwordStrength.className = 'password-strength strength-strong';
+            }
+            checkPasswordMatch(); // Also check match when strength changes
+        }
+
         function checkPasswordMatch() {
             const password = document.getElementById('registerPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
@@ -217,7 +454,7 @@
 
         // General email validation helper
         function validateEmail(email) {
-            const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
             return re.test(String(email).toLowerCase());
         }
 
@@ -228,267 +465,6 @@
                 inputElement.setCustomValidity('');
             }
         }
-
-        // Initial setup
-        document.addEventListener('DOMContentLoaded', () => {
-            showLoginForm(); // Default to showing the login form
-        });
     </script>
-    <style>
-        :root {
-            --primary-color: #002d6b; /* Dark blue */
-            --secondary-color: #ffc107; /* Yellow */
-            --text-color: #333;
-            --background-color: #f4f7f6;
-            --card-background: #ffffff;
-            --border-color: #ddd;
-            --error-color: #dc3545;
-            --success-color: #28a745;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            flex-direction: column;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 450px;
-            background-color: var(--card-background);
-            padding: 35px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            border-top: 5px solid var(--primary-color);
-            text-align: center;
-            margin: 20px; /* Add margin for smaller screens */
-        }
-
-        h1 {
-            color: var(--primary-color);
-            margin-bottom: 30px;
-            font-size: 2em;
-        }
-
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
-
-        .input-group {
-            position: relative;
-            text-align: left;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--text-color);
-            font-weight: bold;
-        }
-
-        .input-group input {
-            width: calc(100% - 20px);
-            padding: 12px 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 1em;
-            transition: border-color 0.3s ease;
-        }
-
-        .input-group input:focus {
-            border-color: var(--primary-color);
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(0, 45, 107, 0.2);
-        }
-
-        .button-group {
-            margin-top: 20px;
-        }
-
-        .button-group button {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .button-group button:hover {
-            background-color: #001a4d;
-        }
-
-        .toggle-link {
-            display: block;
-            margin-top: 20px;
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: bold;
-            transition: color 0.3s ease;
-        }
-
-        .toggle-link:hover {
-            color: #001a4d;
-            text-decoration: underline;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .message {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            font-weight: bold;
-            display: none; /* Hidden by default, shown by JS */
-        }
-
-        .message.error {
-            background-color: #f8d7da;
-            color: var(--error-color);
-            border: 1px solid #f5c6cb;
-        }
-
-        .message.success {
-            background-color: #d4edda;
-            color: var(--success-color);
-            border: 1px solid #c3e6cb;
-        }
-
-        .password-strength {
-            font-size: 0.85em;
-            margin-top: 5px;
-            padding: 5px 8px;
-            border-radius: 4px;
-            text-align: left;
-            display: inline-block; /* to prevent it taking full width */
-        }
-
-        .password-strength.strength-weak {
-            background-color: #f8d7da;
-            color: var(--error-color);
-        }
-
-        .password-strength.strength-strong {
-            background-color: #d4edda;
-            color: var(--success-color);
-        }
-
-        .forgot-password-link {
-            display: block;
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: #666;
-            text-decoration: none;
-        }
-
-        .forgot-password-link:hover {
-            text-decoration: underline;
-            color: var(--primary-color);
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 480px) {
-            .container {
-                padding: 25px 20px;
-                margin: 10px;
-            }
-            h1 {
-                font-size: 1.8em;
-                margin-bottom: 25px;
-            }
-            .input-group input {
-                width: calc(100% - 20px);
-                padding: 10px;
-            }
-            .button-group button {
-                padding: 10px;
-                font-size: 1em;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Prince Alex Travel</h1>
-
-        <div id="loginForm">
-            <h2>Login</h2>
-            <div id="loginErrorMessage" class="message error"></div>
-            <div id="loginSuccessMessage" class="message success"></div>
-            <form onsubmit="event.preventDefault(); loginUser();">
-                <div class="input-group">
-                    <label for="loginEmail">Email:</label>
-                    <input type="email" id="loginEmail" required autocomplete="email">
-                </div>
-                <div class="input-group">
-                    <label for="loginPassword">Password:</label>
-                    <input type="password" id="loginPassword" required autocomplete="current-password">
-                </div>
-                <div class="button-group">
-                    <button type="submit">Login</button>
-                </div>
-                <a href="#" class="forgot-password-link" onclick="showResetPasswordForm(); return false;">Forgot Password?</a>
-            </form>
-        </div>
-
-        <div id="registerForm" class="hidden">
-            <h2>Register</h2>
-            <div id="registerErrorMessage" class="message error"></div>
-            <div id="registerSuccessMessage" class="message success"></div>
-            <form onsubmit="event.preventDefault(); registerUser();">
-                <div class="input-group">
-                    <label for="registerUsername">Username:</label>
-                    <input type="text" id="registerUsername" required autocomplete="username">
-                </div>
-                <div class="input-group">
-                    <label for="registerEmail">Email:</label>
-                    <input type="email" id="registerEmail" required autocomplete="email">
-                </div>
-                <div class="input-group">
-                    <label for="registerPassword">Password:</label>
-                    <input type="password" id="registerPassword" required autocomplete="new-password" onkeyup="checkPasswordMatch()">
-                    <span id="passwordStrengthStatus" class="password-strength hidden"></span>
-                </div>
-                <div class="input-group">
-                    <label for="confirmPassword">Confirm Password:</label>
-                    <input type="password" id="confirmPassword" required autocomplete="new-password" onkeyup="checkPasswordMatch()">
-                    <span id="passwordMatchStatus" class="password-strength hidden"></span>
-                </div>
-                <div class="button-group">
-                    <button type="submit">Register</button>
-                </div>
-            </form>
-        </div>
-
-        <div id="resetPasswordForm" class="hidden">
-            <h2>Reset Password</h2>
-            <div id="resetPasswordMessage" class="message success"></div>
-            <form onsubmit="event.preventDefault(); resetPassword();">
-                <div class="input-group">
-                    <label for="resetEmail">Email:</label>
-                    <input type="email" id="resetEmail" required>
-                </div>
-                <div class="button-group">
-                    <button type="submit">Send Reset Email</button>
-                </div>
-            </form>
-        </div>
-
-        <a href="#" id="toggleLink" class="toggle-link"></a>
-    </div>
 </body>
 </html>
