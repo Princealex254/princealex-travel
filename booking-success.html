@@ -7,822 +7,549 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode.js/1.0.0/qrcode.min.js"></script>
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         // Added 'collection', 'query', and 'where' for querying by field
-        import { getFirestore, doc, getDoc, updateDoc, onSnapshot, collection, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, updateDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // NEW: Import addDoc for sending emails
+        import { addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration (copied from index.html)
         const firebaseConfig = {
             apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
             authDomain: "princealextravel.firebaseapp.com",
             projectId: "princealextravel",
-            storageBucket: "princealextravel.firebasestorage.app",
-            messagingSenderId: "947577729462",
-            appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
+            storageBucket: "princealextravel.appspot.com",
+            messagingSenderId: "305284144445",
+            appId: "1:305284144445:web:5d2a931969a5a73e6cf1e4",
+            measurementId: "G-G439H80252"
         };
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Make Firebase instances and functions globally accessible
-        window.firebaseDb = db;
-        window.doc = doc;
-        window.getDoc = getDoc;
-        window.updateDoc = updateDoc;
-        window.onSnapshot = onSnapshot;
-        // Expose new functions for querying
+        // Make addDoc and collection globally accessible if they are used in inline scripts
+        window.addDoc = addDoc;
         window.collection = collection;
-        window.query = query;
-        window.where = where;
-    </script>
-    <style>
-        /* Reusing common styles from your existing index.html and profile.html */
-        :root {
-            --primary-color: #002d6b;
-            --accent-color: #c69214;
-            --light-bg: #f5f7fa;
-            --text-dark: #1a1a1a;
-            --success-color: #28a745;
-            --error-color: #dc3545;
-            --secondary-text-color: #555;
-        }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: var(--light-bg);
-            color: var(--text-dark);
-            line-height: 1.6;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        .navbar {
-            background-color: var(--primary-color);
-            padding: 15px 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .navbar-container {
-            max-width: 1200px;
-            margin: auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-        }
-        .logo {
-            padding: 10px 15px;
-            border-radius: 12px;
-        }
-        .logo img {
-            height: 80px;
-            display: block;
-        }
-        .nav-links {
-            display: flex;
-            gap: 25px;
-        }
-        .nav-links a {
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 16px;
-            position: relative;
-        }
-        .nav-links a::after {
-            content: '';
-            display: block;
-            width: 0;
-            height: 2px;
-            background: var(--accent-color);
-            transition: width 0.3s;
-            position: absolute;
-            bottom: -5px;
-            left: 0;
-        }
-        .nav-links a:hover::after {
-            width: 100%;
-        }
-        .nav-links a:hover {
-            color: var(--accent-color);
-        }
-
-        /* Hamburger Menu Icon */
-        .menu-toggle {
-            display: none; /* Hidden by default, shown on mobile */
-            flex-direction: column;
-            justify-content: space-around;
-            width: 30px;
-            height: 25px;
-            cursor: pointer;
-            z-index: 10001; /* Above nav links when open */
-        }
-
-        .menu-toggle .bar {
-            width: 100%;
-            height: 3px;
-            background-color: white;
-            border-radius: 5px;
-            transition: all 0.3s ease;
-        }
-
-        /* Animation for hamburger to close icon */
-        .menu-toggle.open .bar:nth-child(1) {
-            transform: translateY(11px) rotate(45deg);
-        }
-        .menu-toggle.open .bar:nth-child(2) {
-            opacity: 0;
-        }
-        .menu-toggle.open .bar:nth-child(3) {
-            transform: translateY(-11px) rotate(-45deg);
-        }
-
-        /* Mobile Navigation Overlay */
-        @media (max-width: 768px) {
-            .nav-links {
-                flex-direction: column;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                width: 100%;
-                background-color: var(--primary-color);
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                overflow: hidden;
-                max-height: 0;
-                transition: max-height 0.3s ease-in-out;
-                z-index: 9999;
-                display: flex;
-            }
-
-            .nav-links.open {
-                max-height: 500px;
-            }
-
-            .nav-links a {
-                padding: 15px 20px;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
-                text-align: left;
-                width: 100%;
-                font-size: 1.1em;
-            }
-            .nav-links a:last-child {
-                border-bottom: none;
-            }
-
-            .menu-toggle {
-                display: flex;
-            }
-            .navbar .nav-links {
-                gap: 0;
-            }
-        }
-
-        .success-container {
-            flex-grow: 1;
-            max-width: 800px;
-            margin: 60px auto;
-            padding: 40px;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            text-align: center;
-        }
-        .success-container h1 {
-            color: var(--success-color);
-            margin-bottom: 20px;
-            font-size: 32px;
-        }
-        .success-container p {
-            font-size: 1.1em;
-            color: var(--text-dark);
-            margin-bottom: 15px;
-        }
-        .booking-details-summary {
-            background-color: var(--light-bg);
-            padding: 25px;
-            border-radius: 8px;
-            margin-top: 30px;
-            text-align: left;
-            border: 1px solid #eee;
-        }
-        .booking-details-summary h3 {
-            color: var(--primary-color);
-            margin-bottom: 15px;
-            font-size: 1.4em;
-            text-align: center;
-        }
-        .booking-details-summary p {
-            margin-bottom: 8px;
-            font-size: 1em;
-        }
-        .booking-details-summary strong {
-            color: var(--primary-color);
-        }
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
-            font-weight: bold;
-            color: white;
-            white-space: nowrap;
-        }
-        .status-badge.paid { background-color: var(--success-color); }
-        .status-badge.pending { background-color: var(--accent-color); }
-        .status-badge.cancelled { background-color: var(--error-color); }
-
-        .payment-section {
-            margin-top: 30px;
-            padding: 25px;
-            background-color: #f0f2f5;
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
-        }
-        .payment-section h3 {
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            font-size: 1.3em;
-            text-align: center;
-        }
-        .payment-section input[type="tel"] {
-            width: calc(100% - 40px);
-            padding: 12px 15px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1.1em;
-            box-sizing: border-box;
-        }
-        .payment-section .amount-display {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: var(--accent-color);
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .payment-section button {
-            background-color: var(--accent-color);
-            color: white;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: bold;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            width: 100%;
-        }
-        .payment-section button:hover {
-            background-color: #b27e0f;
-            transform: translateY(-2px);
-        }
-
-        .download-button {
-            background-color: var(--success-color);
-            color: white;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: bold;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            margin-top: 30px;
-            width: 100%;
-        }
-        .download-button:hover {
-            background-color: #218838;
-            transform: translateY(-2px);
-        }
-        .hidden {
-            display: none;
-        }
-        .message {
-            margin-top: 20px;
-            padding: 10px;
-            border-radius: 8px;
-            font-weight: bold;
-            text-align: center;
-        }
-        .message.error {
-            background-color: #ffe0e0;
-            color: var(--error-color);
-            border: 1px solid var(--error-color);
-        }
-        .message.success {
-            background-color: #e0ffe0;
-            color: var(--success-color);
-            border: 1px solid var(--success-color);
-        }
-
-        .footer {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 30px 0;
-            text-align: center;
-            margin-top: auto;
-            font-size: 15px;
-        }
-        .footer-content {
-            max-width: 1200px;
-            margin: auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-        }
-        .footer-section {
-            margin: 15px 20px;
-        }
-        .footer-section h4 {
-            color: var(--accent-color);
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
-        .footer-section p, .footer-section a {
-            color: white;
-            text-decoration: none;
-            display: block;
-            margin-bottom: 8px;
-            transition: color 0.3s ease;
-        }
-        .footer-section a:hover {
-            color: var(--accent-color);
-        }
-        .footer-bottom {
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            font-size: 14px;
-        }
-
-        /* Responsive adjustments for main content */
-        @media (max-width: 768px) {
-            .success-container {
-                margin: 30px 20px;
-                padding: 30px 20px;
-            }
-            .success-container h1 {
-                font-size: 28px;
-            }
-            .payment-section input[type="tel"] {
-                width: calc(100% - 30px);
-            }
-            .footer-content {
-                flex-direction: column;
-                text-align: center;
-            }
-            .footer-section a,
-            .footer-section p {
-                display: inline-block;
-                margin: 0 5px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar">
-        <div class="navbar-container">
-            <div class="logo">
-                <img src="mylogo.png" alt="Prince Alex Logo">
-            </div>
-            <div class="menu-toggle" id="mobile-menu">
-                <span class="bar"></span>
-                <span class="bar"></span>
-                <span class="bar"></span>
-            </div>
-            <div class="nav-links" id="main-nav">
-                <a href="index.html">Home</a>
-                <a href="about-us.html">About Us</a>
-                <a href="#contact-us">Contact</a>
-                <a href="login-register.html">Login/Register</a>
-                <a href="ticket-lookup.html">Retrieve Ticket</a>
-                <a href="Admin.html">Admin</a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="success-container">
-        <h1 id="successHeader"><i class="fas fa-check-circle"></i> Booking Successful!</h1>
-        <p id="initialMessage">Your booking has been successfully placed. Please proceed to payment to confirm your ticket.</p>
-        <p id="bookingRefDisplay" style="font-size: 1.2em; font-weight: bold; color: var(--primary-color);"></p>
-
-        <div id="bookingDetailsSummary" class="booking-details-summary">
-            <h3>Booking Details</h3>
-            <p><strong>Passenger Name:</strong> <span id="passengerName"></span></p>
-            <p><strong>Phone Number:</strong> <span id="passengerPhone"></span></p>
-            <p><strong>Email:</strong> <span id="passengerEmail"></span></p>
-            <p><strong>Bus Route:</strong> <span id="busRoute"></span></p>
-            <p><strong>Travel Date:</strong> <span id="travelDate"></span></p>
-            <p><strong>Departure Time:</strong> <span id="busTime"></span></p>
-            <p><strong>Seat Number:</strong> <span id="seatNumber"></span></p>
-            <p><strong>Total Price:</strong> Ksh <span id="totalPrice"></span></p>
-            <p><strong>Status:</strong> <span id="paymentStatus" class="status-badge"></span></p>
-            <p><strong>Booking Date:</strong> <span id="bookingDate"></span></p>
-        </div>
-
-        <div id="paymentSection" class="payment-section">
-            <h3>Complete Your Payment</h3>
-            <p class="amount-display">Amount Due: Ksh <span id="amountDue">0.00</span></p>
-            <input type="tel" id="mpesaNumber" placeholder="Enter M-Pesa Phone Number (e.g., 2547XXXXXXXX)" required>
-            <button id="payNowBtn">Pay Now</button>
-            <div id="paymentMessage" class="message hidden"></div>
-        </div>
-
-        <button id="downloadTicketBtn" class="download-button hidden">Download Ticket (PDF)</button>
-    </div>
-
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-section">
-                <p>Email: senerwaalex@gmail.com</p>
-                <p>Phone: +254 717 384 875</p>
-                <p>Location: Nairobi, Kenya</p>
-            </div>
-            <div class="footer-section">
-                <h4>Follow Us</h4>
-                <a href="#">Facebook</a>
-                <a href="#">Instagram</a>
-                <a href="#">Twitter</a>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            &copy; 2025 Prince Alex Digital. All rights reserved.
-        </div>
-    </footer>
-
-    <script>
-        let currentBookingId = null; // This will now store the Firestore document ID
-        let currentBookingData = null; // Store fetched booking data
-        let unsubscribeBookingSnapshot = null; // To manage real-time listener
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            const mobileMenuToggle = document.getElementById('mobile-menu');
-            const mainNav = document.getElementById('main-nav');
-
-            if (mobileMenuToggle && mainNav) {
-                mobileMenuToggle.addEventListener('click', function () {
-                    this.classList.toggle('open');
-                    mainNav.classList.toggle('open');
-                });
-
-                mainNav.querySelectorAll('a').forEach(link => {
-                    link.addEventListener('click', () => {
-                        mobileMenuToggle.classList.remove('open');
-                        mainNav.classList.remove('open');
-                    });
-                });
-            }
-
-            const lastBookingRef = localStorage.getItem('lastBookingRef');
-            if (lastBookingRef) {
-                // We now assume lastBookingRef is the custom booking_ref string, not the Firestore doc ID
-                document.getElementById('bookingRefDisplay').textContent = `Reference: ${lastBookingRef}`;
-                await loadBookingAndListen(lastBookingRef); // Pass the custom booking_ref to the function
-            } else {
-                showCustomAlert("No booking reference found. Please book a ticket first.");
-                document.getElementById('successHeader').textContent = "Booking Not Found";
-                document.getElementById('successHeader').style.color = "var(--error-color)";
-                document.getElementById('initialMessage').classList.add('hidden'); // Hide initial message
-                document.getElementById('bookingRefDisplay').classList.add('hidden'); // Hide booking ref display
-                document.getElementById('bookingDetailsSummary').classList.add('hidden'); // Hide booking details
-                document.getElementById('paymentSection').classList.add('hidden');
-                document.getElementById('downloadTicketBtn').classList.add('hidden');
-            }
-
-            document.getElementById('payNowBtn').addEventListener('click', processPayment);
-            document.getElementById('downloadTicketBtn').addEventListener('click', () => {
-                if (currentBookingData) {
-                    generateTicketFromBooking(currentBookingData);
-                } else {
-                    showCustomAlert("Booking data not available for download. Please refresh the page.");
-                }
-            });
-        });
-
-        /**
-         * Loads booking details from Firestore using the custom booking_ref and sets up a real-time listener.
-         * @param {string} bookingRef The custom booking reference string (e.g., PA-XYZ123).
-         */
-        async function loadBookingAndListen(bookingRef) {
-            const bookingsCollectionRef = collection(firebaseDb, "bookings");
-            // Query for the document where the 'booking_ref' field matches the provided bookingRef
-            const q = query(bookingsCollectionRef, where("booking_ref", "==", bookingRef));
-
-            // Unsubscribe from previous listener if exists to prevent multiple listeners
-            if (unsubscribeBookingSnapshot) {
-                unsubscribeBookingSnapshot();
-                unsubscribeBookingSnapshot = null;
-            }
-
-            // Set up real-time listener
-            unsubscribeBookingSnapshot = onSnapshot(q, (querySnapshot) => {
-                if (!querySnapshot.empty) {
-                    // Assuming booking_ref is unique, there should be only one document
-                    const docSnap = querySnapshot.docs[0];
-                    currentBookingData = { id: docSnap.id, ...docSnap.data() }; // Store Firestore doc ID and all data
-                    currentBookingId = docSnap.id; // Store the actual Firestore document ID for updates
-
-                    document.getElementById('initialMessage').classList.remove('hidden'); // Show initial message
-                    document.getElementById('bookingRefDisplay').classList.remove('hidden'); // Show booking ref display
-                    document.getElementById('bookingDetailsSummary').classList.remove('hidden'); // Show booking details
-
-                    updateUIForBookingStatus(currentBookingData);
-                } else {
-                    // If no document is found for the given booking_ref
-                    showCustomAlert("Booking not found or has been deleted.");
-                    document.getElementById('successHeader').textContent = "Booking Not Found";
-                    document.getElementById('successHeader').style.color = "var(--error-color)";
-                    document.getElementById('initialMessage').classList.add('hidden'); // Hide initial message
-                    document.getElementById('bookingRefDisplay').classList.add('hidden'); // Hide booking ref display
-                    document.getElementById('bookingDetailsSummary').classList.add('hidden'); // Hide booking details
-                    document.getElementById('paymentSection').classList.add('hidden');
-                    document.getElementById('downloadTicketBtn').classList.add('hidden');
-                    console.error("Booking document does not exist for booking_ref:", bookingRef);
-                }
-            }, (error) => {
-                console.error("Error listening to booking changes:", error);
-                showCustomAlert("Error loading booking details. Please try again later.");
-            });
-        }
-
-        function updateUIForBookingStatus(booking) {
-            document.getElementById('passengerName').textContent = booking.passenger_name;
-            document.getElementById('passengerPhone').textContent = booking.passenger_phone;
-            document.getElementById('passengerEmail').textContent = booking.passenger_email || 'N/A';
-            document.getElementById('busRoute').textContent = booking.bus_route;
-            document.getElementById('travelDate').textContent = booking.travel_date;
-            document.getElementById('busTime').textContent = booking.bus_time;
-            document.getElementById('seatNumber').textContent = booking.seat_number;
-            document.getElementById('totalPrice').textContent = booking.price.toFixed(2);
-            document.getElementById('bookingDate').textContent = new Date(booking.booking_date).toLocaleDateString();
-
-            const paymentStatusElem = document.getElementById('paymentStatus');
-            paymentStatusElem.textContent = booking.status.toUpperCase();
-            paymentStatusElem.className = `status-badge ${booking.status.toLowerCase()}`;
-
-            const paymentSection = document.getElementById('paymentSection');
-            const downloadButton = document.getElementById('downloadTicketBtn');
-            const amountDueElem = document.getElementById('amountDue');
-
-            amountDueElem.textContent = booking.price.toFixed(2); // Always display the price
-
-            if (booking.status.toLowerCase() === 'paid') {
-                paymentSection.classList.add('hidden');
-                downloadButton.classList.remove('hidden');
-                document.getElementById('successHeader').textContent = "Payment Confirmed!";
-                document.getElementById('successHeader').style.color = "var(--success-color)";
-                document.getElementById('bookingRefDisplay').textContent = `Reference: ${booking.booking_ref}`;
-                showCustomAlert("Payment confirmed! Your ticket is now available for download.");
-            } else if (booking.status.toLowerCase() === 'pending') {
-                paymentSection.classList.remove('hidden');
-                downloadButton.classList.add('hidden');
-                document.getElementById('successHeader').textContent = "Booking Successful!";
-                document.getElementById('successHeader').style.color = "var(--success-color)";
-                document.getElementById('bookingRefDisplay').textContent = `Reference: ${booking.booking_ref}`;
-            } else { // e.g., cancelled
-                paymentSection.classList.add('hidden');
-                downloadButton.classList.add('hidden');
-                document.getElementById('successHeader').textContent = "Booking Status: " + booking.status.toUpperCase();
-                document.getElementById('successHeader').style.color = "var(--error-color)";
-                document.getElementById('bookingRefDisplay').textContent = `Reference: ${booking.booking_ref}`;
-                showCustomAlert(`Your booking status is ${booking.status.toUpperCase()}. Ticket cannot be downloaded.`);
-            }
-        }
-
-        async function processPayment() {
-            const mpesaNumber = document.getElementById('mpesaNumber').value.trim();
-            const paymentMessageElem = document.getElementById('paymentMessage');
-            paymentMessageElem.classList.add('hidden'); // Hide previous messages
-
-            if (!mpesaNumber) {
-                displayMessage(paymentMessageElem, 'Please enter your M-Pesa phone number.', 'error');
-                return;
-            }
-            if (!currentBookingData) {
-                displayMessage(paymentMessageElem, 'Booking data not loaded. Please refresh.', 'error');
-                return;
-            }
-
-            displayMessage(paymentMessageElem, 'Processing payment...', 'success'); // Use success for processing status
-
-            // Simulate M-Pesa payment gateway interaction
-            // In a real application, you would send this data to your backend
-            // which would then interact with the M-Pesa API (e.g., Daraja API).
-            // For this demonstration, we simulate success after a delay.
-            setTimeout(async () => {
-                try {
-                    // Use currentBookingId which holds the actual Firestore document ID
-                    const bookingDocRef = doc(firebaseDb, "bookings", currentBookingId);
-                    await updateDoc(bookingDocRef, {
-                        status: 'paid',
-                        mpesa_number: mpesaNumber, // Store M-Pesa number for record
-                        payment_date: new Date().toISOString()
-                    });
-                    // The onSnapshot listener will automatically update the UI
-                    displayMessage(paymentMessageElem, 'Payment successful! Status updated.', 'success');
-                } catch (error) {
-                    console.error("Error updating payment status:", error);
-                    displayMessage(paymentMessageElem, 'Payment failed to update status: ' + error.message, 'error');
-                }
-            }, 3000); // Simulate 3 seconds payment processing time
-        }
-
-        // --- PDF Generation Function (reused from profile.html/ticket-lookup.html) ---
-        async function generateTicketFromBooking(booking) {
-            if (booking.status !== 'paid') {
-                showCustomAlert('Ticket can only be downloaded after payment is confirmed.');
-                return;
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            let yPos = 20;
-            const lineHeight = 7;
-
-            // Define colors (matching CSS variables)
-            const primaryColor = '#002d6b';
-            const accentColor = '#c69214';
-            const darkTextColor = '#1a1a1a';
-            const secondaryTextColor = '#555';
-
-            // --- 1. Header with Logo and QR Code ---
-            // Add Logo
-            const img = new Image();
-            img.src = 'mylogo.png'; // Ensure this path is correct
-            await new Promise((resolve, reject) => {
-                img.onload = () => resolve();
-                img.onerror = () => {
-                    console.error("Error loading logo image: Mylogo.png. Please ensure the file exists and the path is correct.");
-                    resolve(); // Resolve even on error to allow PDF generation to continue
-                };
-            });
-            if (img.complete && img.naturalWidth !== 0) {
-                doc.addImage(img, 'PNG', 15, yPos, 40, 40);
-            } else {
-                console.warn("Logo image not loaded, skipping addition to PDF.");
-            }
-
-            // Title
-            doc.setFontSize(24);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Prince Alex Travel Services", 60, yPos + 15);
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "normal");
-            doc.text("E-Ticket & Booking Confirmation", 60, yPos + 25);
-
-            // Generate QR Code
-            const qrCodeData = booking.booking_ref;
-            const qrCodeContainer = document.createElement('div');
-            qrCodeContainer.style.display = 'none';
-            document.body.appendChild(qrCodeContainer);
-
-            let qrCodeImgData = '';
-            try {
-                new QRCode(qrCodeContainer, {
-                    text: qrCodeData,
-                    width: 80,
-                    height: 80,
-                    colorDark : primaryColor,
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-
-                await new Promise(resolve => setTimeout(resolve, 50));
-                qrCodeImgData = qrCodeContainer.querySelector('canvas').toDataURL("image/png");
-
-            } catch (qrError) {
-                console.error("Error generating QR code:", qrError);
-            } finally {
-                document.body.removeChild(qrCodeContainer);
-            }
-
-            if (qrCodeImgData) {
-                 doc.addImage(qrCodeImgData, 'PNG', 160, yPos, 40, 40);
-            } else {
-                console.warn("QR Code image data not generated, skipping addition to PDF.");
-            }
-
-            yPos += 55;
-
-            // --- Drawing the main ticket body container ---
-            doc.setDrawColor(primaryColor);
-            doc.setLineWidth(1.5);
-            doc.line(10, yPos, 200, yPos);
-
-            yPos += 10;
-
-            // --- 2. Booking Reference (Prominent) ---
-            doc.setFontSize(18);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(accentColor);
-            doc.text(`Booking Reference: ${booking.booking_ref}`, 20, yPos);
-            yPos += 15;
-
-            // --- 3. Passenger Details Section ---
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Passenger Details:", 20, yPos);
-            yPos += 8;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text(`Name: ${booking.passenger_name}`, 20, yPos); yPos += lineHeight;
-            doc.text(`Phone: ${booking.passenger_phone}`, 20, yPos); yPos += lineHeight;
-            doc.text(`Email: ${booking.passenger_email || 'N/A'}`, 20, yPos); yPos += 12;
-
-            // --- 4. Journey Details Section ---
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Journey Details:", 20, yPos);
-            yPos += 8;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text(`Route: ${booking.bus_route}`, 20, yPos); yPos += lineHeight;
-            doc.text(`Travel Date: ${booking.travel_date}`, 20, yPos); yPos += lineHeight;
-            doc.text(`Departure Time: ${booking.bus_time}`, 20, yPos); yPos += lineHeight;
-            doc.text(`Bus ID: ${booking.bus_id || 'N/A'}`, 20, yPos); yPos += lineHeight;
-            doc.text(`Seat Number: ${booking.seat_number}`, 20, yPos); yPos += 12;
-
-            // --- 5. Payment Summary Section ---
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Payment Summary:", 20, yPos);
-            yPos += 8;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text(`Amount: Ksh ${booking.price.toFixed(2)}`, 20, yPos); yPos += lineHeight;
-            doc.text(`Payment Status: ${booking.status.toUpperCase()}`, 20, yPos); yPos += 12;
-            doc.text(`Booking Date: ${new Date(booking.booking_date).toLocaleDateString()}`, 20, yPos); yPos += 12;
-
-            // --- 6. Special Note for PENDING Status ---
-            if (booking.status.toUpperCase() === 'PENDING') {
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(200, 0, 0); // Red color for warning
-                doc.text("NOTE: This ticket is PENDING PAYMENT. Please complete payment to validate.", 20, yPos);
-                yPos += 5;
-                doc.text("Contact support for assistance: +254 717 384 875", 20, yPos);
-                doc.setTextColor(darkTextColor); // Reset color
-                yPos += 15;
-            }
-
-            // --- 7. Footer ---
-            yPos = doc.internal.pageSize.height - 25; // Position footer from bottom
-            doc.setDrawColor(primaryColor);
-            doc.setLineWidth(0.5);
-            doc.line(10, yPos, 200, yPos); // Horizontal line above footer
-            yPos += 5;
-
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text("Prince Alex Travel Services | Email: senerwaalex@gmail.com | Phone: +254 717 384 875", doc.internal.pageSize.width / 2, yPos, { align: "center" });
-            yPos += 5;
-            doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
-
-            doc.save(`PrinceAlex_Ticket_${booking.booking_ref}.pdf`);
-            console.log("PDF download initiated successfully.");
-        }
+        window.getDocs = getDocs; // Ensure getDocs is globally accessible
 
         // Custom Alert (replaces browser's alert)
-        function showCustomAlert(message) {
+        function showCustomAlert(message, type = 'info', callback = null) {
             const modal = document.createElement('div');
             modal.style.cssText = `
                 position: fixed; top: 0; left: 0; width: 100%; height: 100%;
                 background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
                 align-items: center; z-index: 1001;
             `;
+            let bgColor = '#002d6b'; // Default primary color
+            if (type === 'success') {
+                bgColor = '#28a745'; // Green for success
+            } else if (type === 'error') {
+                bgColor = '#dc3545'; // Red for error
+            }
+
             modal.innerHTML = `
                 <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                    <p style="margin-bottom: 20px; font-size: 1.1em;">${message}</p>
-                    <button style="background-color: var(--primary-color); color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.parentNode.parentNode.remove()">OK</button>
+                    <p style="margin-bottom: 20px; font-size: 1.1em; color: ${bgColor}">${message}</p>
+                    <button style="background-color: ${bgColor}; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.parentNode.parentNode.remove(); if(window.alertCallback) window.alertCallback();">OK</button>
                 </div>
             `;
             document.body.appendChild(modal);
+            window.alertCallback = callback; // Store callback
+        }
+
+        // Custom Confirmation (replaces browser's confirm)
+        function showCustomConfirm(message, type = 'confirm', callback = null) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
+                align-items: center; z-index: 1001;
+            `;
+            let bgColor = '#002d6b'; // Default primary color
+            if (type === 'confirm') {
+                bgColor = '#ffc107'; // Yellow for confirm
+            }
+
+            modal.innerHTML = `
+                <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    <p style="margin-bottom: 20px; font-size: 1.1em; color: ${bgColor};">${message}</p>
+                    <button style="background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;" onclick="this.parentNode.parentNode.remove(); if(window.confirmCallback) window.confirmCallback();">Yes</button>
+                    <button style="background-color: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.parentNode.parentNode.remove();">No</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            window.confirmCallback = callback; // Store callback
         }
 
         function displayMessage(element, message, type) {
             element.textContent = message;
             element.className = `message ${type}`;
-            element.classList.remove('hidden');
+            element.style.display = 'block'; // Ensure it's visible
             setTimeout(() => {
-                element.classList.add('hidden');
-            }, 5000);
+                element.style.display = 'none';
+            }, 5000); // Hide after 5 seconds
         }
+
+        // Function to generate QR code
+        function generateQRCode(bookingRef) {
+            const qrCodeDiv = document.getElementById('qrcode');
+            qrCodeDiv.innerHTML = ''; // Clear previous QR code
+            new QRCode(qrCodeDiv, {
+                text: bookingRef,
+                width: 128,
+                height: 128
+            });
+            document.getElementById('qrCodeSection').classList.remove('hidden');
+        }
+
+        // Function to generate PDF ticket
+        function generateTicket(booking) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const primaryColor = '#002d6b'; // Your brand's primary color
+            const secondaryColor = '#f0f0f0'; // Light background for sections
+
+            // Header
+            doc.setFillColor(primaryColor);
+            doc.rect(0, 0, doc.internal.pageSize.width, 20, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(18);
+            doc.text("Prince Alex Travel Services - Ticket", doc.internal.pageSize.width / 2, 12, { align: "center" });
+
+            let yPos = 30;
+
+            // Booking Details Section
+            doc.setFillColor(secondaryColor);
+            doc.rect(10, yPos - 5, doc.internal.pageSize.width - 20, 75, 'F'); // Background for this section
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.text("Booking Confirmation", 20, yPos);
+            yPos += 10;
+            doc.setFontSize(10);
+            doc.text(`Booking Reference: ${booking.booking_ref}`, 20, yPos);
+            yPos += 7;
+            doc.text(`Passenger Name: ${booking.passengerName}`, 20, yPos);
+            yPos += 7;
+            doc.text(`Email: ${booking.passengerEmail}`, 20, yPos);
+            yPos += 7;
+            doc.text(`Phone: ${booking.passengerPhone}`, 20, yPos);
+            yPos += 7;
+            doc.text(`Route: ${booking.route}`, 20, yPos);
+            yPos += 7;
+            doc.text(`Travel Date: ${booking.travelDate}`, 20, yPos);
+            yPos += 7;
+            doc.text(`Departure Time: ${booking.departureTime}`, 20, yPos);
+            yPos += 7;
+            doc.text(`Seat Number: ${booking.seatNumber}`, 20, yPos);
+            yPos += 7;
+            doc.text(`Total Price: Ksh ${booking.price.toFixed(2)}`, 20, yPos);
+            yPos += 15;
+
+            // Payment Status
+            doc.setFillColor(secondaryColor);
+            doc.rect(10, yPos - 5, doc.internal.pageSize.width - 20, 20, 'F');
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(12);
+            doc.text(`Payment Status: ${booking.payment_status.charAt(0).toUpperCase() + booking.payment_status.slice(1)}`, 20, yPos);
+            yPos += 20;
+
+            // QR Code Section
+            if (booking.payment_status === 'paid') {
+                const qrCodeElement = document.getElementById('qrcode');
+                if (qrCodeElement && qrCodeElement.querySelector('canvas')) {
+                    const qrCodeImage = qrCodeElement.querySelector('canvas').toDataURL("image/png");
+                    doc.setFontSize(12);
+                    doc.text("Scan for Quick Check-in:", 20, yPos);
+                    doc.addImage(qrCodeImage, 'PNG', 20, yPos + 5, 40, 40);
+                    yPos += 50;
+                }
+            }
+
+            // Footer
+            doc.setFontSize(9);
+            doc.setTextColor(100, 100, 100);
+            doc.text("Thank you for choosing Prince Alex Travel. Enjoy your journey!", doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 20, { align: "center" });
+            doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 15, { align: "center" });
+
+            doc.save(`PrinceAlex_Ticket_${booking.booking_ref}.pdf`);
+            console.log("PDF download initiated successfully.");
+        }
+
+
+        // NEW: Function to update booking status and send email
+        async function updateBookingStatusAndSendEmail(bookingId, customerEmail, bookingDetails) {
+            const bookingRef = doc(db, "bookings", bookingId);
+            try {
+                await updateDoc(bookingRef, {
+                    payment_status: 'paid',
+                    // other updates as needed
+                });
+                console.log("Booking status updated to paid.");
+
+                // Send booking confirmation email
+                await addDoc(collection(db, "mail"), {
+                    to: customerEmail,
+                    message: {
+                        subject: "Your Prince Alex Travel Booking is Confirmed!",
+                        html: `
+                            <p>Dear ${bookingDetails.passengerName},</p>
+                            <p>Your booking with reference <strong>${bookingDetails.booking_ref}</strong> has been successfully paid and confirmed!</p>
+                            <h3>Booking Details:</h3>
+                            <ul>
+                                <li><strong>Route:</strong> ${bookingDetails.route}</li>
+                                <li><strong>Travel Date:</strong> ${bookingDetails.travelDate}</li>
+                                <li><strong>Departure Time:</strong> ${bookingDetails.departureTime}</li>
+                                <li><strong>Seat Number:</strong> ${bookingDetails.seatNumber}</li>
+                                <li><strong>Total Price:</strong> Ksh ${bookingDetails.price}</li>
+                                <li><strong>Payment Status:</strong> Paid</li>
+                            </ul>
+                            <p>Thank you for choosing Prince Alex Travel. We look forward to serving you!</p>
+                            <p>Best regards,<br>Prince Alex Travel Team</p>
+                            <hr>
+                            <p style="font-size: 0.8em; color: #777;">&copy; 2025 Prince Alex Digital. All rights reserved.</p>
+                        `,
+                    },
+                });
+                console.log("Booking confirmation email queued successfully.");
+
+                showCustomAlert("Payment Successful! Your booking is confirmed. A confirmation email has been sent.", 'success', () => {
+                    // Optional: redirect or update UI
+                    // Update the displayed status immediately after successful payment
+                    document.getElementById('paymentStatusDisplay').textContent = 'Paid';
+                    document.getElementById('paymentStatusDisplay').className = 'status-badge paid';
+                    document.getElementById('paymentSection').classList.add('hidden');
+                    generateQRCode(bookingDetails.booking_ref); // Generate QR code on success
+                    document.getElementById('downloadTicketBtn').classList.remove('hidden'); // Show download button
+                    // Re-enable ticket download for the updated booking
+                    document.getElementById('downloadTicketBtn').onclick = () => generateTicket(bookingDetails);
+                });
+
+
+            } catch (error) {
+                console.error("Error updating booking status or sending email: ", error);
+                showCustomAlert("There was an issue confirming your booking or sending the email. Please contact support.", 'error');
+            }
+        }
+
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookingRef = urlParams.get('ref'); // Get booking_ref from URL
+
+            if (bookingRef) {
+                const bookingsRef = collection(db, "bookings");
+                const q = query(bookingsRef, where("booking_ref", "==", bookingRef));
+                const querySnapshot = await getDocs(q); // Assuming getDocs is available or imported
+
+                if (!querySnapshot.empty) {
+                    const bookingDoc = querySnapshot.docs[0];
+                    const booking = { id: bookingDoc.id, ...bookingDoc.data() };
+
+                    // Display booking details
+                    document.getElementById('bookingRefDisplay').textContent = booking.booking_ref;
+                    document.getElementById('passengerNameDisplay').textContent = booking.passengerName;
+                    document.getElementById('passengerEmailDisplay').textContent = booking.passengerEmail;
+                    document.getElementById('passengerPhoneDisplay').textContent = booking.passengerPhone;
+                    document.getElementById('busRouteDisplay').textContent = booking.route;
+                    document.getElementById('travelDateDisplay').textContent = booking.travelDate;
+                    document.getElementById('departureTimeDisplay').textContent = booking.departureTime;
+                    document.getElementById('seatNumberDisplay').textContent = booking.seatNumber;
+                    document.getElementById('totalPriceDisplay').textContent = `Ksh ${booking.price.toFixed(2)}`;
+                    document.getElementById('bookingDateDisplay').textContent = new Date(booking.bookingDate).toLocaleString();
+
+                    const statusBadge = document.getElementById('paymentStatusDisplay');
+                    statusBadge.textContent = booking.payment_status.charAt(0).toUpperCase() + booking.payment_status.slice(1);
+                    statusBadge.className = `status-badge ${booking.payment_status}`;
+
+                    // Check payment status and show payment section if pending
+                    if (booking.payment_status === 'pending') {
+                        document.getElementById('paymentSection').classList.remove('hidden');
+                        document.getElementById('amountToPay').textContent = `Amount to Pay: Ksh ${booking.price.toFixed(2)}`;
+                        // Attach event listener for the payment button (assuming 'makePayment' function)
+                        document.getElementById('payNowBtn').onclick = () => {
+                            // In a real app, this would initiate a payment gateway process
+                            // For demonstration, directly call the update function
+                            showCustomConfirm("Simulate Payment: Confirm to mark as paid?", 'confirm', () => {
+                                updateBookingStatusAndSendEmail(booking.id, booking.passengerEmail, booking);
+                            });
+                        };
+                    } else {
+                        document.getElementById('paymentSection').classList.add('hidden');
+                    }
+
+                    // Generate QR Code if booking is confirmed
+                    if (booking.payment_status === 'paid') {
+                        generateQRCode(booking.booking_ref);
+                        document.getElementById('downloadTicketBtn').classList.remove('hidden'); // Show download button
+                        document.getElementById('downloadTicketBtn').onclick = () => generateTicket(booking);
+                    } else {
+                        document.getElementById('downloadTicketBtn').classList.add('hidden');
+                    }
+
+                } else {
+                    document.getElementById('bookingDetails').innerHTML = '<p class="error-message">Booking not found.</p>';
+                    document.getElementById('paymentSection').classList.add('hidden');
+                    document.getElementById('downloadTicketBtn').classList.add('hidden');
+                }
+            } else {
+                document.getElementById('bookingDetails').innerHTML = '<p class="error-message">No booking reference provided.</p>';
+                document.getElementById('paymentSection').classList.add('hidden');
+                document.getElementById('downloadTicketBtn').classList.add('hidden');
+            }
+        });
+
     </script>
+    <style>
+        :root {
+            --primary-color: #002d6b; /* Dark blue */
+            --secondary-color: #ffc107; /* Yellow */
+            --text-color: #333;
+            --background-color: #f4f7f6;
+            --card-background: #ffffff;
+            --border-color: #ddd;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            background-color: var(--card-background);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-top: 5px solid var(--primary-color);
+        }
+
+        h1, h2 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .booking-details-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #fcfcfc;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-item strong {
+            color: var(--primary-color);
+            flex-basis: 40%;
+        }
+
+        .detail-item span {
+            flex-basis: 58%;
+            text-align: right;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .status-badge.paid {
+            background-color: #28a745; /* Green */
+        }
+
+        .status-badge.pending {
+            background-color: #ffc107; /* Yellow */
+            color: var(--text-color);
+        }
+
+        .status-badge.cancelled {
+            background-color: #dc3545; /* Red */
+        }
+
+        .button-group {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .button-group button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+            margin: 0 10px;
+        }
+
+        .button-group button:hover {
+            background-color: #001a4d;
+        }
+
+        #paymentSection {
+            background-color: #fff3cd; /* Light yellow background */
+            border: 1px solid #ffeeba;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+            color: #856404;
+        }
+
+        #paymentSection h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        #amountToPay {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .qr-code-section {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            background-color: #fcfcfc;
+        }
+
+        .qr-code-section canvas {
+            margin-top: 15px;
+            border: 2px solid var(--primary-color);
+            border-radius: 5px;
+        }
+
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .container {
+                margin: 20px auto;
+                padding: 20px;
+            }
+
+            .detail-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .detail-item strong,
+            .detail-item span {
+                flex-basis: auto;
+                width: 100%;
+                text-align: left;
+            }
+
+            .detail-item span {
+                margin-top: 5px;
+                font-weight: bold;
+            }
+
+            .button-group button {
+                width: 100%;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Booking Confirmation</h1>
+
+        <div id="bookingDetails" class="booking-details-grid">
+            <div class="detail-item">
+                <strong>Booking Reference:</strong> <span id="bookingRefDisplay"></span>
+            </div>
+            <div class="detail-item">
+                <strong>Passenger Name:</strong> <span id="passengerNameDisplay"></span>
+            </div>
+            <div class="detail-item">
+                <strong>Email:</strong> <span id="passengerEmailDisplay"></span>
+            </div>
+            <div class="detail-item">
+                <strong>Phone:</strong> <span id="passengerPhoneDisplay"></span>
+            </div>
+            <div class="detail-item">
+                <strong>Bus Route:</strong> <span id="busRouteDisplay"></span>
+            </div>
+            <div class="detail-item">
+                <strong>Travel Date:</strong> <span id="travelDateDisplay"></span>
+            </div>
+            <div class="detail-item">
+                <strong>Departure Time:</strong> <span id="departureTimeDisplay"></span>
+            </div>
+            <div class="detail-item">
+                <strong>Seat Number:</strong> <span id="seatNumberDisplay"></span>
+            </div>
+            <div class="detail-item">
+                <strong>Total Price:</strong> <span id="totalPriceDisplay"></span>
+            </div>
+            <div class="detail-item">
+                <strong>Booking Date:</strong> <span id="bookingDateDisplay"></span>
+            </div>
+            <div class="detail-item">
+                <strong>Payment Status:</strong> <span id="paymentStatusDisplay" class="status-badge"></span>
+            </div>
+        </div>
+
+        <div id="paymentSection" class="hidden">
+            <h3>Payment Required</h3>
+            <p id="amountToPay"></p>
+            <div class="button-group">
+                <button id="payNowBtn">Make Payment</button>
+            </div>
+        </div>
+
+        <div id="qrCodeSection" class="qr-code-section hidden">
+            <h2>Your QR Code Ticket</h2>
+            <div id="qrcode"></div>
+            <p>Scan this QR code at the bus station for quick check-in.</p>
+        </div>
+
+        <div class="button-group">
+            <button id="downloadTicketBtn" class="hidden"><i class="fas fa-download"></i> Download Ticket (PDF)</button>
+            <button onclick="window.location.href='index.html'"><i class="fas fa-home"></i> Back to Home</button>
+        </div>
+    </div>
 </body>
 </html>
