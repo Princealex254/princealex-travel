@@ -788,7 +788,7 @@
         }
 
         /* AI Assistant Button */
-        #princealexAssistantButton {
+        #aiAssistantButton {
             position: fixed;
             bottom: 30px;
             right: 30px;
@@ -1119,11 +1119,11 @@
 
     <div id="aiAssistantChat" class="chat-hidden">
         <div class="chat-header">
-            <h3>Prince Alex Assistant</h3>
+            <h3>AI Assistant</h3>
             <button class="chat-close-btn" onclick="toggleChat()">&times;</button>
         </div>
         <div class="chat-body" id="chatBody">
-            <p class="bot-message">Hello! I am your Prince Alex Travel Assistant. I can answer general questions about travel or provide information about bus routes if you tell me the origin and destination. How can I assist you today?</p>
+            <p class="bot-message">Hello! I am your Prince Alex Travel AI Assistant. I can answer general questions about travel or provide information about bus routes if you tell me the origin and destination. How can I assist you today?</p>
         </div>
         <div class="chat-footer">
             <input type="text" placeholder="Type your message..." id="chatInput" />
@@ -1874,57 +1874,3 @@
 
 </body>
 </html>
-
-<script>
-    async function handleChatInput() {
-        const chatInput = document.getElementById('chatInput');
-        const message = chatInput.value.trim();
-        if (!message) return;
-        appendMessage(message, 'user');
-        chatInput.value = '';
-
-        const chatBody = document.getElementById('chatBody');
-        const typing = document.createElement('p');
-        typing.className = 'bot-message';
-        typing.textContent = 'Travel Assistant is typing...';
-        chatBody.appendChild(typing);
-        chatBody.scrollTop = chatBody.scrollHeight;
-
-        try {
-            const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer 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"
-                },
-                body: JSON.stringify({
-                    model: "gpt-3.5-turbo",
-                    messages: [
-                        { role: "system", content: "You are a helpful travel assistant for a bus booking website in Kenya." },
-                        { role: "user", content: message }
-                    ]
-                })
-            });
-
-            const data = await response.json();
-            const botReply = data.choices[0].message.content;
-            typing.remove();
-            appendMessage(botReply, 'bot');
-
-            if (botReply.toLowerCase().includes("contact") || botReply.toLowerCase().includes("support") ||
-                botReply.toLowerCase().includes("not sure") || botReply.toLowerCase().includes("unable")) {
-                const askSupport = document.createElement('p');
-                askSupport.className = 'bot-message';
-                askSupport.innerHTML = "Let me connect you to a human agent. <a href='https://wa.me/254717384875' target='_blank'>Click here to chat on WhatsApp</a>.";
-                chatBody.appendChild(askSupport);
-            }
-        } catch (err) {
-            typing.remove();
-            appendMessage("Sorry, I'm having trouble responding right now. You can reach our team on WhatsApp.", 'bot');
-            const supportLink = document.createElement('p');
-            supportLink.className = 'bot-message';
-            supportLink.innerHTML = "<a href='https://wa.me/254717384875' target='_blank'>Click here to chat on WhatsApp</a>";
-            chatBody.appendChild(supportLink);
-        }
-    }
-</script>
