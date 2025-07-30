@@ -147,8 +147,7 @@
             const user = userCredential.user;
             // Check if user is an admin (e.g., from a 'roles' collection or specific UID)
             // For simplicity, let's assume specific admin emails for now, or check a user's Firestore document
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists() && userDoc.data().role === 'admin') {
+            const adminDoc = await getDoc(doc(db, "admins", user.uid));if (adminDoc.exists() && adminDoc.data().isAdmin === true) {
                 window.currentAdminUser = user; // Store current admin user
                 showSuccessMessage('loginMessage', 'Login successful! Welcome Admin.', 3000);
             } else {
@@ -182,8 +181,8 @@
     onAuthStateChanged(auth, (user) => {
         if (user) {
             // User is signed in, check if they are an admin
-            getDoc(doc(db, "users", user.uid)).then(userDoc => {
-                if (userDoc.exists() && userDoc.data().role === 'admin') {
+            getDoc(doc(db, "admins", user.uid)).then(adminDoc => {
+                if (adminDoc.exists() && adminDoc.data().isAdmin === true) {
                     window.currentAdminUser = user;
                     document.getElementById('loginForm').classList.add('hidden');
                     document.getElementById('adminPanel').classList.remove('hidden');
