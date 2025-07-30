@@ -34,6 +34,8 @@
 
 
     // Your web app's Firebase configuration
+    // IMPORTANT: In a real application, do NOT expose API keys directly in client-side code.
+    // Use environment variables or Firebase Hosting configuration.
     const firebaseConfig = {
         apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
         authDomain: "princealextravel.firebaseapp.com",
@@ -139,20 +141,32 @@
 
     // Authentication Functions
     async function adminLogin() {
+        console.log("Admin login function started.");
         const email = document.getElementById('adminEmail').value;
         const password = document.getElementById('adminPassword').value;
 
+        if (!email || !password) {
+            showErrorMessage('loginMessage', 'Please enter both email and password.');
+            console.log("Email or password missing.");
+            return;
+        }
+
         try {
+            console.log("Attempting to sign in with email:", email);
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
-            // Check if user is an admin (e.g., from a 'roles' collection or specific UID)
-            // For simplicity, let's assume specific admin emails for now, or check a user's Firestore document
-            const adminDoc = await getDoc(doc(db, "admins", user.uid));if (adminDoc.exists() && adminDoc.data().isAdmin === true) {
+            console.log("User signed in:", user.uid);
+
+            console.log("Checking admin role for user:", user.uid);
+            const adminDoc = await getDoc(doc(db, "admins", user.uid));
+            if (adminDoc.exists() && adminDoc.data().isAdmin === true) {
                 window.currentAdminUser = user; // Store current admin user
                 showSuccessMessage('loginMessage', 'Login successful! Welcome Admin.', 3000);
+                console.log("Admin login successful.");
             } else {
                 await signOut(auth); // Log out if not an admin
                 showErrorMessage('loginMessage', 'Access Denied: You are not an authorized admin.', 5000);
+                console.log("Access denied: User is not an admin.");
             }
         } catch (error) {
             console.error("Login error:", error);
@@ -179,6 +193,7 @@
 
     // Auth State Observer
     onAuthStateChanged(auth, (user) => {
+        console.log("Auth state changed. User:", user ? user.uid : "null");
         if (user) {
             // User is signed in, check if they are an admin
             getDoc(doc(db, "admins", user.uid)).then(adminDoc => {
@@ -188,12 +203,14 @@
                     document.getElementById('adminPanel').classList.remove('hidden');
                     loadBuses();
                     loadBookings();
+                    console.log("User is an admin. Admin panel displayed.");
                 } else {
                     // Not an admin, log them out
                     signOut(auth);
                     document.getElementById('loginForm').classList.remove('hidden');
                     document.getElementById('adminPanel').classList.add('hidden');
                     showErrorMessage('loginMessage', 'Access Denied: Not an authorized admin.', 5000);
+                    console.log("User is not an admin. Logged out.");
                 }
             }).catch(error => {
                 console.error("Error fetching user role:", error);
@@ -207,6 +224,7 @@
             document.getElementById('loginForm').classList.remove('hidden');
             document.getElementById('adminPanel').classList.add('hidden');
             window.currentAdminUser = null;
+            console.log("User is signed out. Login form displayed.");
         }
     });
 
@@ -694,7 +712,7 @@
         try {
             const bookingDoc = await getDoc(doc(db, "bookings", bookingId));
             if (bookingDoc.exists()) {
-                const booking = { id: bookingDoc.id, ...bookingDoc.data() };
+                const booking = { id: bookingDoc.id, ...booking.data() };
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
 
@@ -1256,7 +1274,7 @@
         table td:nth-of-type(3)::before { content: "Email:"; }
         table td:nth-of-type(4)::before { content: "Route:"; }
         table td:nth-of-type(5)::before { content: "Date:"; }
-        table td:nth-of-type(6)::before { content: "Seat:"; }
+        table td:nth-of-type(6):::before { content: "Seat:"; }
         table td:nth-of-type(7)::before { content: "Price:"; }
         table td:nth-of-type(8)::before { content: "Status:"; }
         table td:nth-of-type(9)::before { content: "Booked On:"; }
