@@ -1,1545 +1,712 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Admin Panel - Prince Alex Travel</title>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin Panel – Prince Alex Travel</title>
+
+<!-- Icons & PDF -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- Firebase SDKs -->
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import {
-        getAuth,
-        signInWithEmailAndPassword,
-        signOut,
-        onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import {
-        getFirestore,
-        collection,
-        query,
-        where,
-        getDocs,
-        addDoc,
-        doc,
-        updateDoc,
-        deleteDoc,
-        increment,
-        getDoc,
-        onSnapshot // For real-time seat updates
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    // NEW: Ensure addDoc and collection are imported if not already, and getDoc, increment for existing code
-    import { addDoc as addDocFirestore, collection as collectionFirestore, increment as incrementFirestore, getDoc as getDocFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+/** =======================
+ *  Firebase (same as index.html)
+ *  ======================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { 
+  getFirestore, collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, onSnapshot, getDoc, increment, serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
+  authDomain: "princealextravel.firebaseapp.com",
+  projectId: "princealextravel",
+  storageBucket: "princealextravel.firebasestorage.app",
+  messagingSenderId: "947577729462",
+  appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-    // Your web app's Firebase configuration
-    // IMPORTANT: In a real application, do NOT expose API keys directly in client-side code.
-    // Use environment variables or Firebase Hosting configuration.
-    const firebaseConfig = {
-        apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
-        authDomain: "princealextravel.firebaseapp.com",
-        projectId: "princealextravel",
-        storageBucket: "princealextravel.firebasestorage.app",
-        messagingSenderId: "947577729462",
-        appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117",
-        measurementId: "G-G439H80252"
-    };
+/** =======================
+ *  DOM Helpers
+ *  ======================= */
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+function toast(msg, type="info") {
+  const t = document.createElement("div");
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.classList.add("show"),10);
+  setTimeout(()=>{t.classList.remove("show"); setTimeout(()=>t.remove(),300)}, 2700);
+}
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+/** =======================
+ *  Auth Guard
+ *  ======================= */
+let currentAdmin = null;
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    currentAdmin = null;
+    $("#adminApp").classList.add("hidden");
+    $("#loginCard").classList.remove("hidden");
+    $("#loginEmail").focus();
+    return;
+  }
+  // Check admins collection
+  const adminRef = doc(db, "admins", user.uid);
+  const snap = await getDoc(adminRef);
+  if (snap.exists() && snap.data().isAdmin === true) {
+    currentAdmin = user;
+    $("#adminEmailBadge").textContent = user.email ?? "Admin";
+    $("#loginCard").classList.add("hidden");
+    $("#adminApp").classList.remove("hidden");
+    // load data
+    attachRealtimeBuses();
+    attachRealtimeBookings();
+  } else {
+    await signOut(auth);
+    currentAdmin = null;
+    $("#adminApp").classList.add("hidden");
+    $("#loginCard").classList.remove("hidden");
+    toast("Access denied. This account is not an admin.", "error");
+  }
+});
 
-    // Make addDoc and collection globally accessible if they are used in inline scripts
-    window.addDoc = addDocFirestore; // Use the aliased import
-    window.collection = collectionFirestore; // Use the aliased import
-    window.increment = incrementFirestore;
-    window.getDoc = getDocFirestore;
-    window.getDocs = getDocs;
-    window.query = query;
-    window.where = where;
-    window.doc = doc;
-    window.updateDoc = updateDoc;
-    window.deleteDoc = deleteDoc;
-    window.onSnapshot = onSnapshot;
+$("#loginForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const email = $("#loginEmail").value.trim();
+  const pass = $("#loginPassword").value;
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    toast("Login successful!", "success");
+  } catch (err) {
+    console.error(err);
+    toast(err.message || "Login failed", "error");
+  }
+});
+$("#logoutBtn").addEventListener("click", async ()=>{
+  await signOut(auth);
+  toast("Logged out.", "info");
+});
 
+/** =======================
+ *  Tabs
+ *  ======================= */
+$$(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const target = btn.dataset.tab;
+    $$(".tab-btn").forEach(b=>b.classList.remove("active"));
+    $$(".tab-panel").forEach(p=>p.classList.add("hidden"));
+    btn.classList.add("active");
+    $(`#${target}`).classList.remove("hidden");
+  });
+});
 
-    // Global variable to store current admin user
-    window.currentAdminUser = null;
+/** =======================
+ *  Manage Buses
+ *  ======================= */
+const busesCol = collection(db, "buses");
+let busesUnsub = null;
 
-    // Custom Alert
-    function showCustomAlert(message, type = 'info', callback = null) {
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
-            align-items: center; z-index: 1001;
-        `;
-        let bgColor = '#002d6b';
-        if (type === 'success') bgColor = '#28a745';
-        else if (type === 'error') bgColor = '#dc3545';
-        else if (type === 'warning') bgColor = '#ffc107';
-
-        modal.innerHTML = `
-            <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                <p style="margin-bottom: 20px; font-size: 1.1em; color: ${bgColor};">${message}</p>
-                <button style="background-color: ${bgColor}; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.parentNode.parentNode.remove(); if(window.alertCallback) window.alertCallback();">OK</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        window.alertCallback = callback;
-    }
-
-    // Custom Confirm
-    function showCustomConfirm(message, type = 'confirm', callback = null) {
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
-            align-items: center; z-index: 1001;
-        `;
-        let confirmColor = '#002d6b';
-        if (type === 'delete') confirmColor = '#dc3545';
-        else if (type === 'confirm') confirmColor = '#ffc107';
-
-        modal.innerHTML = `
-            <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                <p style="margin-bottom: 20px; font-size: 1.1em; color: ${confirmColor};">${message}</p>
-                <button style="background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;" onclick="this.parentNode.parentNode.remove(); if(window.confirmCallback) window.confirmCallback(true);">Yes</button>
-                <button style="background-color: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.parentNode.parentNode.remove(); if(window.confirmCallback) window.confirmCallback(false);">No</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        window.confirmCallback = callback;
-    }
-
-
-    function showSuccessMessage(elementId, message, duration = 5000) {
-        const container = document.getElementById(elementId);
-        container.textContent = message;
-        container.className = 'message success';
-        container.style.display = 'block';
-        if (duration > 0) {
-            setTimeout(() => {
-                container.style.display = 'none';
-            }, duration);
-        }
-    }
-
-    function showErrorMessage(elementId, message, duration = 5000) {
-        const container = document.getElementById(elementId);
-        container.textContent = message;
-        container.className = 'message error';
-        container.style.display = 'block';
-        if (duration > 0) {
-            setTimeout(() => {
-                container.style.display = 'none';
-            }, duration);
-        }
-    }
-
-    // Authentication Functions
-    async function adminLogin() {
-        console.log("Admin login function started.");
-        const email = document.getElementById('adminEmail').value;
-        const password = document.getElementById('adminPassword').value;
-
-        if (!email || !password) {
-            showErrorMessage('loginMessage', 'Please enter both email and password.');
-            console.log("Email or password missing.");
-            return;
-        }
-
-        try {
-            console.log("Attempting to sign in with email:", email);
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-            console.log("User signed in:", user.uid);
-
-            console.log("Checking admin role for user:", user.uid);
-            const adminDoc = await getDoc(doc(db, "admins", user.uid));
-            if (adminDoc.exists() && adminDoc.data().isAdmin === true) {
-                window.currentAdminUser = user; // Store current admin user
-                showSuccessMessage('loginMessage', 'Login successful! Welcome Admin.', 3000);
-                console.log("Admin login successful.");
-            } else {
-                await signOut(auth); // Log out if not an admin
-                showErrorMessage('loginMessage', 'Access Denied: You are not an authorized admin.', 5000);
-                console.log("Access denied: User is not an admin.");
-            }
-        } catch (error) {
-            console.error("Login error:", error);
-            showErrorMessage('loginMessage', 'Login failed: ' + error.message, 5000);
-        }
-    }
-
-    async function adminLogout() {
-        showCustomConfirm("Are you sure you want to log out?", 'confirm', async (result) => {
-            if (result) {
-                try {
-                    await signOut(auth);
-                    window.currentAdminUser = null; // Clear admin user
-                    showCustomAlert("You have been logged out.", 'info', () => {
-                        window.location.reload(); // Reload to show login form
-                    });
-                } catch (error) {
-                    console.error("Logout error:", error);
-                    showCustomAlert("Error during logout: " + error.message, 'error');
-                }
-            }
-        });
-    }
-
-    // Auth State Observer
-    onAuthStateChanged(auth, (user) => {
-        console.log("Auth state changed. User:", user ? user.uid : "null");
-        if (user) {
-            // User is signed in, check if they are an admin
-            getDoc(doc(db, "admins", user.uid)).then(adminDoc => {
-                if (adminDoc.exists() && adminDoc.data().isAdmin === true) {
-                    window.currentAdminUser = user;
-                    document.getElementById('loginForm').classList.add('hidden');
-                    document.getElementById('adminPanel').classList.remove('hidden');
-                    loadBuses();
-                    loadBookings();
-                    console.log("User is an admin. Admin panel displayed.");
-                } else {
-                    // Not an admin, log them out
-                    signOut(auth);
-                    document.getElementById('loginForm').classList.remove('hidden');
-                    document.getElementById('adminPanel').classList.add('hidden');
-                    showErrorMessage('loginMessage', 'Access Denied: Not an authorized admin.', 5000);
-                    console.log("User is not an admin. Logged out.");
-                }
-            }).catch(error => {
-                console.error("Error fetching user role:", error);
-                signOut(auth); // Log out on error
-                document.getElementById('loginForm').classList.remove('hidden');
-                document.getElementById('adminPanel').classList.add('hidden');
-                showErrorMessage('loginMessage', 'Authentication error. Please try again.', 5000);
-            });
-        } else {
-            // User is signed out
-            document.getElementById('loginForm').classList.remove('hidden');
-            document.getElementById('adminPanel').classList.add('hidden');
-            window.currentAdminUser = null;
-            console.log("User is signed out. Login form displayed.");
-        }
+function attachRealtimeBuses() {
+  if (busesUnsub) busesUnsub();
+  busesUnsub = onSnapshot(busesCol, (snap)=>{
+    const list = $("#busTableBody");
+    list.innerHTML = "";
+    snap.forEach(docSnap=>{
+      const d = docSnap.data();
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${d.company ?? "-"}</td>
+        <td>${d.from ?? "-"}</td>
+        <td>${d.to ?? "-"}</td>
+        <td>${d.departureTime ?? "-"}</td>
+        <td>${d.price ? "KES "+Number(d.price).toLocaleString() : "-"}</td>
+        <td>${d.totalSeats ?? "-"}</td>
+        <td class="nowrap">
+          <button class="btn sm" data-action="edit" data-id="${docSnap.id}"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button class="btn sm danger" data-action="del" data-id="${docSnap.id}"><i class="fa-solid fa-trash"></i></button>
+        </td>
+      `;
+      list.appendChild(tr);
     });
-
-    // Tab Switching
-    function showTab(tabName) {
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.add('hidden');
-        });
-        document.getElementById(tabName).classList.remove('hidden');
-
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.classList.remove('active');
-        });
-        document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
+  });
+}
+$("#addBusForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const data = {
+    company: $("#busCompany").value.trim(),
+    from: $("#busFrom").value.trim(),
+    to: $("#busTo").value.trim(),
+    departureTime: $("#busTime").value.trim(),
+    price: Number($("#busPrice").value),
+    totalSeats: Number($("#busSeats").value),
+    createdAt: serverTimestamp()
+  };
+  try {
+    await addDoc(busesCol, data);
+    e.target.reset();
+    toast("Bus added.", "success");
+  } catch (err) {
+    console.error(err);
+    toast("Failed to add bus: " + err.message, "error");
+  }
+});
+$("#busTableBody").addEventListener("click", async (e)=>{
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.action === "del") {
+    if (!confirm("Delete this bus?")) return;
+    try {
+      await deleteDoc(doc(db, "buses", id));
+      toast("Bus deleted.", "success");
+    } catch (err) {
+      toast("Delete failed: " + err.message, "error");
     }
-
-    // Bus Management
-    async function addBus() {
-        const busNumber = document.getElementById('busNumber').value;
-        const route = document.getElementById('busRoute').value;
-        const capacity = parseInt(document.getElementById('busCapacity').value);
-        const price = parseFloat(document.getElementById('busPrice').value);
-
-        if (!busNumber || !route || isNaN(capacity) || isNaN(price) || capacity <= 0 || price <= 0) {
-            showErrorMessage('addBusErrorMessage', 'Please fill all bus details correctly.');
-            return;
-        }
-
-        try {
-            await addDoc(collection(db, "buses"), {
-                busNumber: busNumber,
-                route: route,
-                capacity: capacity,
-                availableSeats: capacity, // Initially all seats are available
-                price: price,
-                createdAt: new Date().toISOString()
-            });
-            showSuccessMessage('addBusSuccessMessage', 'Bus added successfully!', 3000);
-            document.getElementById('addBusForm').reset();
-            loadBuses(); // Reload bus list
-        } catch (error) {
-            console.error("Error adding bus:", error);
-            showErrorMessage('addBusErrorMessage', 'Failed to add bus: ' + error.message);
-        }
-    }
-
-    async function loadBuses() {
-        const busesList = document.getElementById('busesList');
-        busesList.innerHTML = '';
-        try {
-            const q = query(collection(db, "buses"));
-            const querySnapshot = await getDocs(q);
-            querySnapshot.forEach((doc) => {
-                const bus = { id: doc.id, ...doc.data() };
-                const row = busesList.insertRow();
-                row.insertCell(0).textContent = bus.busNumber;
-                row.insertCell(1).textContent = bus.route;
-                row.insertCell(2).textContent = bus.capacity;
-                row.insertCell(3).textContent = bus.availableSeats;
-                row.insertCell(4).textContent = `Ksh ${bus.price.toFixed(2)}`;
-
-                const actionsCell = row.insertCell(5);
-                const editBtn = document.createElement('button');
-                editBtn.className = 'action-button edit';
-                editBtn.innerHTML = '<i class="fas fa-edit"></i>';
-                editBtn.onclick = () => openEditBusModal(bus.id, bus.busNumber, bus.route, bus.capacity, bus.price);
-                actionsCell.appendChild(editBtn);
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'action-button delete';
-                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-                deleteBtn.onclick = () => deleteBus(bus.id, bus.busNumber);
-                actionsCell.appendChild(deleteBtn);
-            });
-        } catch (error) {
-            console.error("Error loading buses:", error);
-            showErrorMessage('busesListContainer', 'Failed to load buses.');
-        }
-    }
-
-    let currentEditBusId = null;
-    function openEditBusModal(id, busNumber, route, capacity, price) {
-        currentEditBusId = id;
-        document.getElementById('editBusNumber').value = busNumber;
-        document.getElementById('editBusRoute').value = route;
-        document.getElementById('editBusCapacity').value = capacity;
-        document.getElementById('editBusPrice').value = price;
-        document.getElementById('editBusModal').classList.remove('hidden');
-    }
-
-    function closeEditBusModal() {
-        document.getElementById('editBusModal').classList.add('hidden');
-        currentEditBusId = null;
-        document.getElementById('editBusForm').reset();
-        document.getElementById('editBusErrorMessage').style.display = 'none';
-        document.getElementById('editBusSuccessMessage').style.display = 'none';
-    }
-
-    async function updateBus() {
-        if (!currentEditBusId) return;
-
-        const busNumber = document.getElementById('editBusNumber').value;
-        const route = document.getElementById('editBusRoute').value;
-        const capacity = parseInt(document.getElementById('editBusCapacity').value);
-        const price = parseFloat(document.getElementById('editBusPrice').value);
-
-        if (!busNumber || !route || isNaN(capacity) || isNaN(price) || capacity <= 0 || price <= 0) {
-            showErrorMessage('editBusErrorMessage', 'Please fill all bus details correctly.');
-            return;
-        }
-
-        try {
-            await updateDoc(doc(db, "buses", currentEditBusId), {
-                busNumber: busNumber,
-                route: route,
-                capacity: capacity,
-                price: price
-            });
-            showSuccessMessage('editBusSuccessMessage', 'Bus updated successfully!', 3000);
-            loadBuses(); // Reload list
-            setTimeout(closeEditBusModal, 1000); // Close modal after a short delay
-        } catch (error) {
-            console.error("Error updating bus:", error);
-            showErrorMessage('editBusErrorMessage', 'Failed to update bus: ' + error.message);
-        }
-    }
-
-    async function deleteBus(id, busNumber) {
-        showCustomConfirm(`Are you sure you want to delete Bus ${busNumber}? This action cannot be undone.`, 'delete', async (result) => {
-            if (result) {
-                try {
-                    await deleteDoc(doc(db, "buses", id));
-                    showCustomAlert(`Bus ${busNumber} deleted successfully.`, 'success');
-                    loadBuses(); // Reload list
-                } catch (error) {
-                    console.error("Error deleting bus:", error);
-                    showCustomAlert('Failed to delete bus: ' + error.message, 'error');
-                }
-            }
-        });
-    }
-
-    // Booking Management
-    let currentBusForBooking = null;
-    let selectedSeatNumber = null;
-
-    async function searchBusesForBooking() {
-        const searchRoute = document.getElementById('searchRoute').value;
-        const searchTravelDate = document.getElementById('searchTravelDate').value;
-        const busesAvailableList = document.getElementById('busesAvailableList');
-        busesAvailableList.innerHTML = '';
-        currentBusForBooking = null; // Reset selection
-
-        if (!searchRoute || !searchTravelDate) {
-            showErrorMessage('makeBookingErrorMessage', 'Please select a route and travel date.');
-            return;
-        }
-
-        try {
-            const q = query(collection(db, "buses"), where("route", "==", searchRoute));
-            const querySnapshot = await getDocs(q);
-
-            if (querySnapshot.empty) {
-                showErrorMessage('makeBookingErrorMessage', 'No buses found for this route.', 3000);
-                return;
-            }
-
-            for (const docBus of querySnapshot.docs) {
-                const bus = { id: docBus.id, ...docBus.data() };
-
-                // Fetch bookings for this bus on this date to calculate available seats
-                const bookingsQ = query(
-                    collection(db, "bookings"),
-                    where("busId", "==", bus.id),
-                    where("travelDate", "==", searchTravelDate)
-                );
-                const bookingsSnapshot = await getDocs(bookingsQ);
-                const bookedSeats = bookingsSnapshot.docs.map(doc => doc.data().seatNumber);
-                const actualAvailableSeats = bus.capacity - bookedSeats.length;
-
-                if (actualAvailableSeats > 0) {
-                    const row = busesAvailableList.insertRow();
-                    row.insertCell(0).textContent = bus.busNumber;
-                    row.insertCell(1).textContent = bus.route;
-                    row.insertCell(2).textContent = bus.capacity;
-                    row.insertCell(3).textContent = actualAvailableSeats;
-                    row.insertCell(4).textContent = `Ksh ${bus.price.toFixed(2)}`;
-
-                    const actionsCell = row.insertCell(5);
-                    const selectBtn = document.createElement('button');
-                    selectBtn.className = 'action-button select';
-                    selectBtn.innerHTML = '<i class="fas fa-check"></i> Select';
-                    selectBtn.onclick = () => openSeatSelectionModal(bus, searchTravelDate, bookedSeats);
-                    actionsCell.appendChild(selectBtn);
-                }
-            }
-
-            if (busesAvailableList.rows.length === 0) {
-                showErrorMessage('makeBookingErrorMessage', 'No available seats on buses for this route and date.', 3000);
-            } else {
-                showSuccessMessage('makeBookingSuccessMessage', 'Available buses found.', 3000);
-            }
-
-        } catch (error) {
-            console.error("Error searching buses for booking:", error);
-            showErrorMessage('makeBookingErrorMessage', 'Failed to search buses: ' + error.message);
-        }
-    }
-
-    async function openSeatSelectionModal(bus, travelDate, bookedSeats) {
-        currentBusForBooking = bus;
-        selectedSeatNumber = null; // Reset selected seat
-        document.getElementById('selectedBusInfo').textContent = `Bus: ${bus.busNumber}, Route: ${bus.route}, Date: ${travelDate}`;
-        document.getElementById('busIdForBooking').value = bus.id;
-        document.getElementById('busRouteForBooking').value = bus.route;
-        document.getElementById('busTravelDateForBooking').value = travelDate;
-        document.getElementById('busPriceForBooking').value = bus.price; // Set price for booking
-        document.getElementById('busTimeForBooking').value = 'N/A'; // Placeholder, ideally fetched with bus schedule
-
-        const seatGrid = document.getElementById('seatGrid');
-        seatGrid.innerHTML = ''; // Clear previous seats
-
-        // Setup real-time listener for seats
-        const bookingsRef = collection(db, "bookings");
-        const q = query(
-            bookingsRef,
-            where("busId", "==", bus.id),
-            where("travelDate", "==", travelDate)
-        );
-
-        // Clear previous listener if any
-        if (window.seatUnsubscribe) {
-            window.seatUnsubscribe();
-        }
-
-        window.seatUnsubscribe = onSnapshot(q, (snapshot) => {
-            const currentBookedSeats = snapshot.docs.map(doc => doc.data().seatNumber);
-            renderSeats(bus.capacity, currentBookedSeats);
-        });
-
-        document.getElementById('seatSelectionModal').classList.remove('hidden');
-    }
-
-    function renderSeats(capacity, bookedSeats) {
-        const seatGrid = document.getElementById('seatGrid');
-        seatGrid.innerHTML = ''; // Clear previous seats
-        for (let i = 1; i <= capacity; i++) {
-            const seatDiv = document.createElement('div');
-            seatDiv.className = 'seat';
-            seatDiv.textContent = i;
-            if (bookedSeats.includes(String(i))) { // Booked seats are string in Firestore
-                seatDiv.classList.add('booked');
-                seatDiv.onclick = null; // Cannot select booked seats
-            } else {
-                seatDiv.classList.add('available');
-                seatDiv.onclick = () => selectSeat(i, seatDiv);
-            }
-            seatGrid.appendChild(seatDiv);
-        }
-        // Re-highlight the previously selected seat if it's still available
-        if (selectedSeatNumber) {
-            const prevSelectedSeat = seatGrid.querySelector(`.seat[data-seat-number="${selectedSeatNumber}"]`);
-            if (prevSelectedSeat && !prevSelectedSeat.classList.contains('booked')) {
-                prevSelectedSeat.classList.add('selected');
-            }
-        }
-    }
-
-    function selectSeat(seatNumber, seatDiv) {
-        // Deselect previously selected seat
-        const currentlySelected = document.querySelector('.seat.selected');
-        if (currentlySelected) {
-            currentlySelected.classList.remove('selected');
-        }
-
-        // Select new seat
-        seatDiv.classList.add('selected');
-        selectedSeatNumber = seatNumber;
-        document.getElementById('selectedSeatNumber').value = seatNumber;
-        showSuccessMessage('makeBookingSuccessMessage', `Seat ${seatNumber} selected.`, 2000);
-    }
-
-    function closeSeatSelectionModal() {
-        document.getElementById('seatSelectionModal').classList.add('hidden');
-        document.getElementById('makeBookingErrorMessage').style.display = 'none';
-        document.getElementById('makeBookingSuccessMessage').style.display = 'none';
-        document.getElementById('makeBookingForm').reset();
-        selectedSeatNumber = null;
-        currentBusForBooking = null;
-        // Unsubscribe from seat listener when modal closes
-        if (window.seatUnsubscribe) {
-            window.seatUnsubscribe();
-            window.seatUnsubscribe = null;
-        }
-    }
-
-    // Make Booking by Admin
-    async function confirmBooking() {
-        const passengerName = document.getElementById('passengerName').value;
-        const passengerPhone = document.getElementById('passengerPhone').value;
-        const passengerEmail = document.getElementById('passengerEmail').value;
-        const selectedSeat = document.getElementById('selectedSeatNumber').value;
-        const busId = document.getElementById('busIdForBooking').value; // Get bus ID
-        const route = document.getElementById('busRouteForBooking').value; // Get route
-        const travelDate = document.getElementById('busTravelDateForBooking').value; // Get travel date
-        const departureTime = document.getElementById('busTimeForBooking').value; // Get time
-        const price = parseFloat(document.getElementById('busPriceForBooking').value); // Get price
-
-        if (!passengerName || !passengerPhone || !passengerEmail || !selectedSeat || !busId || !route || !travelDate || !departureTime || isNaN(price)) {
-            showErrorMessage('makeBookingErrorMessage', 'Please fill all passenger and booking details.');
-            return;
-        }
-        if (!selectedSeatNumber) {
-            showErrorMessage('makeBookingErrorMessage', 'Please select a seat.', 3000);
-            return;
-        }
-        // Basic email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(passengerEmail)) {
-            showErrorMessage('makeBookingErrorMessage', 'Please enter a valid email address.', 3000);
-            return;
-        }
-
-
-        const bookingRef = `PA-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-
-        try {
-            // Check if seat is still available (race condition check)
-            const existingBookingsQ = query(
-                collection(db, "bookings"),
-                where("busId", "==", busId),
-                where("travelDate", "==", travelDate),
-                where("seatNumber", "==", selectedSeat)
-            );
-            const existingBookingsSnapshot = await getDocs(existingBookingsQ);
-            if (!existingBookingsSnapshot.empty) {
-                showErrorMessage('makeBookingErrorMessage', `Seat ${selectedSeat} has just been booked. Please choose another seat.`, 5000);
-                // Re-render seats to reflect latest state
-                const busDoc = await getDoc(doc(db, "buses", busId));
-                if (busDoc.exists()) {
-                     const currentBookingsSnapshot = await getDocs(query(
-                        collection(db, "bookings"),
-                        where("busId", "==", busId),
-                        where("travelDate", "==", travelDate)
-                     ));
-                     const currentBookedSeats = currentBookingsSnapshot.docs.map(doc => doc.data().seatNumber);
-                     renderSeats(busDoc.data().capacity, currentBookedSeats);
-                }
-                return;
-            }
-
-
-            // Add booking to Firestore
-            const newBookingRef = await addDoc(collection(db, "bookings"), {
-                booking_ref: bookingRef,
-                passengerName: passengerName,
-                passengerPhone: passengerPhone,
-                passengerEmail: passengerEmail,
-                busId: busId,
-                route: route,
-                travelDate: travelDate,
-                departureTime: departureTime,
-                seatNumber: selectedSeat,
-                price: price,
-                payment_status: 'paid', // Admin bookings are considered paid
-                bookingDate: new Date().toISOString(),
-                bookedBy: window.currentAdminUser ? window.currentAdminUser.email : 'Admin' // Track who booked
-            });
-            console.log("Booking added with ID: ", newBookingRef.id);
-
-            // Update bus's available seats
-            const busDocRef = doc(db, "buses", busId);
-            await updateDoc(busDocRef, {
-                availableSeats: increment(-1)
-            });
-            console.log("Bus seats updated.");
-
-            // NEW: Send booking confirmation email to customer
-            await addDoc(collection(db, "mail"), {
-                to: passengerEmail,
-                message: {
-                    subject: "Your Prince Alex Travel Booking is Confirmed (Admin Booking)",
-                    html: `
-                        <p>Dear ${passengerName},</p>
-                        <p>Your booking with reference <strong>${bookingRef}</strong> has been successfully created by our administration team.</p>
-                        <p>The payment for this booking is confirmed.</p>
-                        <h3>Booking Details:</h3>
-                        <ul>
-                            <li><strong>Route:</strong> ${route}</li>
-                            <li><strong>Travel Date:</strong> ${travelDate}</li>
-                            <li><strong>Departure Time:</strong> ${departureTime}</li>
-                            <li><strong>Seat Number:</strong> ${selectedSeat}</li>
-                            <li><strong>Total Price:</strong> Ksh ${price.toFixed(2)}</li>
-                            <li><strong>Payment Status:</strong> Paid</li>
-                        </ul>
-                        <p>Thank you for choosing Prince Alex Travel. We look forward to serving you!</p>
-                        <p>Best regards,<br>Prince Alex Travel Team</p>
-                        <hr>
-                        <p style="font-size: 0.8em; color: #777;">&copy; 2025 Prince Alex Digital. All rights reserved.</p>
-                    `,
-                },
-            });
-            console.log("Admin-initiated booking confirmation email queued successfully.");
-
-            showSuccessMessage('makeBookingSuccessMessage', `Booking for ${passengerName} (Ref: ${bookingRef}) created successfully and email sent!`, 0); // Display indefinitely
-            document.getElementById('makeBookingSuccessContainer').style.display = 'flex';
-            // Clear form or close modal
-            closeSeatSelectionModal();
-            // Reload bookings in the admin panel if needed
-            loadBookings();
-            showTab('bookings'); // Go to manage bookings tab
-
-        } catch (error) {
-            console.error("Error making booking from admin panel:", error);
-            showErrorMessage('makeBookingErrorMessage', `Error: ${error.message}`);
-        }
-    }
-
-
-    async function loadBookings() {
-        const bookingsList = document.getElementById('bookingsList');
-        bookingsList.innerHTML = '';
-        try {
-            const q = query(collection(db, "bookings"));
-            const querySnapshot = await getDocs(q);
-            querySnapshot.forEach((doc) => {
-                const booking = { id: doc.id, ...doc.data() };
-                const row = bookingsList.insertRow();
-                row.insertCell(0).textContent = booking.booking_ref;
-                row.insertCell(1).textContent = booking.passengerName;
-                row.insertCell(2).textContent = booking.passengerEmail;
-                row.insertCell(3).textContent = booking.route;
-                row.insertCell(4).textContent = booking.travelDate;
-                row.insertCell(5).textContent = booking.seatNumber;
-                row.insertCell(6).textContent = `Ksh ${booking.price.toFixed(2)}`;
-                row.insertCell(7).textContent = booking.payment_status.charAt(0).toUpperCase() + booking.payment_status.slice(1);
-                row.insertCell(8).textContent = new Date(booking.bookingDate).toLocaleDateString();
-
-                const actionsCell = row.insertCell(9);
-                const downloadBtn = document.createElement('button');
-                downloadBtn.className = 'action-button download';
-                downloadBtn.innerHTML = '<i class="fas fa-download"></i>';
-                downloadBtn.onclick = () => downloadTicketFromAdmin(booking.id);
-                actionsCell.appendChild(downloadBtn);
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'action-button delete';
-                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-                deleteBtn.onclick = () => deleteBooking(booking.id, booking.booking_ref, booking.busId, booking.travelDate, booking.seatNumber);
-                actionsCell.appendChild(deleteBtn);
-            });
-        } catch (error) {
-            console.error("Error loading bookings:", error);
-            showErrorMessage('bookingsListContainer', 'Failed to load bookings.');
-        }
-    }
-
-    async function deleteBooking(id, bookingRef, busId, travelDate, seatNumber) {
-        showCustomConfirm(`Are you sure you want to delete Booking ${bookingRef}? This action cannot be undone.`, 'delete', async (result) => {
-            if (result) {
-                try {
-                    await deleteDoc(doc(db, "bookings", id));
-
-                    // Increment available seats for the bus
-                    if (busId && seatNumber) {
-                         // Need to get the bus capacity to determine if it should be re-added
-                        await updateDoc(doc(db, "buses", busId), {
-                            availableSeats: increment(1)
-                        });
-                        console.log("Bus seat re-released.");
-                    }
-
-                    showCustomAlert(`Booking ${bookingRef} deleted successfully.`, 'success');
-                    loadBookings(); // Reload list
-                } catch (error) {
-                    console.error("Error deleting booking:", error);
-                    showCustomAlert('Failed to delete booking: ' + error.message, 'error');
-                }
-            }
-        });
-    }
-
-    // Ticket Generation (from admin panel)
-    async function generateTicketFromBooking(bookingId) {
-        try {
-            const bookingDoc = await getDoc(doc(db, "bookings", bookingId));
-            if (bookingDoc.exists()) {
-                const booking = { id: bookingDoc.id, ...booking.data() };
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-
-                const primaryColor = '#002d6b'; // Your brand's primary color
-                const secondaryColor = '#f0f0f0'; // Light background for sections
-
-                // Header
-                doc.setFillColor(primaryColor);
-                doc.rect(0, 0, doc.internal.pageSize.width, 20, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(18);
-                doc.text("Prince Alex Travel Services - Ticket", doc.internal.pageSize.width / 2, 12, { align: "center" });
-
-                let yPos = 30;
-
-                // Booking Details Section
-                doc.setFillColor(secondaryColor);
-                doc.rect(10, yPos - 5, doc.internal.pageSize.width - 20, 75, 'F'); // Background for this section
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(14);
-                doc.text("Booking Confirmation", 20, yPos);
-                yPos += 10;
-                doc.setFontSize(10);
-                doc.text(`Booking Reference: ${booking.booking_ref}`, 20, yPos);
-                yPos += 7;
-                doc.text(`Passenger Name: ${booking.passengerName}`, 20, yPos);
-                yPos += 7;
-                doc.text(`Email: ${booking.passengerEmail}`, 20, yPos);
-                yPos += 7;
-                doc.text(`Phone: ${booking.passengerPhone}`, 20, yPos);
-                yPos += 7;
-                doc.text(`Route: ${booking.route}`, 20, yPos);
-                yPos += 7;
-                doc.text(`Travel Date: ${booking.travelDate}`, 20, yPos);
-                yPos += 7;
-                doc.text(`Departure Time: ${booking.departureTime}`, 20, yPos);
-                yPos += 7;
-                doc.text(`Seat Number: ${booking.seatNumber}`, 20, yPos);
-                yPos += 7;
-                doc.text(`Total Price: Ksh ${booking.price.toFixed(2)}`, 20, yPos);
-                yPos += 15;
-
-                // Payment Status
-                doc.setFillColor(secondaryColor);
-                doc.rect(10, yPos - 5, doc.internal.pageSize.width - 20, 20, 'F');
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(12);
-                doc.text(`Payment Status: ${booking.payment_status.charAt(0).toUpperCase() + booking.payment_status.slice(1)}`, 20, yPos);
-                yPos += 20;
-
-                // QR Code Section (if needed, you'd need to generate it here too or pass it)
-                // For simplicity, directly add text for QR code instruction
-                doc.setFontSize(12);
-                doc.text("Present this ticket for check-in.", 20, yPos);
-                yPos += 15;
-
-
-                // Footer
-                doc.setFontSize(9);
-                doc.setTextColor(100, 100, 100);
-                doc.text("Thank you for choosing Prince Alex Travel. Enjoy your journey!", doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 20, { align: "center" });
-                yPos += 5;
-                doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 15, { align: "center" });
-
-                doc.save(`PrinceAlex_Ticket_${booking.booking_ref}.pdf`); // Use booking_ref for filename
-                console.log("PDF download initiated successfully.");
-            } else {
-                showCustomAlert("Booking details not found for ticket generation.", 'error');
-            }
-        } catch (error) {
-            console.error("Error generating ticket:", error);
-            showCustomAlert("Failed to generate ticket: " + error.message, 'error');
-        }
-    }
-
-    function downloadTicketFromAdmin(bookingId) {
-        generateTicketFromBooking(bookingId);
-    }
-
-
-    // Initial load when admin panel is shown or page is refreshed
-    document.addEventListener('DOMContentLoaded', () => {
-         // For demonstration, initially show login form. User needs to "login" to see admin panel.
-         // The onAuthStateChanged listener will handle showing/hiding the forms.
-         // document.getElementById('loginForm').classList.remove('hidden');
-         // document.getElementById('adminPanel').classList.add('hidden');
-
-         // Set default travel date for search to today
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = (today.getMonth() + 1).toString().padStart(2, '0');
-        const day = today.getDate().toString().padStart(2, '0');
-        document.getElementById('searchTravelDate').min = `${year}-${month}-${day}`;
-        document.getElementById('searchTravelDate').value = `${year}-${month}-${day}`;
+  } else if (btn.dataset.action === "edit") {
+    // Load current values to editor
+    const s = await getDoc(doc(db, "buses", id));
+    if (!s.exists()) return;
+    const d = s.data();
+    $("#editBusId").value = id;
+    $("#editBusCompany").value = d.company ?? "";
+    $("#editBusFrom").value = d.from ?? "";
+    $("#editBusTo").value = d.to ?? "";
+    $("#editBusTime").value = d.departureTime ?? "";
+    $("#editBusPrice").value = d.price ?? "";
+    $("#editBusSeats").value = d.totalSeats ?? "";
+    $("#editBusModal").classList.remove("hidden");
+  }
+});
+$("#editBusForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const id = $("#editBusId").value;
+  try {
+    await updateDoc(doc(db, "buses", id), {
+      company: $("#editBusCompany").value.trim(),
+      from: $("#editBusFrom").value.trim(),
+      to: $("#editBusTo").value.trim(),
+      departureTime: $("#editBusTime").value.trim(),
+      price: Number($("#editBusPrice").value),
+      totalSeats: Number($("#editBusSeats").value)
     });
+    $("#editBusModal").classList.add("hidden");
+    toast("Bus updated.", "success");
+  } catch (err) {
+    toast("Update failed: " + err.message, "error");
+  }
+});
+$("#editBusCancel").addEventListener("click", ()=>$("#editBusModal").classList.add("hidden"));
+
+/** =======================
+ *  Manage Bookings
+ *  ======================= */
+const bookingsCol = collection(db, "bookings");
+let bookingsUnsub = null, bookingCache = [];
+
+function attachRealtimeBookings() {
+  if (bookingsUnsub) bookingsUnsub();
+  bookingsUnsub = onSnapshot(bookingsCol, (snap)=>{
+    bookingCache = [];
+    snap.forEach(docSnap=>{
+      bookingCache.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    renderBookingTable(bookingCache);
+  });
+}
+function renderBookingTable(items) {
+  const body = $("#bookingTableBody");
+  body.innerHTML = "";
+  items.sort((a,b)=> (b.createdAt?.seconds??0)-(a.createdAt?.seconds??0));
+  for (const b of items) {
+    const paid = (b.payment_status || "").toLowerCase() === "paid";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${b.ref ?? b.reference ?? b.bookingRef ?? "-"}</td>
+      <td>${b.passengerName ?? "-"}</td>
+      <td>${b.passengerEmail ?? "-"}</td>
+      <td>${b.from ?? "-"}</td>
+      <td>${b.to ?? "-"}</td>
+      <td>${b.date ?? "-"}</td>
+      <td>${b.seat ?? "-"}</td>
+      <td>${b.price ? "KES "+Number(b.price).toLocaleString() : "-"}</td>
+      <td><span class="badge ${paid?"success":"warn"}">${paid ? "PAID" : "PENDING"}</span></td>
+      <td class="nowrap">
+        ${paid ? "" : `<button class="btn sm success" data-action="markpaid" data-id="${b.id}"><i class="fa-solid fa-check"></i> Paid</button>`}
+        <button class="btn sm" data-action="ticket" data-id="${b.id}"><i class="fa-solid fa-ticket"></i></button>
+        <button class="btn sm danger" data-action="del" data-id="${b.id}"><i class="fa-solid fa-trash"></i></button>
+      </td>
+    `;
+    body.appendChild(tr);
+  }
+}
+$("#bookingSearch").addEventListener("input", ()=>{
+  const q = $("#bookingSearch").value.trim().toLowerCase();
+  if (!q) return renderBookingTable(bookingCache);
+  const results = bookingCache.filter(b=>{
+    return (b.passengerName??"").toLowerCase().includes(q)
+      || (b.passengerEmail??"").toLowerCase().includes(q)
+      || (b.ref??b.reference??b.bookingRef??"").toLowerCase().includes(q);
+  });
+  renderBookingTable(results);
+});
+$("#bookingTableBody").addEventListener("click", async (e)=>{
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const item = bookingCache.find(x=>x.id===id);
+  if (!item) return;
+
+  if (btn.dataset.action === "del") {
+    if (!confirm("Delete this booking?")) return;
+    try {
+      await deleteDoc(doc(db, "bookings", id));
+      toast("Booking deleted.", "success");
+    } catch (err) {
+      toast("Delete failed: " + err.message, "error");
+    }
+  } else if (btn.dataset.action === "markpaid") {
+    try {
+      await updateDoc(doc(db, "bookings", id), { payment_status: "paid", paidAt: serverTimestamp() });
+      toast("Marked as PAID.", "success");
+      // Send confirmation email (requires Firebase Trigger Email extension)
+      if (item.passengerEmail) {
+        await addDoc(collection(db,"mail"), {
+          to: [item.passengerEmail],
+          message: {
+            subject: "Payment Confirmed – Prince Alex Travel",
+            text: `Hi ${item.passengerName??"Customer"}, your payment for booking ${item.ref??id} has been received. Seat ${item.seat??"-"} on ${item.date??"-"} (${item.from??"-"} → ${item.to??"-"}). Thank you!`,
+            html: `<p>Hi ${item.passengerName??"Customer"},</p>
+                   <p>Your payment for booking <strong>${item.ref??id}</strong> has been received.</p>
+                   <p><strong>Trip:</strong> ${item.from??"-"} → ${item.to??"-"}<br>
+                   <strong>Date:</strong> ${item.date??"-"}<br>
+                   <strong>Seat:</strong> ${item.seat??"-"}<br>
+                   <strong>Amount:</strong> KES ${item.price?Number(item.price).toLocaleString():"-"}</p>
+                   <p>Thank you for choosing Prince Alex Travel.</p>`
+          },
+          createdAt: serverTimestamp()
+        });
+      }
+    } catch (err) {
+      toast("Failed to mark paid: " + err.message, "error");
+    }
+  } else if (btn.dataset.action === "ticket") {
+    generateTicketPDF(item);
+  }
+});
+
+/** =======================
+ *  Ticket PDF
+ *  ======================= */
+function generateTicketPDF(b) {
+  const { jsPDF } = window.jspdf;
+  const docpdf = new jsPDF();
+  const brand = "#002d6b";
+  docpdf.setFillColor(0,45,107);
+  docpdf.rect(0,0,210,25,"F");
+  docpdf.setTextColor(255,255,255);
+  docpdf.setFontSize(18);
+  docpdf.text("Prince Alex Travel - Ticket", 10, 16);
+
+  docpdf.setTextColor(0,0,0);
+  docpdf.setFontSize(12);
+  const lines = [
+    `Reference: ${b.ref ?? b.reference ?? b.bookingRef ?? b.id}`,
+    `Passenger: ${b.passengerName ?? "-"}`,
+    `Email: ${b.passengerEmail ?? "-"}`,
+    `Route: ${b.from ?? "-"} → ${b.to ?? "-"}`,
+    `Date: ${b.date ?? "-"}`,
+    `Seat: ${b.seat ?? "-"}`,
+    `Amount: KES ${b.price?Number(b.price).toLocaleString():"-"}`,
+    `Payment: ${(b.payment_status??"pending").toUpperCase()}`
+  ];
+  let y=40;
+  lines.forEach(t=>{ docpdf.text(t, 10, y); y+=8; });
+
+  docpdf.setDrawColor(0,45,107);
+  docpdf.rect(8, 30, 194, y-22);
+
+  docpdf.save(`ticket_${b.ref ?? b.id}.pdf`);
+}
+
+/** =======================
+ *  Make Booking (Admin)
+ *  ======================= */
+let selectedBusId = null;
+let selectedDate = null;
+let selectedSeat = null;
+const TOTAL_SEATS_DEFAULT = 32;
+
+$("#adminBookingSearch").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const from = $("#abFrom").value.trim();
+  const to = $("#abTo").value.trim();
+  const date = $("#abDate").value;
+  if (!from || !to || !date) return toast("Select from, to, and date.", "warn");
+  selectedDate = date;
+
+  // find buses for route
+  const q1 = query(busesCol, where("from","==",from), where("to","==",to));
+  const qs = await getDocs(q1);
+  const list = $("#abResults");
+  list.innerHTML = "";
+  qs.forEach(s=>{
+    const d=s.data();
+    const card = document.createElement("div");
+    card.className="result-card";
+    card.innerHTML = `
+      <div class="result-details">
+        <h4>${d.company ?? "Bus"}</h4>
+        <p><strong>Route:</strong> ${d.from} → ${d.to}</p>
+        <p><strong>Depart:</strong> ${d.departureTime ?? "-"}</p>
+        <p><strong>Price:</strong> KES ${d.price?Number(d.price).toLocaleString():"-"}</p>
+        <button class="btn" data-busid="${s.id}" data-seats="${d.totalSeats ?? TOTAL_SEATS_DEFAULT}">Select Seats</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+});
+$("#abResults").addEventListener("click", async (e)=>{
+  const btn = e.target.closest("button[data-busid]");
+  if (!btn) return;
+  selectedBusId = btn.dataset.busid;
+  const total = Number(btn.dataset.seats || TOTAL_SEATS_DEFAULT);
+  await openSeatModal(selectedBusId, selectedDate, total);
+});
+
+async function openSeatModal(busId, date, totalSeats) {
+  selectedSeat = null;
+  $("#seatGrid").innerHTML = "";
+  $("#seatModal").classList.remove("hidden");
+  // layout 4 columns
+  $("#seatGrid").style.gridTemplateColumns = `repeat(4, 1fr)`;
+  // get booked seats for that bus+date
+  const qbk = query(bookingsCol, where("busId","==",busId), where("date","==",date));
+  const snap = await getDocs(qbk);
+  const booked = new Set();
+  snap.forEach(s=>{
+    const d=s.data();
+    if (d.seat) booked.add(String(d.seat));
+  });
+
+  for (let i=1;i<=totalSeats;i++){
+    const seat = document.createElement("div");
+    seat.className = "seat-container" + (booked.has(String(i)) ? " booked" : "");
+    seat.innerHTML = `<i class="fa-solid fa-chair seat-icon"></i><div class="seat-number">${i}</div>`;
+    if (!booked.has(String(i))) {
+      seat.addEventListener("click", ()=>{
+        $$(".seat-container.selected").forEach(x=>x.classList.remove("selected"));
+        seat.classList.add("selected");
+        selectedSeat = i;
+      });
+    }
+    $("#seatGrid").appendChild(seat);
+  }
+}
+$("#seatCancel").addEventListener("click", ()=>$("#seatModal").classList.add("hidden"));
+
+$("#adminConfirmBooking").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  if (!selectedBusId || !selectedDate) return toast("Pick a bus & date first.", "warn");
+  if (!selectedSeat) return toast("Select a seat.", "warn");
+
+  const name = $("#abName").value.trim();
+  const email = $("#abEmail").value.trim();
+  const phone = $("#abPhone").value.trim();
+  const price = Number($("#abPrice").value);
+  const from = $("#abFrom").value.trim();
+  const to = $("#abTo").value.trim();
+
+  try {
+    const refdoc = await addDoc(bookingsCol, {
+      passengerName: name,
+      passengerEmail: email,
+      passengerPhone: phone,
+      from, to,
+      date: selectedDate,
+      seat: String(selectedSeat),
+      busId: selectedBusId,
+      price: price || null,
+      payment_status: "paid",
+      createdBy: currentAdmin?.uid ?? null,
+      createdAt: serverTimestamp()
+    });
+    $("#seatModal").classList.add("hidden");
+    e.target.reset();
+    toast("Booking created & marked PAID.", "success");
+
+    // email confirmation
+    if (email) {
+      await addDoc(collection(db,"mail"), {
+        to: [email],
+        message: {
+          subject: "Your Ticket – Prince Alex Travel",
+          text: `Hi ${name||"Customer"}, your booking is confirmed. Seat ${selectedSeat} on ${selectedDate} (${from} → ${to}). Ref: ${refdoc.id}`,
+          html: `<p>Hi ${name||"Customer"},</p>
+                 <p>Your booking is confirmed.</p>
+                 <p><strong>Ref:</strong> ${refdoc.id}<br>
+                 <strong>Trip:</strong> ${from} → ${to}<br>
+                 <strong>Date:</strong> ${selectedDate}<br>
+                 <strong>Seat:</strong> ${selectedSeat}<br>
+                 <strong>Amount:</strong> KES ${price?Number(price).toLocaleString():"-"}</p>
+                 <p>Thank you for choosing Prince Alex Travel.</p>`
+        },
+        createdAt: serverTimestamp()
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    toast("Booking failed: " + err.message, "error");
+  }
+});
 </script>
+
 <style>
-    :root {
-        --primary-color: #002d6b; /* Dark blue */
-        --secondary-color: #ffc107; /* Yellow */
-        --text-color: #333;
-        --background-color: #f4f7f6;
-        --card-background: #ffffff;
-        --border-color: #ddd;
-        --error-color: #dc3545;
-        --success-color: #28a745;
-        --info-color: #17a2b8;
-    }
-
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        margin: 0;
-        padding: 0;
-        background-color: var(--background-color);
-        color: var(--text-color);
-        line-height: 1.6;
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-    }
-
-    header {
-        background-color: var(--primary-color);
-        color: white;
-        padding: 15px 20px;
-        text-align: center;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    header h1 {
-        margin: 0;
-        font-size: 1.8em;
-    }
-
-    .logout-button {
-        background-color: var(--secondary-color);
-        color: var(--primary-color);
-        border: none;
-        padding: 8px 15px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-        transition: background-color 0.3s ease;
-    }
-
-    .logout-button:hover {
-        background-color: #e0a800;
-    }
-
-    .main-content {
-        display: flex;
-        flex-grow: 1;
-    }
-
-    .sidebar {
-        width: 220px;
-        background-color: #2c3e50; /* Darker blue for sidebar */
-        color: white;
-        padding-top: 20px;
-        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    }
-
-    .sidebar-button {
-        display: block;
-        width: 100%;
-        padding: 15px 20px;
-        text-align: left;
-        background-color: transparent;
-        color: white;
-        border: none;
-        border-bottom: 1px solid #3e536b;
-        font-size: 1.1em;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
-
-    .sidebar-button:hover,
-    .sidebar-button.active {
-        background-color: var(--primary-color);
-    }
-
-    .sidebar-button i {
-        margin-right: 10px;
-    }
-
-    .content-area {
-        flex-grow: 1;
-        padding: 30px;
-        background-color: var(--background-color);
-    }
-
-    .tab-content {
-        background-color: var(--card-background);
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        margin-bottom: 30px;
-        border-top: 5px solid var(--primary-color);
-    }
-
-    h2 {
-        color: var(--primary-color);
-        margin-top: 0;
-        margin-bottom: 25px;
-        border-bottom: 2px solid var(--border-color);
-        padding-bottom: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    h2 .action-button {
-        font-size: 0.8em;
-        padding: 8px 15px;
-        background-color: var(--success-color);
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
-
-    h2 .action-button:hover {
-        background-color: #218838;
-    }
-
-    .form-group {
-        margin-bottom: 20px;
-    }
-
-    .form-group label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: bold;
-        color: var(--text-color);
-    }
-
-    .form-group input[type="text"],
-    .form-group input[type="number"],
-    .form-group input[type="email"],
-    .form-group input[type="tel"],
-    .form-group input[type="date"],
-    .form-group input[type="time"],
-    .form-group select {
-        width: calc(100% - 22px); /* Account for padding and border */
-        padding: 10px;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        font-size: 1em;
-        box-sizing: border-box; /* Include padding and border in the element's total width and height */
-    }
-
-    .form-group button {
-        background-color: var(--primary-color);
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 6px;
-        font-size: 1em;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-        margin-top: 10px;
-    }
-
-    .form-group button:hover {
-        background-color: #001a4d;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-    }
-
-    table thead th {
-        background-color: var(--primary-color);
-        color: white;
-        padding: 12px;
-        text-align: left;
-        font-weight: bold;
-    }
-
-    table tbody td {
-        padding: 10px;
-        border-bottom: 1px solid var(--border-color);
-        vertical-align: middle;
-    }
-
-    table tbody tr:nth-child(even) {
-        background-color: #f9f9f9;
-    }
-
-    .action-button {
-        background-color: #6c757d; /* Grey for general actions */
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 5px;
-        cursor: pointer;
-        margin-right: 5px;
-        font-size: 0.9em;
-        transition: background-color 0.3s ease;
-    }
-
-    .action-button.edit { background-color: #007bff; }
-    .action-button.delete { background-color: #dc3545; }
-    .action-button.select { background-color: #28a745; }
-    .action-button.download { background-color: #17a2b8; }
-
-
-    .action-button:hover {
-        opacity: 0.9;
-    }
-
-    .hidden {
-        display: none !important;
-    }
-
-    .message {
-        padding: 10px;
-        margin-bottom: 15px;
-        border-radius: 5px;
-        font-weight: bold;
-        display: none; /* Hidden by default, shown by JS */
-    }
-
-    .message.error {
-        background-color: #f8d7da;
-        color: var(--error-color);
-        border: 1px solid #f5c6cb;
-    }
-
-    .message.success {
-        background-color: #d4edda;
-        color: var(--success-color);
-        border: 1px solid #c3e6cb;
-    }
-
-    .message.info {
-        background-color: #d1ecf1;
-        color: var(--info-color);
-        border: 1px solid #bee5eb;
-    }
-
-    /* Modal Styles */
-    .modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.6);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-    }
-
-    .modal-content {
-        background-color: var(--card-background);
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        width: 90%;
-        max-width: 500px;
-        position: relative;
-    }
-
-    .modal-content h3 {
-        margin-top: 0;
-        color: var(--primary-color);
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 10px;
-        margin-bottom: 20px;
-    }
-
-    .close-button {
-        position: absolute;
-        top: 15px;
-        right: 20px;
-        font-size: 1.8em;
-        cursor: pointer;
-        color: #888;
-        background: none;
-        border: none;
-    }
-
-    .close-button:hover {
-        color: var(--error-color);
-    }
-
-    /* Seat Selection Modal Specifics */
-    .seat-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-        gap: 10px;
-        margin-top: 20px;
-        max-height: 300px;
-        overflow-y: auto;
-        border: 1px solid var(--border-color);
-        padding: 10px;
-        border-radius: 8px;
-    }
-
-    .seat {
-        width: 50px;
-        height: 50px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-radius: 5px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border: 1px solid #ccc;
-    }
-
-    .seat.available {
-        background-color: #e6ffe6; /* Light green */
-        color: #28a745;
-    }
-
-    .seat.booked {
-        background-color: #ffcccc; /* Light red */
-        color: #dc3545;
-        cursor: not-allowed;
-        opacity: 0.7;
-    }
-
-    .seat.selected {
-        background-color: var(--secondary-color); /* Yellow */
-        color: var(--primary-color);
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(0, 45, 107, 0.3);
-    }
-
-    .seat:not(.booked):hover {
-        transform: scale(1.05);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    /* Admin Login Page Specific */
-    .login-container {
-        width: 100%;
-        max-width: 400px;
-        background-color: var(--card-background);
-        padding: 40px;
-        border-radius: 10px;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        text-align: center;
-        margin: auto; /* Center in flex container */
-    }
-
-    .login-container h2 {
-        color: var(--primary-color);
-        margin-bottom: 30px;
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    .login-container .form-group input {
-        width: calc(100% - 20px);
-    }
-
-    .login-container button {
-        width: 100%;
-        padding: 12px;
-        font-size: 1.1em;
-    }
-
-    footer {
-        background-color: #2c3e50;
-        color: white;
-        text-align: center;
-        padding: 15px;
-        margin-top: auto; /* Push footer to the bottom */
-        font-size: 0.9em;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .main-content {
-            flex-direction: column;
-        }
-
-        .sidebar {
-            width: 100%;
-            padding-top: 0;
-            display: flex;
-            justify-content: space-around;
-            border-bottom: 1px solid #3e536b;
-        }
-
-        .sidebar-button {
-            padding: 10px 15px;
-            text-align: center;
-            border-bottom: none;
-            border-right: 1px solid #3e536b;
-            font-size: 0.9em;
-        }
-        .sidebar-button:last-child {
-            border-right: none;
-        }
-
-        .content-area {
-            padding: 20px;
-        }
-
-        .tab-content {
-            padding: 20px;
-        }
-
-        table thead {
-            display: none; /* Hide table headers on small screens */
-        }
-
-        table, tbody, tr, td {
-            display: block;
-            width: 100%;
-        }
-
-        table tr {
-            margin-bottom: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background-color: var(--card-background);
-            padding: 10px;
-        }
-
-        table td {
-            text-align: right;
-            padding-left: 50%; /* Space for pseudo-element label */
-            position: relative;
-        }
-
-        table td::before {
-            content: attr(data-label);
-            position: absolute;
-            left: 10px;
-            width: calc(50% - 20px);
-            text-align: left;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-
-        /* Adjust labels for specific columns */
-        table td:nth-of-type(1)::before { content: "Bus Number:"; }
-        table td:nth-of-type(2)::before { content: "Route:"; }
-        table td:nth-of-type(3)::before { content: "Capacity:"; }
-        table td:nth-of-type(4)::before { content: "Available:"; }
-        table td:nth-of-type(5)::before { content: "Price:"; }
-        table td:nth-of-type(6)::before { content: "Actions:"; } /* For bus table */
-
-        table td:nth-of-type(1)::before { content: "Ref:"; } /* For booking table */
-        table td:nth-of-type(2)::before { content: "Passenger:"; }
-        table td:nth-of-type(3)::before { content: "Email:"; }
-        table td:nth-of-type(4)::before { content: "Route:"; }
-        table td:nth-of-type(5)::before { content: "Date:"; }
-        table td:nth-of-type(6):::before { content: "Seat:"; }
-        table td:nth-of-type(7)::before { content: "Price:"; }
-        table td:nth-of-type(8)::before { content: "Status:"; }
-        table td:nth-of-type(9)::before { content: "Booked On:"; }
-        table td:nth-of-type(10)::before { content: "Actions:"; } /* For booking table */
-
-
-        .action-button {
-            margin-bottom: 5px;
-            width: calc(50% - 10px);
-            box-sizing: border-box;
-            float: left;
-        }
-        .action-button:last-child {
-            margin-right: 0;
-        }
-    }
-
-    @media (max-width: 480px) {
-        header h1 {
-            font-size: 1.5em;
-        }
-        .logout-button {
-            padding: 6px 10px;
-            font-size: 0.8em;
-        }
-        .login-container {
-            padding: 30px 20px;
-        }
-        .seat {
-            width: 40px;
-            height: 40px;
-            font-size: 0.9em;
-        }
-        .seat-grid {
-            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-            gap: 8px;
-        }
-    }
+:root {
+  --primary-color: #002d6b;
+  --accent-color: #c69214;
+  --light-bg: #f5f7fa;
+  --text-dark: #1a1a1a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:var(--light-bg);color:var(--text-dark)}
+/* Navbar (match index) */
+.navbar{background:var(--primary-color);padding:12px 0;box-shadow:0 2px 5px rgba(0,0,0,.1)}
+.navbar-container{max-width:1200px;margin:auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between}
+.logo{background:#fff;padding:8px 12px;border-radius:12px;box-shadow:0 0 8px rgba(0,0,0,.2)}
+.logo img{height:60px;display:block}
+.nav-links{display:flex;gap:24px}
+.nav-links a{color:#fff;text-decoration:none;font-weight:600;position:relative}
+.nav-links a::after{content:"";display:block;height:2px;width:0;background:var(--accent-color);transition:width .3s;position:absolute;left:0;bottom:-6px}
+.nav-links a:hover{color:var(--accent-color)}
+.nav-links a:hover::after{width:100%}
+
+/* Layout */
+.container{max-width:1200px;margin:24px auto;padding:0 20px}
+.hidden{display:none !important}
+.header-row{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
+.header-row h1{font-size:24px}
+.badge{padding:4px 10px;border-radius:999px;font-size:12px}
+.badge.success{background:#e6f8ea;color:#177a2b;border:1px solid #b5e3be}
+.badge.warn{background:#fff3cd;color:#8a6d3b;border:1px solid #ffe29b}
+.nowrap{white-space:nowrap}
+.card{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+
+/* Buttons */
+.btn{background:var(--accent-color);color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;transition:.2s}
+.btn:hover{filter:brightness(.95)}
+.btn.sm{padding:7px 10px;font-size:12px}
+.btn.danger{background:#c0392b}
+.btn.success{background:#1f8b3f}
+
+/* Forms & Tables */
+input,select{width:100%;padding:10px;border:1px solid #ddd;border-radius:10px}
+label{font-size:13px;color:#333;margin-bottom:6px;display:block}
+.grid{display:grid;gap:12px}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{padding:10px;border-bottom:1px solid #eee;text-align:left}
+.table th{background:#fafafa}
+
+/* Tabs */
+.tabbar{display:flex;gap:8px;margin-bottom:12px}
+.tab-btn{background:#e9eef6;color:#123;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:700}
+.tab-btn.active{background:var(--primary-color);color:#fff}
+
+/* Seat Modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal .box{background:#fff;max-width:760px;width:95%;border-radius:12px;padding:18px;max-height:90vh;overflow:auto}
+#seatGrid{display:grid;gap:12px;margin:12px 0;padding:10px;border:1px dashed #ccc;border-radius:8px}
+.seat-container{position:relative;width:60px;height:60px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:.2s}
+.seat-container .seat-icon{font-size:2.2em;color:#7f8c8d}
+.seat-container .seat-number{font-size:.8em;font-weight:bold;color:#555;margin-top:4px}
+.seat-container.selected{background:#fcefdc}
+.seat-container.selected .seat-icon,.seat-container.selected .seat-number{color:var(--accent-color)}
+.seat-container.booked{cursor:not-allowed}
+.seat-container.booked .seat-icon,.seat-container.booked .seat-number{color:#c0392b}
+.seat-container.booked::after{content:"X";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2em;color:#fff;background:rgba(0,0,0,.25);border-radius:8px}
+
+/* Toast */
+.toast{position:fixed;right:20px;bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transform:translateY(8px);transition:.25s;z-index:2000}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:#1f8b3f}
+.toast.warn{background:#8a6d3b}
+.toast.error{background:#c0392b}
+
+/* Login */
+.login-card{max-width:420px;margin:48px auto}
+.login-title{text-align:center;margin-bottom:10px}
+
+/* Responsive */
+@media (max-width: 800px){
+  .grid-3{grid-template-columns:1fr}
+  .grid-2{grid-template-columns:1fr}
+  .nav-links{gap:14px}
+}
 </style>
 </head>
 <body>
-    <header>
+  <!-- Header (match index) -->
+  <header class="navbar">
+    <div class="navbar-container">
+      <div class="logo">
+        <img src="mylogo.png" alt="Prince Alex Logo"/>
+      </div>
+      <nav class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="about-us.html">About Us</a>
+        <a href="ticket-lookup.html">Print Ticket</a>
+        <a href="#" class="badge" id="adminEmailBadge">Admin</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Login -->
+    <section id="loginCard" class="card login-card">
+      <h2 class="login-title">Admin Login</h2>
+      <form id="loginForm" class="grid" style="gap:14px">
+        <div>
+          <label>Email</label>
+          <input id="loginEmail" type="email" placeholder="admin@example.com" required>
+        </div>
+        <div>
+          <label>Password</label>
+          <input id="loginPassword" type="password" placeholder="********" required>
+        </div>
+        <button class="btn" type="submit">Login</button>
+        <p style="font-size:12px;opacity:.8">Access requires an entry in <code>admins/{uid}</code> with <code>isAdmin: true</code>.</p>
+    </form>
+    </section>
+
+    <!-- Admin App -->
+    <section id="adminApp" class="hidden">
+      <div class="header-row">
         <h1>Admin Panel</h1>
-        <button class="logout-button" onclick="adminLogout()">Log Out</button>
-    </header>
-
-    <div class="main-content">
-        <aside class="sidebar">
-            <button class="sidebar-button active" onclick="showTab('dashboard')"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
-            <button class="sidebar-button" onclick="showTab('buses')"><i class="fas fa-bus"></i> Manage Buses</button>
-            <button class="sidebar-button" onclick="showTab('bookings')"><i class="fas fa-ticket-alt"></i> Manage Bookings</button>
-            <button class="sidebar-button" onclick="showTab('makeBooking')"><i class="fas fa-plus-circle"></i> Make Booking</button>
-            </aside>
-
-        <main class="content-area">
-            <div id="loginForm" class="login-container">
-                <h2>Admin Login</h2>
-                <div id="loginMessage" class="message"></div>
-                <form onsubmit="event.preventDefault(); adminLogin();">
-                    <div class="form-group">
-                        <label for="adminEmail">Email:</label>
-                        <input type="email" id="adminEmail" required autocomplete="username">
-                    </div>
-                    <div class="form-group">
-                        <label for="adminPassword">Password:</label>
-                        <input type="password" id="adminPassword" required autocomplete="current-password">
-                    </div>
-                    <button type="submit">Login</button>
-                </form>
-            </div>
-
-            <div id="adminPanel" class="hidden">
-                <section id="dashboard" class="tab-content">
-                    <h2>Dashboard</h2>
-                    <p>Welcome to the Prince Alex Travel Admin Dashboard. Use the sidebar to navigate management sections.</p>
-                    </section>
-
-                <section id="buses" class="tab-content hidden">
-                    <h2>Manage Buses <button class="action-button" onclick="document.getElementById('addBusFormContainer').classList.toggle('hidden');"><i class="fas fa-plus"></i> Add New Bus</button></h2>
-
-                    <div id="addBusFormContainer" class="hidden">
-                        <h3>Add New Bus</h3>
-                        <div id="addBusErrorMessage" class="message error"></div>
-                        <div id="addBusSuccessMessage" class="message success"></div>
-                        <form id="addBusForm" onsubmit="event.preventDefault(); addBus();">
-                            <div class="form-group">
-                                <label for="busNumber">Bus Number:</label>
-                                <input type="text" id="busNumber" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="busRoute">Route:</label>
-                                <input type="text" id="busRoute" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="busCapacity">Capacity:</label>
-                                <input type="number" id="busCapacity" min="1" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="busPrice">Price (Ksh):</label>
-                                <input type="number" id="busPrice" min="0" step="0.01" required>
-                            </div>
-                            <button type="submit">Add Bus</button>
-                        </form>
-                        <hr style="margin: 30px 0;">
-                    </div>
-
-                    <h3>Current Buses</h3>
-                    <div id="busesListContainer">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Bus Number</th>
-                                    <th>Route</th>
-                                    <th>Capacity</th>
-                                    <th>Available Seats</th>
-                                    <th>Price</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="busesList">
-                                </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <section id="bookings" class="tab-content hidden">
-                    <h2>Manage Bookings</h2>
-                    <div id="bookingsListContainer">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Booking Ref</th>
-                                    <th>Passenger Name</th>
-                                    <th>Email</th>
-                                    <th>Route</th>
-                                    <th>Travel Date</th>
-                                    <th>Seat No.</th>
-                                    <th>Price</th>
-                                    <th>Payment Status</th>
-                                    <th>Booking Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="bookingsList">
-                                </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <section id="makeBooking" class="tab-content hidden">
-                    <h2>Make New Booking</h2>
-                    <div id="makeBookingErrorMessage" class="message error"></div>
-                    <div id="makeBookingSuccessContainer" style="display: none;">
-                        <div id="makeBookingSuccessMessage" class="message success"></div>
-                    </div>
-
-                    <h3>Search Bus Availability</h3>
-                    <div class="form-group">
-                        <label for="searchRoute">Route:</label>
-                        <input type="text" id="searchRoute" placeholder="e.g., Nairobi to Mombasa">
-                    </div>
-                    <div class="form-group">
-                        <label for="searchTravelDate">Travel Date:</label>
-                        <input type="date" id="searchTravelDate">
-                    </div>
-                    <button onclick="searchBusesForBooking()">Search Available Buses</button>
-
-                    <hr style="margin: 30px 0;">
-
-                    <h3>Available Buses for Booking</h3>
-                    <div id="busesAvailableListContainer">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Bus Number</th>
-                                    <th>Route</th>
-                                    <th>Capacity</th>
-                                    <th>Available Seats</th>
-                                    <th>Price</th>
-                                    <th>Select</th>
-                                </tr>
-                            </thead>
-                            <tbody id="busesAvailableList">
-                                </tbody>
-                        </table>
-                    </div>
-                </section>
-            </div>
-        </main>
-    </div>
-
-    <footer>
-        &copy; 2025 Prince Alex Digital. All rights reserved.
-    </footer>
-
-    <div id="editBusModal" class="modal hidden">
-        <div class="modal-content">
-            <button class="close-button" onclick="closeEditBusModal()">&times;</button>
-            <h3>Edit Bus Details</h3>
-            <div id="editBusErrorMessage" class="message error"></div>
-            <div id="editBusSuccessMessage" class="message success"></div>
-            <form id="editBusForm" onsubmit="event.preventDefault(); updateBus();">
-                <div class="form-group">
-                    <label for="editBusNumber">Bus Number:</label>
-                    <input type="text" id="editBusNumber" required>
-                </div>
-                <div class="form-group">
-                    <label for="editBusRoute">Route:</label>
-                    <input type="text" id="editBusRoute" required>
-                </div>
-                <div class="form-group">
-                    <label for="editBusCapacity">Capacity:</label>
-                    <input type="number" id="editBusCapacity" min="1" required>
-                </div>
-                <div class="form-group">
-                    <label for="editBusPrice">Price (Ksh):</label>
-                    <input type="number" id="editBusPrice" min="0" step="0.01" required>
-                </div>
-                <button type="submit">Update Bus</button>
-            </form>
+        <div class="tabbar">
+          <button class="tab-btn active" data-tab="tabBuses">Manage Buses</button>
+          <button class="tab-btn" data-tab="tabBookings">Manage Bookings</button>
+          <button class="tab-btn" data-tab="tabMakeBooking">Make Booking</button>
         </div>
-    </div>
+      </div>
 
-    <div id="seatSelectionModal" class="modal hidden">
-        <div class="modal-content">
-            <button class="close-button" onclick="closeSeatSelectionModal()">&times;</button>
-            <h3>Select Seat for Booking</h3>
-            <p id="selectedBusInfo"></p>
-            <div id="makeBookingErrorMessage" class="message error"></div> <div id="makeBookingSuccessMessage" class="message success"></div> <h4>Available Seats:</h4>
-            <div id="seatGrid" class="seat-grid">
-                </div>
-
-            <hr style="margin: 20px 0;">
-
-            <h3>Passenger Details</h3>
-            <form id="makeBookingForm" onsubmit="event.preventDefault(); confirmBooking();">
-                <div class="form-group">
-                    <label for="passengerName">Passenger Name:</label>
-                    <input type="text" id="passengerName" required>
-                </div>
-                <div class="form-group">
-                    <label for="passengerPhone">Passenger Phone:</label>
-                    <input type="tel" id="passengerPhone" required>
-                </div>
-                <div class="form-group">
-                    <label for="passengerEmail">Passenger Email:</label>
-                    <input type="email" id="passengerEmail" required>
-                </div>
-                <div class="form-group">
-                    <label for="selectedSeatNumber">Selected Seat:</label>
-                    <input type="text" id="selectedSeatNumber" readonly required placeholder="Select a seat above">
-                </div>
-
-                <input type="hidden" id="busIdForBooking">
-                <input type="hidden" id="busRouteForBooking">
-                <input type="hidden" id="busTravelDateForBooking">
-                <input type="hidden" id="busTimeForBooking">
-                <input type="hidden" id="busPriceForBooking">
-
-
-                <button type="submit">Confirm Booking & Pay</button>
-            </form>
+      <!-- Manage Buses -->
+      <section id="tabBuses" class="tab-panel">
+        <div class="card">
+          <h3>Add New Bus</h3>
+          <form id="addBusForm" class="grid grid-3" style="margin-top:10px">
+            <div><label>Company</label><input id="busCompany" required></div>
+            <div><label>From</label><input id="busFrom" required></div>
+            <div><label>To</label><input id="busTo" required></div>
+            <div><label>Departure Time</label><input id="busTime" placeholder="e.g. 08:00 AM" required></div>
+            <div><label>Price (KES)</label><input id="busPrice" type="number" min="0" required></div>
+            <div><label>Total Seats</label><input id="busSeats" type="number" min="1" value="32" required></div>
+            <div class="nowrap" style="align-self:end"><button class="btn" type="submit">Add Bus</button></div>
+          </form>
         </div>
-    </div>
+        <div class="card">
+          <h3>All Buses</h3>
+          <table class="table" style="margin-top:8px">
+            <thead><tr>
+              <th>Company</th><th>From</th><th>To</th><th>Departure</th><th>Price</th><th>Seats</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="busTableBody"></tbody>
+          </table>
+        </div>
+      </section>
 
+      <!-- Manage Bookings -->
+      <section id="tabBookings" class="tab-panel hidden">
+        <div class="card">
+          <div class="grid grid-2">
+            <div>
+              <h3>Bookings</h3>
+              <p style="font-size:12px;opacity:.8">Search by passenger name, email or booking reference.</p>
+            </div>
+            <div style="align-self:end">
+              <input id="bookingSearch" placeholder="Search bookings...">
+            </div>
+          </div>
+          <table class="table" style="margin-top:8px">
+            <thead>
+              <tr>
+                <th>Ref</th><th>Name</th><th>Email</th><th>From</th><th>To</th><th>Date</th><th>Seat</th><th>Price</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="bookingTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Make Booking -->
+      <section id="tabMakeBooking" class="tab-panel hidden">
+        <div class="card">
+          <h3>Find Bus</h3>
+          <form id="adminBookingSearch" class="grid grid-3" style="margin-top:10px">
+            <div><label>From</label><input id="abFrom" required></div>
+            <div><label>To</label><input id="abTo" required></div>
+            <div><label>Date</label><input id="abDate" type="date" required></div>
+            <div class="nowrap" style="grid-column: 1 / -1; text-align:right">
+              <button class="btn" type="submit">Search</button>
+            </div>
+          </form>
+          <div id="abResults" class="grid" style="margin-top:10px; gap:14px"></div>
+        </div>
+
+        <div class="card">
+          <h3>Passenger Details</h3>
+          <form id="adminConfirmBooking" class="grid grid-3" style="margin-top:10px">
+            <div><label>Full Name</label><input id="abName" required></div>
+            <div><label>Email</label><input id="abEmail" type="email"></div>
+            <div><label>Phone</label><input id="abPhone"></div>
+            <div><label>Price (KES)</label><input id="abPrice" type="number" min="0"></div>
+            <div class="nowrap" style="grid-column: 1 / -1; text-align:right">
+              <button class="btn" type="submit">Confirm Booking (Paid)</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <!-- Edit Bus Modal -->
+  <div id="editBusModal" class="modal hidden">
+    <div class="box">
+      <h3>Edit Bus</h3>
+      <form id="editBusForm" class="grid grid-3" style="margin-top:10px">
+        <input type="hidden" id="editBusId">
+        <div><label>Company</label><input id="editBusCompany" required></div>
+        <div><label>From</label><input id="editBusFrom" required></div>
+        <div><label>To</label><input id="editBusTo" required></div>
+        <div><label>Departure Time</label><input id="editBusTime" required></div>
+        <div><label>Price (KES)</label><input id="editBusPrice" type="number" required></div>
+        <div><label>Total Seats</label><input id="editBusSeats" type="number" min="1" required></div>
+        <div class="nowrap" style="grid-column:1/-1; text-align:right; display:flex; gap:8px; justify-content:flex-end">
+          <button type="button" class="btn" id="editBusCancel">Cancel</button>
+          <button class="btn" type="submit">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Seat Modal -->
+  <div id="seatModal" class="modal hidden">
+    <div class="box">
+      <h3>Select Seat</h3>
+      <div id="seatGrid"></div>
+      <div style="text-align:right; display:flex; gap:8px; justify-content:flex-end">
+        <button class="btn" id="seatCancel">Close</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
-
