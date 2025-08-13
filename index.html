@@ -1699,10 +1699,13 @@
                 // If successful, store the last booking reference and redirect
                 localStorage.setItem('lastBookingRef', lastBookingRef); // Store the ID of the last booking in the batch
 
-                displayCustomMessage(`Booking confirmed for seat(s): ${selectedSeats.sort((a, b) => a - b).map(s => `S${s}`).join(', ')}! Redirecting to confirmation page.`, 'success', () => {
-                    window.location.href = `booking-success.html?bookingRef=${lastBookingRef}`; // Pass bookingRef in URL
-                });
+                // Display success message and then redirect automatically after a delay
+                displayCustomMessage(`Booking confirmed for seat(s): ${selectedSeats.sort((a, b) => a - b).map(s => `S${s}`).join(', ')}! You will be redirected shortly to the confirmation page.`, 'success');
                 
+                setTimeout(() => {
+                    window.location.href = `booking-success.html?bookingRef=${lastBookingRef}`; // Pass bookingRef in URL
+                }, 3000); // Redirect after 3 seconds
+
                 closeModal(); // Close the seat selection modal
 
             } catch (error) {
