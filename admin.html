@@ -8,6 +8,7 @@
 <!-- Icons & PDF -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode.js/1.0.0/qrcode.min.js"></script> <!-- Added QRCode.js for PDF -->
 
 <!-- Firebase SDKs -->
 <script type="module">
@@ -382,40 +383,163 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
 /** =======================
  * Ticket PDF
  * ======================= */
-function generateTicketPDF(b) {
-  const { jsPDF } = window.jspdf;
-  const docpdf = new jsPDF();
-  const brand = "#002d6b";
-  docpdf.setFillColor(0,45,107);
-  docpdf.rect(0,0,210,25,"F");
-  docpdf.setTextColor(255,255,255);
-  docpdf.setFontSize(18);
-  docpdf.text("Prince Alex Travel - Ticket", 10, 16);
+function generateTicketPDF(booking) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-  docpdf.setTextColor(0,0,0);
-  docpdf.setFontSize(12);
-  const lines = [
-    `Reference: ${b.booking_ref ?? b.reference ?? b.ref ?? b.id}`,
-    `Passenger: ${b.passenger_name ?? "-"}`,
-    `Email: ${b.passenger_email ?? "-"}`,
-    `Phone: ${b.passenger_phone ?? "-"}`, // Added phone for consistency
-    `ID Number: ${b.passenger_id ?? "-"}`, // Added ID for consistency
-    `Gender: ${b.passenger_gender ?? "-"}`, // Added Gender for consistency
-    `Route: ${b.bus_route ?? "-"}`,
-    `Date: ${b.travel_date ?? "-"}`,
-    `Departure Time: ${b.bus_time ?? "-"}`, // Added Departure Time for consistency
-    `Seat: ${b.seat_number ?? "-"}`,
-    `Amount: KES ${b.price?Number(b.price).toLocaleString():"-"}`,
-    `Payment: ${(b.status??"pending").toUpperCase()}` // Use 'status'
-  ];
-  let y=40;
-  lines.forEach(t=>{ docpdf.text(t, 10, y); y+=8; });
+    // Define colors (matching CSS variables, directly from the CSS in the HTML)
+    const primaryColor = '#002d6b';
+    const accentColor = '#c69214';
+    const darkTextColor = '#1a1a1a';
+    // const secondaryTextColor = '#555'; // Not used in this PDF directly
 
-  docpdf.setDrawColor(0,45,107);
-  docpdf.rect(8, 30, 194, y-22);
+    let yPos = 20; // Initial Y position for content
 
-  docpdf.save(`ticket_${b.booking_ref ?? b.id}.pdf`);
+    // --- 1. Header with Logo and QR Code ---
+    // Add Logo (using a placeholder as 'mylogo.png' is not directly accessible in this environment)
+    // In a real application, you would load your actual logo image here.
+    const logoPlaceholder = "https://placehold.co/100x40/002d6b/ffffff?text=LOGO"; // Placeholder image
+    doc.addImage(logoPlaceholder, 'PNG', 15, yPos, 40, 40); // x, y, width, height
+
+
+    // Title
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryColor);
+    doc.text("Prince Alex Travel Services", 60, yPos + 15);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "normal");
+    doc.text("E-Ticket & Booking Confirmation", 60, yPos + 25);
+
+    // Generate QR Code dynamically
+    const qrCodeData = booking.booking_ref; // Data to encode in QR code
+    const qrCodeContainer = document.createElement('div');
+    qrCodeContainer.style.display = 'none'; // Hide it
+    document.body.appendChild(qrCodeContainer);
+
+    let qrCodeImgData = '';
+    try {
+        new QRCode(qrCodeContainer, {
+            text: qrCodeData,
+            width: 80,
+            height: 80,
+            colorDark : primaryColor, // Use company color for QR code
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+
+        // Wait a tiny bit for QR code to render to canvas/img
+        // This is a common pattern for async rendering to canvas/img
+        // For a more robust solution in a production environment, consider a dedicated QR code library that provides direct image data or promises.
+        // For this environment, a small timeout is often sufficient.
+        const canvasElement = qrCodeContainer.querySelector('canvas');
+        if (canvasElement) {
+            qrCodeImgData = canvasElement.toDataURL("image/png");
+        }
+    } catch (qrError) {
+        console.error("Error generating QR code:", qrError);
+    } finally {
+        // Clean up the temporary div
+        if (qrCodeContainer.parentNode) { // Check if it's still attached to the DOM
+            document.body.removeChild(qrCodeContainer);
+        }
+    }
+
+    if (qrCodeImgData) {
+         doc.addImage(qrCodeImgData, 'PNG', 160, yPos, 40, 40); // x, y, width, height
+    } else {
+        console.warn("QR Code image data not generated, skipping addition to PDF.");
+    }
+
+    yPos += 55; // Move Y position down after header content
+
+    // --- Drawing the main ticket body container ---
+    doc.setDrawColor(primaryColor);
+    doc.setLineWidth(1.5);
+    doc.line(10, yPos, 200, yPos); // Horizontal line below header
+
+    yPos += 10; // Space after line
+
+    // --- 2. Booking Reference (Prominent) ---
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(accentColor);
+    doc.text(`Booking Reference: ${booking.booking_ref ?? booking.id}`, 20, yPos);
+    yPos += 15;
+
+    // --- 3. Passenger Details Section ---
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryColor);
+    doc.text("Passenger Details:", 20, yPos);
+    yPos += 8;
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(darkTextColor);
+    doc.text(`Name: ${booking.passenger_name ?? "-"}`, 20, yPos); yPos += 7;
+    doc.text(`ID Number: ${booking.passenger_id ?? "-"}`, 20, yPos); yPos += 7;
+    doc.text(`Gender: ${booking.passenger_gender ?? "-"}`, 20, yPos); yPos += 7;
+    doc.text(`Phone: ${booking.passenger_phone ?? "-"}`, 20, yPos); yPos += 7;
+    doc.text(`Email: ${booking.passenger_email || 'N/A'}`, 20, yPos); yPos += 12;
+
+    // --- 4. Journey Details Section ---
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryColor);
+    doc.text("Journey Details:", 20, yPos);
+    yPos += 8;
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(darkTextColor);
+    doc.text(`Route: ${booking.bus_route ?? "-"}`, 20, yPos); yPos += 7;
+    doc.text(`Travel Date: ${booking.travel_date ?? "-"}`, 20, yPos); yPos += 7;
+    doc.text(`Departure Time: ${booking.bus_time ?? "-"}`, 20, yPos); yPos += 7;
+    doc.text(`Bus ID: ${booking.bus_id ?? "-"}`, 20, yPos); yPos += 7;
+    doc.text(`Seat Number: ${booking.seat_number ?? "-"}`, 20, yPos); yPos += 12;
+
+    // --- 5. Payment Summary Section ---
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryColor);
+    doc.text("Payment Summary:", 20, yPos);
+    yPos += 8;
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(darkTextColor);
+    doc.text(`Amount: Ksh ${Number(booking.price ?? 0).toFixed(2)}`, 20, yPos); yPos += 7;
+    doc.text(`Payment Status: ${(booking.status ?? "pending").toUpperCase()}`, 20, yPos); yPos += 12;
+    doc.text(`Booking Date: ${new Date(booking.booking_date).toLocaleDateString()}`, 20, yPos); yPos += 12;
+
+    // --- 6. Special Note for PENDING Status ---
+    if ((booking.status ?? "pending").toUpperCase() === 'PENDING') {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(200, 0, 0); // Red color for warning
+        doc.text("NOTE: This ticket is PENDING PAYMENT. Please complete payment to validate.", 20, yPos);
+        yPos += 5;
+        doc.text("Contact support for assistance: +254 717 384 875", 20, yPos);
+        doc.setTextColor(darkTextColor); // Reset color
+        yPos += 15;
+    }
+
+    // --- 7. Footer ---
+    yPos = doc.internal.pageSize.height - 25; // Position footer from bottom
+    doc.setDrawColor(primaryColor);
+    doc.setLineWidth(0.5);
+    doc.line(10, yPos, 200, yPos); // Horizontal line above footer
+    yPos += 5;
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(darkTextColor);
+    doc.text("Prince Alex Travel Services | Email: senerwaalex@gmail.com | Phone: +254 717 384 875", doc.internal.pageSize.width / 2, yPos, { align: "center" });
+    yPos += 5;
+    doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
+
+    doc.save(`PrinceAlex_Ticket_${booking.booking_ref ?? booking.id}.pdf`);
+    console.log("PDF download initiated successfully.");
 }
+
 
 /** =======================
  * Make Booking (Admin)
@@ -428,6 +552,12 @@ let selectedBusRoute = null; // Store bus route (From -> To)
 let selectedTotalSeats = null;
 let selectedSeatNumber = null; // For single seat selection in admin make booking
 let seatSelectionUnsubscribe = null; // For real-time seat updates in modal
+
+// Initially disable the confirm booking button
+document.addEventListener('DOMContentLoaded', () => {
+    $("#adminConfirmBooking button[type='submit']").disabled = true;
+});
+
 
 $("#adminBookingSearch").addEventListener("submit", async (e)=>{
   e.preventDefault();
@@ -484,14 +614,18 @@ $("#abResults").addEventListener("click", async (e)=>{
   if (!btn) return;
 
   selectedBusId = btn.dataset.busid;
-  selectedTotalSeats = Number(btn.dataset.totalSeats || TOTAL_SEATS_DEFAULT);
+  selectedTotalSeats = Number(btn.dataset.totalSeats || 0); // Use 0 if not available
   selectedDepartureTime = btn.dataset.departureTime;
   selectedBusPrice = Number(btn.dataset.busPrice);
   selectedBusRoute = btn.dataset.busRoute;
   const availableSeats = Number(btn.dataset.availableSeats);
 
   // Set the price in the passenger details form
-  $("#abPrice").value = selectedBusPrice;
+  $("#abPrice").value = selectedBusPrice.toFixed(2); // Display with 2 decimal places
+
+  // Disable confirm button until seat is selected
+  $("#adminConfirmBooking button[type='submit']").disabled = true;
+
 
   if (availableSeats <= 0) {
       showCustomAlert("Sorry, this bus is fully booked. Please choose another one.", "warn");
@@ -582,6 +716,7 @@ async function openSeatSelectionModal(busId, travelDate, totalSeats, currentAvai
                   selectedSeatNumber = parseInt(this.dataset.seat);
                   $("#selectedSeatNumberAdmin").value = `S${selectedSeatNumber}`; // Update hidden input
                   showCustomAlert(`Seat S${selectedSeatNumber} selected.`, "info", null);
+                  $("#adminConfirmBooking button[type='submit']").disabled = false; // Enable confirm button
               };
           }
           seatGrid.appendChild(seatContainer);
@@ -598,7 +733,7 @@ $("#seatCancel").addEventListener("click", ()=>{
         seatSelectionUnsubscribe(); // Unsubscribe when modal closes
         seatSelectionUnsubscribe = null;
     }
-    // Clear passenger details for next time
+    // Clear passenger details and reset state for next time
     $("#abName").value = '';
     $("#abEmail").value = '';
     $("#abPhone").value = '';
@@ -606,18 +741,30 @@ $("#seatCancel").addEventListener("click", ()=>{
     $("#abGender").value = '';
     $("#abPrice").value = ''; // Clear price input too
     $("#selectedSeatNumberAdmin").value = ''; // Clear selected seat display
+    selectedBusId = null;
+    selectedDate = null;
+    selectedDepartureTime = null;
+    selectedBusPrice = null;
+    selectedBusRoute = null;
+    selectedTotalSeats = null;
+    selectedSeatNumber = null;
+    $("#adminConfirmBooking button[type='submit']").disabled = true; // Re-disable confirm button
 });
 
 $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
   e.preventDefault();
-  if (!selectedBusId || !selectedDate) return showCustomAlert("Please search and select a bus first.", "warn");
-  if (!selectedSeatNumber) return showCustomAlert("Please select a seat.", "warn");
+  if (!selectedBusId || !selectedDate) {
+      return showCustomAlert("Please search and select a bus first.", "warn");
+  }
+  if (!selectedSeatNumber) {
+      return showCustomAlert("Please select a seat.", "warn");
+  }
 
   const passenger_name = $("#abName").value.trim();
   const passenger_email = $("#abEmail").value.trim();
   const passenger_phone = $("#abPhone").value.trim();
-  const passenger_id = $("#abID").value.trim(); // New field
-  const passenger_gender = $("#abGender").value; // New field
+  const passenger_id = $("#abID").value.trim(); 
+  const passenger_gender = $("#abGender").value; 
 
   // Basic validation
   if (!passenger_name || !passenger_phone || !passenger_email || !passenger_id || !passenger_gender) {
@@ -633,15 +780,15 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
   }
 
   // Generate unique booking reference
-  const booking_ref = 'PA-' + Date.now().toString().slice(-6) + '-' + selectedSeatNumber;
+  const booking_ref = 'PA-' + Date.now().toString().slice(-6) + '-' + String(selectedSeatNumber).padStart(2, '0'); // Pad seat number for consistent ref format
 
   try {
-    // Check if seat is still available (race condition check)
+    // Re-check if seat is still available (race condition check)
     const existingBookingsQ = query(
         collection(db, "bookings"),
         where("bus_id", "==", selectedBusId),
         where("travel_date", "==", selectedDate),
-        where("seat_number", "==", String(selectedSeatNumber)),
+        where("seat_number", "==", `S${selectedSeatNumber}`), // Match "S<number>" format
         where("status", "in", ['pending', 'paid'])
     );
     const existingBookingsSnapshot = await getDocs(existingBookingsQ);
@@ -667,7 +814,7 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
         bus_route: selectedBusRoute, // From selected bus
         bus_time: selectedDepartureTime, // From selected bus
         travel_date: selectedDate,
-        seat_number: String(selectedSeatNumber), // Store as string
+        seat_number: `S${selectedSeatNumber}`, // Store as "S<number>"
         price: selectedBusPrice, // Price per seat, from selected bus
         status: 'paid', // Admin bookings are considered paid directly
         booking_date: new Date().toISOString(),
@@ -675,7 +822,7 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
         createdAt: serverTimestamp() // Add server timestamp
     };
 
-    await addDoc(bookingsCol, bookingData);
+    const newBookingDocRef = await addDoc(bookingsCol, bookingData); // Add new booking
     
     // Decrement available_seats in the buses collection
     const busDocRef = doc(db, "buses", selectedBusId);
@@ -714,7 +861,11 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
 
     $("#seatModal").classList.add("hidden");
     e.target.reset(); // Reset the passenger details form
-    showCustomAlert("Booking created & marked PAID. Confirmation email sent!", "success");
+    $("#adminConfirmBooking button[type='submit']").disabled = true; // Disable button after booking
+    showCustomAlert("Booking created & marked PAID. Confirmation email sent!", "success", () => {
+        // Automatically generate and download PDF receipt after successful booking
+        generateTicketPDF(bookingData); 
+    });
     
     // Unsubscribe from seat listener when booking is confirmed
     if (seatSelectionUnsubscribe) {
