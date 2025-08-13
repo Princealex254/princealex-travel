@@ -10,7 +10,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, query, where, getDocs, addDoc, doc, updateDoc, increment, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, addDoc, doc, updateDoc, increment, onSnapshot, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -42,6 +42,7 @@
         window.increment = increment;
         window.onSnapshot = onSnapshot;
         window.getDoc = getDoc;
+        window.serverTimestamp = serverTimestamp; // Expose serverTimestamp as well
 
         // Global variable for current user, populated by onAuthStateChanged
         window.currentUser = null;
@@ -1027,7 +1028,8 @@
                     <option>Kisumu</option>
                     <option>Eldoret</option>
                     <option>Mombasa</option>
-                    <option>Nakuru</                    <option>Kericho</option>
+                    <option>Nakuru</option>
+                    <option>Kericho</option>
                     <option>Kakamega</option>
                     <option>Kitale</option>
                     <option>Nyeri</option>
@@ -1281,7 +1283,7 @@
                             <img src="${busImage}" alt="${item.origin} to ${item.destination}" />
                             <div class="result-details">
                                 <h4>${item.origin} to ${item.destination}</h4>
-                                <p>Departure: ${item.time}</p>
+                                <p>Departure: ${item.departureTime}</p> <!-- Corrected field name -->
                                 <p>Price: <strong>Ksh ${item.price}</strong></p>
                                 <p>Total Seats: ${item.totalSeats}</p>
                                 <p>Available Seats: ${item.available_seats}</p>
@@ -1290,7 +1292,7 @@
                             <button class="book-btn"
                                     data-bus-id="${item.id}"
                                     data-bus-route="${item.origin} to ${item.destination}"
-                                    data-bus-time="${item.time}"
+                                    data-bus-time="${item.departureTime}" <!-- Corrected field name -->
                                     data-travel-date="${item.travelDate}"
                                     data-bus-price="${item.price}"
                                     data-total-seats="${item.totalSeats}"
@@ -1341,8 +1343,9 @@
                 
                 // Pre-fill passenger details from currentUserProfile
                 document.getElementById("passengerName").value = window.currentUserProfile?.fullName || '';
-                document.getElementById("passengerID").value = window.currentUserProfile?.idNumber || '';
-                document.getElementById("passengerPhone").value = window.currentUserProfile?.phoneNumber || '';
+                document.getElementById("passengerID").value = window.currentUserProfile?.idNumber || ''; // Assuming you have idNumber in profile
+                document.getElementById("passengerGender").value = window.currentUserProfile?.gender || ''; // Assuming you have gender in profile
+                document.getElementById("passengerPhone").value = window.currentUserProfile?.phoneNumber || ''; // Assuming you have phoneNumber in profile
                 document.getElementById("passengerEmail").value = window.currentUserProfile?.email || '';
 
                 document.getElementById("seatModal").style.display = "flex";
@@ -1411,8 +1414,8 @@
         function createSeatElement(parent, seatNumber, bookedSeats) {
             const seatContainer = document.createElement("div");
             seatContainer.classList.add("seat-container");
-            seatContainer.setAttribute("data-seat", seatNumber);
-
+            seatContainer.setAttribute("data-seat", `S${seatNumber}`); // Store as "S<number>"
+            
             const seatIcon = document.createElement("i");
             seatIcon.classList.add("fas", "fa-chair", "seat-icon");
 
@@ -1423,7 +1426,7 @@
             seatContainer.appendChild(seatIcon);
             seatContainer.appendChild(seatNumSpan);
 
-            if (bookedSeats.includes(seatNumber)) {
+            if (bookedSeats.includes(`S${seatNumber}`)) { // Check against "S<number>" format
                 seatContainer.classList.add("booked");
                 seatContainer.onclick = null; // Make booked seats non-clickable
             } else {
@@ -1432,7 +1435,7 @@
                     seatContainer.classList.add("selected");
                 }
                 seatContainer.onclick = function () {
-                    const seatNum = parseInt(this.dataset.seat);
+                    const seatNum = parseInt(this.dataset.seat.replace('S', '')); // Convert back to number
                     if (this.classList.contains("selected")) {
                         this.classList.remove("selected");
                         selectedSeats = selectedSeats.filter(s => s !== seatNum);
@@ -1481,13 +1484,15 @@
             const bookingsRef = collection(firebaseDb, "bookings");
             const q = query(bookingsRef, 
                             where("bus_id", "==", currentBusId), 
-                            where("travel_date", "==", currentTravelDate));
+                            where("travel_date", "==", currentTravelDate),
+                            where("status", "in", ['pending', 'paid'])); // Filter by active bookings
 
             unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
                 const bookedSeatsForThisTrip = [];
                 snapshot.forEach((doc) => {
                     const booking = doc.data();
-                    if (booking.status !== 'cancelled') { // Only consider actively booked seats
+                    // Only add seats that are 'pending' or 'paid'
+                    if (booking.status === 'pending' || booking.status === 'paid') {
                         bookedSeatsForThisTrip.push(booking.seat_number);
                     }
                 });
@@ -1539,7 +1544,7 @@
         function updateSelectedSeatsDisplay() {
             const displayElement = document.getElementById('selectedSeatsDisplay');
             if (selectedSeats.length > 0) {
-                displayElement.textContent = selectedSeats.sort((a, b) => a - b).join(', ');
+                displayElement.textContent = selectedSeats.sort((a, b) => a - b).map(s => `S${s}`).join(', '); // Display as "S1, S2"
             } else {
                 displayElement.textContent = 'None';
             }
@@ -1623,8 +1628,9 @@
             const currentlyBookedSeats = new Set(bookedSeatsSnapshot.docs.map(doc => doc.data().seat_number));
 
             for (const seatNumber of selectedSeats) {
-                if (currentlyBookedSeats.has(seatNumber)) {
-                    displayCustomMessage(`Seat ${seatNumber} has just been booked by someone else. Please select another seat.`);
+                const formattedSeatNumber = `S${seatNumber}`; // Ensure "S<number>" format
+                if (currentlyBookedSeats.has(formattedSeatNumber)) {
+                    displayCustomMessage(`Seat ${formattedSeatNumber} has just been booked by someone else. Please select another seat.`);
                     generateSeats(currentTotalSeats); // Re-render seat grid with updated status
                     return;
                 }
@@ -1635,7 +1641,7 @@
                 }
                 currentAvailableSeats--; // Tentatively decrement for each selected seat
 
-                const bookingRef = 'PA-' + Date.now().toString() + '-' + seatNumber; // Unique Booking Reference
+                const bookingRef = 'PA-' + Date.now().toString().slice(-6) + '-' + String(seatNumber).padStart(2, '0'); // Unique Booking Reference
                 const newBooking = {
                     booking_ref: bookingRef,
                     passenger_name: name,
@@ -1647,11 +1653,12 @@
                     bus_route: currentBusRoute,
                     bus_time: currentBusTime,
                     travel_date: currentTravelDate,
-                    seat_number: seatNumber,
+                    seat_number: formattedSeatNumber, // Store in "S<number>" format
                     price: currentBusPrice, // Price per seat
                     status: 'pending', // Set to pending, payment gateway would confirm to 'paid'
                     booking_date: new Date().toISOString(), // ISO string for consistent date format
-                    user_id: window.currentUser ? window.currentUser.uid : null // Store Firebase user ID if logged in
+                    user_id: window.currentUser ? window.currentUser.uid : null, // Store Firebase user ID if logged in
+                    createdAt: serverTimestamp() // Add server timestamp
                 };
                 bookingsToInsert.push(newBooking);
                 lastBookingRef = bookingRef; // Keep track of the last one for redirect
@@ -1677,9 +1684,12 @@
                 // If successful, store the last booking reference and redirect
                 localStorage.setItem('lastBookingRef', lastBookingRef); // Store the ID of the last booking in the batch
 
-                displayCustomMessage(`Booking confirmed for seat(s): ${selectedSeats.sort((a, b) => a - b).join(', ')}! Redirecting to payment page.`);
-                closeModal();
-                window.location.href = 'booking-success.html';
+                displayCustomMessage(`Booking confirmed for seat(s): ${selectedSeats.sort((a, b) => a - b).map(s => `S${s}`).join(', ')}! Redirecting to confirmation page.`, 'success', () => {
+                    window.location.href = `booking-success.html?bookingRef=${lastBookingRef}`; // Pass bookingRef in URL
+                });
+                
+                closeModal(); // Close the seat selection modal
+
             } catch (error) {
                 console.error('Error confirming booking:', error.message);
                 displayCustomMessage('Error confirming booking: ' + error.message);
@@ -1747,7 +1757,7 @@
 
                 let formattedData = `Available buses from ${capitalizedFrom} to ${capitalizedTo} on ${date}:\n`;
                 buses.forEach(bus => {
-                    formattedData += `- Bus departing at ${bus.time}, Price: Ksh ${bus.price}, Available Seats: ${bus.available_seats} (Total: ${bus.totalSeats})\n`;
+                    formattedData += `- Bus departing at ${bus.departureTime}, Price: Ksh ${bus.price}, Available Seats: ${bus.available_seats} (Total: ${bus.totalSeats})\n`; // Corrected field name
                 });
                 return formattedData;
 
@@ -1772,7 +1782,7 @@
                 typingIndicator.id = 'typingIndicator';
                 chatBody.appendChild(typingIndicator);
                 chatBody.scrollTop = chatBody.scrollHeight;
-
+                
                 let promptText = message;
                 let additionalContext = "";
                 const todayDate = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
