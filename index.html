@@ -85,7 +85,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            /* Use: Resets default browser margins/paddings and sets box model for consistent sizing. */
+            /* Use: Resets default browser margins/ paddings and sets box model for consistent sizing. */
         }
         body {
             font-family: 'Segoe UI', sans-serif;
@@ -1278,28 +1278,43 @@
 
                 buses.forEach(item => {
                     const busImage = item.image || 'https://placehold.co/150x100/002d6b/ffffff?text=Bus'; // Use a placeholder image if not available
-                    resultsContainer.innerHTML += `
-                        <div class="result-card">
-                            <img src="${busImage}" alt="${item.origin} to ${item.destination}" />
-                            <div class="result-details">
-                                <h4>${item.origin} to ${item.destination}</h4>
-                                <p>Departure: ${item.departureTime}</p> <!-- Corrected field name -->
-                                <p>Price: <strong>Ksh ${item.price}</strong></p>
-                                <p>Total Seats: ${item.totalSeats}</p>
-                                <p>Available Seats: ${item.available_seats}</p>
-                                <p>Travel Date: ${item.travelDate}</p>
-                            </div>
-                            <button class="book-btn"
-                                    data-bus-id="${item.id}"
-                                    data-bus-route="${item.origin} to ${item.destination}"
-                                    data-bus-time="${item.departureTime}" <!-- Corrected field name -->
-                                    data-travel-date="${item.travelDate}"
-                                    data-bus-price="${item.price}"
-                                    data-total-seats="${item.totalSeats}"
-                                    data-available-seats="${item.available_seats}"
-                                    >Book Now</button>
-                        </div>
+
+                    // Create result card elements programmatically
+                    const resultCard = document.createElement('div');
+                    resultCard.classList.add('result-card');
+
+                    const imgElement = document.createElement('img');
+                    imgElement.src = busImage;
+                    imgElement.alt = `${item.origin} to ${item.destination}`;
+                    resultCard.appendChild(imgElement);
+
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.classList.add('result-details');
+                    detailsDiv.innerHTML = `
+                        <h4>${item.origin} to ${item.destination}</h4>
+                        <p>Departure: ${item.departureTime}</p>
+                        <p>Price: <strong>Ksh ${item.price}</strong></p>
+                        <p>Total Seats: ${item.totalSeats}</p>
+                        <p>Available Seats: ${item.available_seats}</p>
+                        <p>Travel Date: ${item.travelDate}</p>
                     `;
+                    resultCard.appendChild(detailsDiv);
+
+                    const bookBtn = document.createElement('button');
+                    bookBtn.classList.add('book-btn');
+                    bookBtn.textContent = 'Book Now'; // Only "Book Now" as text content
+
+                    // Set data attributes using dataset for programmatic access
+                    bookBtn.dataset.busId = item.id;
+                    bookBtn.dataset.busRoute = `${item.origin} to ${item.destination}`;
+                    bookBtn.dataset.busTime = item.departureTime;
+                    bookBtn.dataset.travelDate = item.travelDate;
+                    bookBtn.dataset.busPrice = item.price;
+                    bookBtn.dataset.totalSeats = item.totalSeats;
+                    bookBtn.dataset.availableSeats = item.available_seats;
+
+                    resultCard.appendChild(bookBtn);
+                    resultsContainer.appendChild(resultCard);
                 });
 
                 attachBookNowListeners();
