@@ -12,8 +12,8 @@
 <!-- Firebase SDKs -->
 <script type="module">
 /** =======================
- *  Firebase (same as index.html)
- *  ======================= */
+ * Firebase (same as index.html)
+ * ======================= */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { 
@@ -33,22 +33,55 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 /** =======================
- *  DOM Helpers
- *  ======================= */
+ * DOM Helpers
+ * ======================= */
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
-function toast(msg, type="info") {
-  const t = document.createElement("div");
-  t.className = `toast ${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(()=>t.classList.add("show"),10);
-  setTimeout(()=>{t.classList.remove("show"); setTimeout(()=>t.remove(),300)}, 2700);
+
+// Custom Alert Modal
+function showCustomAlert(message, type = 'info', callback = null) {
+    const modal = document.createElement('div');
+    modal.classList.add('custom-alert-modal');
+    let bgColor = '#002d6b'; // Primary Blue
+    let textColor = 'white';
+    if (type === 'success') { bgColor = '#28a745'; } // Green
+    else if (type === 'error') { bgColor = '#dc3545'; } // Red
+    else if (type === 'warning') { bgColor = '#ffc107'; textColor = '#333'; } // Yellow
+
+    modal.innerHTML = `
+        <div class="custom-alert-content" style="background:${bgColor}; color:${textColor};">
+            <p>${message}</p>
+            <button onclick="this.closest('.custom-alert-modal').remove(); if(window.alertCallback) window.alertCallback();">OK</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    window.alertCallback = callback; // Store callback globally for button access
 }
 
+// Custom Confirm Modal
+function showCustomConfirm(message, type = 'confirm', callback = null) {
+    const modal = document.createElement('div');
+    modal.classList.add('custom-alert-modal'); // Reusing same modal style
+    let confirmColor = '#002d6b';
+    if (type === 'delete') confirmColor = '#dc3545';
+
+    modal.innerHTML = `
+        <div class="custom-alert-content">
+            <p style="color:${confirmColor};">${message}</p>
+            <div class="confirm-buttons">
+                <button class="confirm-yes" onclick="this.closest('.custom-alert-modal').remove(); if(window.confirmCallback) window.confirmCallback(true);">Yes</button>
+                <button class="confirm-no" onclick="this.closest('.custom-alert-modal').remove(); if(window.confirmCallback) window.confirmCallback(false);">No</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    window.confirmCallback = callback; // Store callback globally for button access
+}
+
+
 /** =======================
- *  Auth Guard
- *  ======================= */
+ * Auth Guard
+ * ======================= */
 let currentAdmin = null;
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -74,7 +107,7 @@ onAuthStateChanged(auth, async (user) => {
     currentAdmin = null;
     $("#adminApp").classList.add("hidden");
     $("#loginCard").classList.remove("hidden");
-    toast("Access denied. This account is not an admin.", "error");
+    showCustomAlert("Access denied. This account is not an admin.", "error");
   }
 });
 
@@ -84,20 +117,28 @@ $("#loginForm").addEventListener("submit", async (e)=>{
   const pass = $("#loginPassword").value;
   try {
     await signInWithEmailAndPassword(auth, email, pass);
-    toast("Login successful!", "success");
+    showCustomAlert("Login successful!", "success");
   } catch (err) {
     console.error(err);
-    toast(err.message || "Login failed", "error");
+    showCustomAlert(err.message || "Login failed", "error");
   }
 });
 $("#logoutBtn").addEventListener("click", async ()=>{
-  await signOut(auth);
-  toast("Logged out.", "info");
+  showCustomConfirm("Are you sure you want to log out?", "confirm", async (result) => {
+    if (result) {
+      try {
+        await signOut(auth);
+        showCustomAlert("Logged out.", "info");
+      } catch (err) {
+        showCustomAlert("Logout failed: " + err.message, "error");
+      }
+    }
+  });
 });
 
 /** =======================
- *  Tabs
- *  ======================= */
+ * Tabs
+ * ======================= */
 $$(".tab-btn").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     const target = btn.dataset.tab;
@@ -109,8 +150,8 @@ $$(".tab-btn").forEach(btn=>{
 });
 
 /** =======================
- *  Manage Buses
- *  ======================= */
+ * Manage Buses
+ * ======================= */
 const busesCol = collection(db, "buses");
 let busesUnsub = null;
 
@@ -122,13 +163,16 @@ function attachRealtimeBuses() {
     snap.forEach(docSnap=>{
       const d = docSnap.data();
       const tr = document.createElement("tr");
+      // Display fields consistent with index.html's implied structure
       tr.innerHTML = `
         <td>${d.company ?? "-"}</td>
         <td>${d.from ?? "-"}</td>
         <td>${d.to ?? "-"}</td>
+        <td>${d.travelDate ?? "-"}</td>
         <td>${d.departureTime ?? "-"}</td>
         <td>${d.price ? "KES "+Number(d.price).toLocaleString() : "-"}</td>
         <td>${d.totalSeats ?? "-"}</td>
+        <td>${d.available_seats ?? "-"}</td>
         <td class="nowrap">
           <button class="btn sm" data-action="edit" data-id="${docSnap.id}"><i class="fa-solid fa-pen-to-square"></i></button>
           <button class="btn sm danger" data-action="del" data-id="${docSnap.id}"><i class="fa-solid fa-trash"></i></button>
@@ -142,20 +186,29 @@ $("#addBusForm").addEventListener("submit", async (e)=>{
   e.preventDefault();
   const data = {
     company: $("#busCompany").value.trim(),
-    from: $("#busFrom").value.trim(),
-    to: $("#busTo").value.trim(),
-    departureTime: $("#busTime").value.trim(),
+    from: $("#busFrom").value.trim(), // Maps to origin
+    to: $("#busTo").value.trim(),     // Maps to destination
+    travelDate: $("#busTravelDate").value, // New field for consistency
+    departureTime: $("#busTime").value.trim(), // Maps to time
     price: Number($("#busPrice").value),
     totalSeats: Number($("#busSeats").value),
+    available_seats: Number($("#busSeats").value), // Initialize available_seats
+    image: $("#busImage").value.trim(), // New field for consistency
     createdAt: serverTimestamp()
   };
+
+  if (!data.company || !data.from || !data.to || !data.travelDate || !data.departureTime || isNaN(data.price) || data.price <= 0 || isNaN(data.totalSeats) || data.totalSeats <= 0) {
+      showCustomAlert("Please fill all required fields correctly (Company, From, To, Travel Date, Departure Time, Price, Total Seats).", "error");
+      return;
+  }
+
   try {
     await addDoc(busesCol, data);
     e.target.reset();
-    toast("Bus added.", "success");
+    showCustomAlert("Bus added.", "success");
   } catch (err) {
     console.error(err);
-    toast("Failed to add bus: " + err.message, "error");
+    showCustomAlert("Failed to add bus: " + err.message, "error");
   }
 });
 $("#busTableBody").addEventListener("click", async (e)=>{
@@ -163,13 +216,16 @@ $("#busTableBody").addEventListener("click", async (e)=>{
   if (!btn) return;
   const id = btn.dataset.id;
   if (btn.dataset.action === "del") {
-    if (!confirm("Delete this bus?")) return;
-    try {
-      await deleteDoc(doc(db, "buses", id));
-      toast("Bus deleted.", "success");
-    } catch (err) {
-      toast("Delete failed: " + err.message, "error");
-    }
+    showCustomConfirm("Delete this bus? This action cannot be undone.", "delete", async (result) => {
+        if (result) {
+            try {
+              await deleteDoc(doc(db, "buses", id));
+              showCustomAlert("Bus deleted.", "success");
+            } catch (err) {
+              showCustomAlert("Delete failed: " + err.message, "error");
+            }
+        }
+    });
   } else if (btn.dataset.action === "edit") {
     // Load current values to editor
     const s = await getDoc(doc(db, "buses", id));
@@ -179,35 +235,46 @@ $("#busTableBody").addEventListener("click", async (e)=>{
     $("#editBusCompany").value = d.company ?? "";
     $("#editBusFrom").value = d.from ?? "";
     $("#editBusTo").value = d.to ?? "";
+    $("#editBusTravelDate").value = d.travelDate ?? ""; // New field
     $("#editBusTime").value = d.departureTime ?? "";
     $("#editBusPrice").value = d.price ?? "";
     $("#editBusSeats").value = d.totalSeats ?? "";
+    $("#editBusImage").value = d.image ?? ""; // New field
     $("#editBusModal").classList.remove("hidden");
   }
 });
 $("#editBusForm").addEventListener("submit", async (e)=>{
   e.preventDefault();
   const id = $("#editBusId").value;
+  const updatedData = {
+    company: $("#editBusCompany").value.trim(),
+    from: $("#editBusFrom").value.trim(),
+    to: $("#editBusTo").value.trim(),
+    travelDate: $("#editBusTravelDate").value, // New field
+    departureTime: $("#editBusTime").value.trim(),
+    price: Number($("#editBusPrice").value),
+    totalSeats: Number($("#editBusSeats").value),
+    image: $("#editBusImage").value.trim() // New field
+  };
+
+  if (!updatedData.company || !updatedData.from || !updatedData.to || !updatedData.travelDate || !updatedData.departureTime || isNaN(updatedData.price) || updatedData.price <= 0 || isNaN(updatedData.totalSeats) || updatedData.totalSeats <= 0) {
+      showCustomAlert("Please fill all required fields correctly (Company, From, To, Travel Date, Departure Time, Price, Total Seats).", "error");
+      return;
+  }
+
   try {
-    await updateDoc(doc(db, "buses", id), {
-      company: $("#editBusCompany").value.trim(),
-      from: $("#editBusFrom").value.trim(),
-      to: $("#editBusTo").value.trim(),
-      departureTime: $("#editBusTime").value.trim(),
-      price: Number($("#editBusPrice").value),
-      totalSeats: Number($("#editBusSeats").value)
-    });
+    await updateDoc(doc(db, "buses", id), updatedData);
     $("#editBusModal").classList.add("hidden");
-    toast("Bus updated.", "success");
+    showCustomAlert("Bus updated.", "success");
   } catch (err) {
-    toast("Update failed: " + err.message, "error");
+    showCustomAlert("Update failed: " + err.message, "error");
   }
 });
 $("#editBusCancel").addEventListener("click", ()=>$("#editBusModal").classList.add("hidden"));
 
 /** =======================
- *  Manage Bookings
- *  ======================= */
+ * Manage Bookings
+ * ======================= */
 const bookingsCol = collection(db, "bookings");
 let bookingsUnsub = null, bookingCache = [];
 
@@ -226,16 +293,15 @@ function renderBookingTable(items) {
   body.innerHTML = "";
   items.sort((a,b)=> (b.createdAt?.seconds??0)-(a.createdAt?.seconds??0));
   for (const b of items) {
-    const paid = (b.payment_status || "").toLowerCase() === "paid";
+    const paid = (b.status || "").toLowerCase() === "paid"; // Use 'status' field
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${b.ref ?? b.reference ?? b.bookingRef ?? "-"}</td>
-      <td>${b.passengerName ?? "-"}</td>
-      <td>${b.passengerEmail ?? "-"}</td>
-      <td>${b.from ?? "-"}</td>
-      <td>${b.to ?? "-"}</td>
-      <td>${b.date ?? "-"}</td>
-      <td>${b.seat ?? "-"}</td>
+      <td>${b.booking_ref ?? b.reference ?? b.ref ?? "-"}</td>
+      <td>${b.passenger_name ?? "-"}</td>
+      <td>${b.passenger_email ?? "-"}</td>
+      <td>${b.bus_route ?? "-"}</td> <!-- Using bus_route -->
+      <td>${b.travel_date ?? "-"}</td> <!-- Using travel_date -->
+      <td>${b.seat_number ?? "-"}</td> <!-- Using seat_number -->
       <td>${b.price ? "KES "+Number(b.price).toLocaleString() : "-"}</td>
       <td><span class="badge ${paid?"success":"warn"}">${paid ? "PAID" : "PENDING"}</span></td>
       <td class="nowrap">
@@ -251,9 +317,9 @@ $("#bookingSearch").addEventListener("input", ()=>{
   const q = $("#bookingSearch").value.trim().toLowerCase();
   if (!q) return renderBookingTable(bookingCache);
   const results = bookingCache.filter(b=>{
-    return (b.passengerName??"").toLowerCase().includes(q)
-      || (b.passengerEmail??"").toLowerCase().includes(q)
-      || (b.ref??b.reference??b.bookingRef??"").toLowerCase().includes(q);
+    return (b.passenger_name??"").toLowerCase().includes(q)
+      || (b.passenger_email??"").toLowerCase().includes(q) // Fix: Removed extra characters
+      || (b.booking_ref??b.reference??b.ref??"").toLowerCase().includes(q);
   });
   renderBookingTable(results);
 });
@@ -265,29 +331,40 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
   if (!item) return;
 
   if (btn.dataset.action === "del") {
-    if (!confirm("Delete this booking?")) return;
-    try {
-      await deleteDoc(doc(db, "bookings", id));
-      toast("Booking deleted.", "success");
-    } catch (err) {
-      toast("Delete failed: " + err.message, "error");
-    }
+    showCustomConfirm("Delete this booking? This action cannot be undone.", "delete", async (result) => {
+        if (result) {
+            try {
+                await deleteDoc(doc(db, "bookings", id));
+                // Assuming busId and seatNumber are stored in booking for decrementing available_seats
+                if (item.bus_id && item.seat_number) {
+                    const busDocRef = doc(db, "buses", item.bus_id);
+                    await updateDoc(busDocRef, {
+                        available_seats: increment(1)
+                    });
+                    console.log(`Available seat incremented for bus ${item.bus_id}`);
+                }
+                showCustomAlert("Booking deleted.", "success");
+            } catch (err) {
+                showCustomAlert("Delete failed: " + err.message, "error");
+            }
+        }
+    });
   } else if (btn.dataset.action === "markpaid") {
     try {
-      await updateDoc(doc(db, "bookings", id), { payment_status: "paid", paidAt: serverTimestamp() });
-      toast("Marked as PAID.", "success");
+      await updateDoc(doc(db, "bookings", id), { status: "paid", paidAt: serverTimestamp() });
+      showCustomAlert("Marked as PAID.", "success");
       // Send confirmation email (requires Firebase Trigger Email extension)
-      if (item.passengerEmail) {
+      if (item.passenger_email) {
         await addDoc(collection(db,"mail"), {
-          to: [item.passengerEmail],
+          to: [item.passenger_email],
           message: {
             subject: "Payment Confirmed – Prince Alex Travel",
-            text: `Hi ${item.passengerName??"Customer"}, your payment for booking ${item.ref??id} has been received. Seat ${item.seat??"-"} on ${item.date??"-"} (${item.from??"-"} → ${item.to??"-"}). Thank you!`,
-            html: `<p>Hi ${item.passengerName??"Customer"},</p>
-                   <p>Your payment for booking <strong>${item.ref??id}</strong> has been received.</p>
-                   <p><strong>Trip:</strong> ${item.from??"-"} → ${item.to??"-"}<br>
-                   <strong>Date:</strong> ${item.date??"-"}<br>
-                   <strong>Seat:</strong> ${item.seat??"-"}<br>
+            text: `Hi ${item.passenger_name??"Customer"}, your payment for booking ${item.booking_ref??id} has been received. Seat ${item.seat_number??"-"} on ${item.travel_date??"-"} (${item.bus_route??"-"}). Thank you!`,
+            html: `<p>Hi ${item.passenger_name??"Customer"},</p>
+                   <p>Your payment for booking <strong>${item.booking_ref??id}</strong> has been received.</p>
+                   <p><strong>Trip:</strong> ${item.bus_route??"-"}<br>
+                   <strong>Date:</strong> ${item.travel_date??"-"}<br>
+                   <strong>Seat:</strong> ${item.seat_number??"-"}<br>
                    <strong>Amount:</strong> KES ${item.price?Number(item.price).toLocaleString():"-"}</p>
                    <p>Thank you for choosing Prince Alex Travel.</p>`
           },
@@ -295,7 +372,7 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
         });
       }
     } catch (err) {
-      toast("Failed to mark paid: " + err.message, "error");
+      showCustomAlert("Failed to mark paid: " + err.message, "error");
     }
   } else if (btn.dataset.action === "ticket") {
     generateTicketPDF(item);
@@ -303,8 +380,8 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
 });
 
 /** =======================
- *  Ticket PDF
- *  ======================= */
+ * Ticket PDF
+ * ======================= */
 function generateTicketPDF(b) {
   const { jsPDF } = window.jspdf;
   const docpdf = new jsPDF();
@@ -318,14 +395,18 @@ function generateTicketPDF(b) {
   docpdf.setTextColor(0,0,0);
   docpdf.setFontSize(12);
   const lines = [
-    `Reference: ${b.ref ?? b.reference ?? b.bookingRef ?? b.id}`,
-    `Passenger: ${b.passengerName ?? "-"}`,
-    `Email: ${b.passengerEmail ?? "-"}`,
-    `Route: ${b.from ?? "-"} → ${b.to ?? "-"}`,
-    `Date: ${b.date ?? "-"}`,
-    `Seat: ${b.seat ?? "-"}`,
+    `Reference: ${b.booking_ref ?? b.reference ?? b.ref ?? b.id}`,
+    `Passenger: ${b.passenger_name ?? "-"}`,
+    `Email: ${b.passenger_email ?? "-"}`,
+    `Phone: ${b.passenger_phone ?? "-"}`, // Added phone for consistency
+    `ID Number: ${b.passenger_id ?? "-"}`, // Added ID for consistency
+    `Gender: ${b.passenger_gender ?? "-"}`, // Added Gender for consistency
+    `Route: ${b.bus_route ?? "-"}`,
+    `Date: ${b.travel_date ?? "-"}`,
+    `Departure Time: ${b.bus_time ?? "-"}`, // Added Departure Time for consistency
+    `Seat: ${b.seat_number ?? "-"}`,
     `Amount: KES ${b.price?Number(b.price).toLocaleString():"-"}`,
-    `Payment: ${(b.payment_status??"pending").toUpperCase()}`
+    `Payment: ${(b.status??"pending").toUpperCase()}` // Use 'status'
   ];
   let y=40;
   lines.forEach(t=>{ docpdf.text(t, 10, y); y+=8; });
@@ -333,30 +414,44 @@ function generateTicketPDF(b) {
   docpdf.setDrawColor(0,45,107);
   docpdf.rect(8, 30, 194, y-22);
 
-  docpdf.save(`ticket_${b.ref ?? b.id}.pdf`);
+  docpdf.save(`ticket_${b.booking_ref ?? b.id}.pdf`);
 }
 
 /** =======================
- *  Make Booking (Admin)
- *  ======================= */
+ * Make Booking (Admin)
+ * ======================= */
 let selectedBusId = null;
 let selectedDate = null;
-let selectedSeat = null;
-const TOTAL_SEATS_DEFAULT = 32;
+let selectedDepartureTime = null; // Store departure time
+let selectedBusPrice = null; // Store bus price
+let selectedBusRoute = null; // Store bus route (From -> To)
+let selectedTotalSeats = null;
+let selectedSeatNumber = null; // For single seat selection in admin make booking
+let seatSelectionUnsubscribe = null; // For real-time seat updates in modal
 
 $("#adminBookingSearch").addEventListener("submit", async (e)=>{
   e.preventDefault();
   const from = $("#abFrom").value.trim();
   const to = $("#abTo").value.trim();
   const date = $("#abDate").value;
-  if (!from || !to || !date) return toast("Select from, to, and date.", "warn");
+
+  if (!from || !to || !date) {
+    return showCustomAlert("Please select origin, destination, and travel date.", "warn");
+  }
+  
   selectedDate = date;
 
-  // find buses for route
-  const q1 = query(busesCol, where("from","==",from), where("to","==",to));
+  // Find buses for route and date
+  const q1 = query(busesCol, where("from","==",from), where("to","==",to), where("travelDate", "==", date));
   const qs = await getDocs(q1);
   const list = $("#abResults");
   list.innerHTML = "";
+
+  if (qs.empty) {
+      list.innerHTML = '<p style="text-align:center; margin-top:20px;">No buses found for this route and date.</p>';
+      return;
+  }
+
   qs.forEach(s=>{
     const d=s.data();
     const card = document.createElement("div");
@@ -365,105 +460,272 @@ $("#adminBookingSearch").addEventListener("submit", async (e)=>{
       <div class="result-details">
         <h4>${d.company ?? "Bus"}</h4>
         <p><strong>Route:</strong> ${d.from} → ${d.to}</p>
+        <p><strong>Travel Date:</strong> ${d.travelDate}</p>
         <p><strong>Depart:</strong> ${d.departureTime ?? "-"}</p>
-        <p><strong>Price:</strong> KES ${d.price?Number(d.price).toLocaleString():"-"}</p>
-        <button class="btn" data-busid="${s.id}" data-seats="${d.totalSeats ?? TOTAL_SEATS_DEFAULT}">Select Seats</button>
+        <p><strong>Price:</strong> KES ${d.price ? Number(d.price).toLocaleString() : "-"}</p>
+        <p><strong>Available Seats:</strong> ${d.available_seats ?? d.totalSeats ?? 0}</p>
+        <p><strong>Total Seats:</strong> ${d.totalSeats ?? TOTAL_SEATS_DEFAULT}</p>
+        <button class="btn" 
+            data-busid="${s.id}" 
+            data-total-seats="${d.totalSeats ?? TOTAL_SEATS_DEFAULT}"
+            data-departure-time="${d.departureTime ?? "-"}"
+            data-bus-price="${d.price ?? 0}"
+            data-bus-route="${d.from} to ${d.to}"
+            data-available-seats="${d.available_seats ?? d.totalSeats ?? 0}"
+            >Select Seats</button>
       </div>
     `;
     list.appendChild(card);
   });
 });
+
 $("#abResults").addEventListener("click", async (e)=>{
   const btn = e.target.closest("button[data-busid]");
   if (!btn) return;
+
   selectedBusId = btn.dataset.busid;
-  const total = Number(btn.dataset.seats || TOTAL_SEATS_DEFAULT);
-  await openSeatModal(selectedBusId, selectedDate, total);
+  selectedTotalSeats = Number(btn.dataset.totalSeats || TOTAL_SEATS_DEFAULT);
+  selectedDepartureTime = btn.dataset.departureTime;
+  selectedBusPrice = Number(btn.dataset.busPrice);
+  selectedBusRoute = btn.dataset.busRoute;
+  const availableSeats = Number(btn.dataset.availableSeats);
+
+  if (availableSeats <= 0) {
+      showCustomAlert("Sorry, this bus is fully booked. Please choose another one.", "warn");
+      return;
+  }
+
+  await openSeatSelectionModal(selectedBusId, selectedDate, selectedTotalSeats, availableSeats);
 });
 
-async function openSeatModal(busId, date, totalSeats) {
-  selectedSeat = null;
-  $("#seatGrid").innerHTML = "";
+async function openSeatSelectionModal(busId, travelDate, totalSeats, currentAvailableSeats) {
+  selectedSeatNumber = null; // Reset selection
+  const seatGrid = $("#seatGrid");
+  seatGrid.innerHTML = "";
   $("#seatModal").classList.remove("hidden");
-  // layout 4 columns
-  $("#seatGrid").style.gridTemplateColumns = `repeat(4, 1fr)`;
-  // get booked seats for that bus+date
-  const qbk = query(bookingsCol, where("busId","==",busId), where("date","==",date));
-  const snap = await getDocs(qbk);
-  const booked = new Set();
-  snap.forEach(s=>{
-    const d=s.data();
-    if (d.seat) booked.add(String(d.seat));
-  });
+  
+  // Display bus info in the modal
+  $("#selectedBusInfoAdmin").textContent = `Bus ID: ${busId}, Date: ${travelDate}, Available: ${currentAvailableSeats}`;
 
-  for (let i=1;i<=totalSeats;i++){
-    const seat = document.createElement("div");
-    seat.className = "seat-container" + (booked.has(String(i)) ? " booked" : "");
-    seat.innerHTML = `<i class="fa-solid fa-chair seat-icon"></i><div class="seat-number">${i}</div>`;
-    if (!booked.has(String(i))) {
-      seat.addEventListener("click", ()=>{
-        $$(".seat-container.selected").forEach(x=>x.classList.remove("selected"));
-        seat.classList.add("selected");
-        selectedSeat = i;
-      });
-    }
-    $("#seatGrid").appendChild(seat);
+  // Layout 4 columns (consistent with index.html's typical layout)
+  seatGrid.style.gridTemplateColumns = `repeat(4, 1fr)`;
+
+  // Add a "Front (Driver)" indicator
+  const driverArea = document.createElement('div');
+  driverArea.classList.add('driver-area');
+  driverArea.textContent = 'Front (Driver)';
+  seatGrid.appendChild(driverArea);
+
+  // Unsubscribe from previous listener if exists
+  if (seatSelectionUnsubscribe) {
+      seatSelectionUnsubscribe();
+      seatSelectionUnsubscribe = null;
   }
+
+  // Setup real-time listener for bookings for this specific bus and date
+  const bookingsRef = collection(db, "bookings");
+  const q = query(bookingsRef, 
+                  where("bus_id", "==", busId), 
+                  where("travel_date", "==", travelDate),
+                  where("status", "in", ['pending', 'paid'])); // Only consider active bookings
+
+  seatSelectionUnsubscribe = onSnapshot(q, (snapshot) => {
+      const bookedSeatsForThisTrip = new Set(snapshot.docs.map(doc => doc.data().seat_number));
+      
+      // Clear all seats except the driver area (if already present)
+      // Rebuild the seat grid dynamically on each snapshot update
+      const existingDriverArea = seatGrid.querySelector('.driver-area');
+      seatGrid.innerHTML = '';
+      if (existingDriverArea) {
+          seatGrid.appendChild(existingDriverArea); // Re-add the driver area
+      } else {
+          const newDriverArea = document.createElement('div');
+          newDriverArea.classList.add('driver-area');
+          newDriverArea.textContent = 'Front (Driver)';
+          seatGrid.appendChild(newDriverArea);
+      }
+
+      for (let i = 1; i <= totalSeats; i++) {
+          const seatContainer = document.createElement("div");
+          seatContainer.classList.add("seat-container");
+          seatContainer.setAttribute("data-seat", i);
+
+          const seatIcon = document.createElement("i");
+          seatIcon.classList.add("fas", "fa-chair", "seat-icon");
+
+          const seatNumSpan = document.createElement("span");
+          seatNumSpan.classList.add("seat-number");
+          seatNumSpan.textContent = `S${i}`; // Consistent with index.html
+
+          seatContainer.appendChild(seatIcon);
+          seatContainer.appendChild(seatNumSpan);
+
+          if (bookedSeatsForThisTrip.has(String(i))) { // Firestore stores as string
+              seatContainer.classList.add("booked");
+              seatContainer.onclick = null;
+          } else {
+              seatContainer.classList.add("available");
+              if (selectedSeatNumber === i) { // Re-highlight if it was the selected one
+                  seatContainer.classList.add("selected");
+              }
+              seatContainer.onclick = function () {
+                  // Deselect previously selected seat
+                  const currentlySelected = document.querySelector("#seatGrid .seat-container.selected");
+                  if (currentlySelected) {
+                      currentlySelected.classList.remove("selected");
+                  }
+                  // Select new seat
+                  this.classList.add("selected");
+                  selectedSeatNumber = parseInt(this.dataset.seat);
+                  $("#selectedSeatNumberAdmin").value = `S${selectedSeatNumber}`; // Update hidden input
+                  showCustomAlert(`Seat S${selectedSeatNumber} selected.`, "info", null);
+              };
+          }
+          seatGrid.appendChild(seatContainer);
+      }
+  }, (error) => {
+      console.error("Error fetching booked seats in real-time:", error.message);
+      showCustomAlert("Error loading seat availability. Please try again.", "error");
+  });
 }
-$("#seatCancel").addEventListener("click", ()=>$("#seatModal").classList.add("hidden"));
+
+$("#seatCancel").addEventListener("click", ()=>{
+    $("#seatModal").classList.add("hidden");
+    if (seatSelectionUnsubscribe) {
+        seatSelectionUnsubscribe(); // Unsubscribe when modal closes
+        seatSelectionUnsubscribe = null;
+    }
+    // Clear passenger details for next time
+    $("#abName").value = '';
+    $("#abEmail").value = '';
+    $("#abPhone").value = '';
+    $("#abID").value = '';
+    $("#abGender").value = '';
+    $("#abPrice").value = ''; // Clear price input too
+    $("#selectedSeatNumberAdmin").value = ''; // Clear selected seat display
+});
 
 $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
   e.preventDefault();
-  if (!selectedBusId || !selectedDate) return toast("Pick a bus & date first.", "warn");
-  if (!selectedSeat) return toast("Select a seat.", "warn");
+  if (!selectedBusId || !selectedDate) return showCustomAlert("Please search and select a bus first.", "warn");
+  if (!selectedSeatNumber) return showCustomAlert("Please select a seat.", "warn");
 
-  const name = $("#abName").value.trim();
-  const email = $("#abEmail").value.trim();
-  const phone = $("#abPhone").value.trim();
-  const price = Number($("#abPrice").value);
-  const from = $("#abFrom").value.trim();
-  const to = $("#abTo").value.trim();
+  const passenger_name = $("#abName").value.trim();
+  const passenger_email = $("#abEmail").value.trim();
+  const passenger_phone = $("#abPhone").value.trim();
+  const passenger_id = $("#abID").value.trim(); // New field
+  const passenger_gender = $("#abGender").value; // New field
+
+  // Basic validation
+  if (!passenger_name || !passenger_phone || !passenger_email || !passenger_id || !passenger_gender) {
+      return showCustomAlert("Please fill all passenger details.", "error");
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(passenger_email)) {
+      return showCustomAlert("Please enter a valid email address.", "error");
+  }
+  const phoneRegex = /^\+?[0-9\s-]{7,20}$/; 
+  if (!phoneRegex.test(passenger_phone)) {
+      return showCustomAlert("Please enter a valid Phone Number (e.g., +254712345678 or 0712345678).", "error");
+  }
+
+  // Generate unique booking reference
+  const booking_ref = 'PA-' + Date.now().toString().slice(-6) + '-' + selectedSeatNumber;
 
   try {
-    const refdoc = await addDoc(bookingsCol, {
-      passengerName: name,
-      passengerEmail: email,
-      passengerPhone: phone,
-      from, to,
-      date: selectedDate,
-      seat: String(selectedSeat),
-      busId: selectedBusId,
-      price: price || null,
-      payment_status: "paid",
-      createdBy: currentAdmin?.uid ?? null,
-      createdAt: serverTimestamp()
-    });
-    $("#seatModal").classList.add("hidden");
-    e.target.reset();
-    toast("Booking created & marked PAID.", "success");
+    // Check if seat is still available (race condition check)
+    const existingBookingsQ = query(
+        collection(db, "bookings"),
+        where("bus_id", "==", selectedBusId),
+        where("travel_date", "==", selectedDate),
+        where("seat_number", "==", String(selectedSeatNumber)),
+        where("status", "in", ['pending', 'paid'])
+    );
+    const existingBookingsSnapshot = await getDocs(existingBookingsQ);
+    if (!existingBookingsSnapshot.empty) {
+        showCustomAlert(`Seat S${selectedSeatNumber} has just been booked. Please choose another seat.`, "warn");
+        // Re-trigger seat rendering to update current state
+        const busDoc = await getDoc(doc(db, "buses", selectedBusId));
+        if (busDoc.exists()) {
+            await openSeatSelectionModal(selectedBusId, selectedDate, busDoc.data().totalSeats, busDoc.data().available_seats);
+        }
+        return;
+    }
 
-    // email confirmation
-    if (email) {
+    // Prepare booking data, consistent with index.html
+    const bookingData = {
+        booking_ref: booking_ref,
+        passenger_name: passenger_name,
+        passenger_id: passenger_id,
+        passenger_gender: passenger_gender,
+        passenger_phone: passenger_phone,
+        passenger_email: passenger_email,
+        bus_id: selectedBusId,
+        bus_route: selectedBusRoute, // From selected bus
+        bus_time: selectedDepartureTime, // From selected bus
+        travel_date: selectedDate,
+        seat_number: String(selectedSeatNumber), // Store as string
+        price: selectedBusPrice, // Price per seat, from selected bus
+        status: 'paid', // Admin bookings are considered paid directly
+        booking_date: new Date().toISOString(),
+        user_id: currentAdmin?.uid ?? null, // Track who booked
+        createdAt: serverTimestamp() // Add server timestamp
+    };
+
+    await addDoc(bookingsCol, bookingData);
+    
+    // Decrement available_seats in the buses collection
+    const busDocRef = doc(db, "buses", selectedBusId);
+    await updateDoc(busDocRef, {
+        available_seats: increment(-1)
+    });
+
+    // Send confirmation email (requires Firebase Trigger Email extension)
+    if (passenger_email) {
       await addDoc(collection(db,"mail"), {
-        to: [email],
+        to: [passenger_email],
         message: {
-          subject: "Your Ticket – Prince Alex Travel",
-          text: `Hi ${name||"Customer"}, your booking is confirmed. Seat ${selectedSeat} on ${selectedDate} (${from} → ${to}). Ref: ${refdoc.id}`,
-          html: `<p>Hi ${name||"Customer"},</p>
-                 <p>Your booking is confirmed.</p>
-                 <p><strong>Ref:</strong> ${refdoc.id}<br>
-                 <strong>Trip:</strong> ${from} → ${to}<br>
-                 <strong>Date:</strong> ${selectedDate}<br>
-                 <strong>Seat:</strong> ${selectedSeat}<br>
-                 <strong>Amount:</strong> KES ${price?Number(price).toLocaleString():"-"}</p>
-                 <p>Thank you for choosing Prince Alex Travel.</p>`
+          subject: "Your Prince Alex Travel Booking is Confirmed (Admin Booking)",
+          html: `
+              <p>Dear ${passenger_name},</p>
+              <p>Your booking with reference <strong>${booking_ref}</strong> has been successfully created by our administration team.</p>
+              <p>The payment for this booking is confirmed.</p>
+              <h3>Booking Details:</h3>
+              <ul>
+                  <li><strong>Route:</strong> ${selectedBusRoute}</li>
+                  <li><strong>Travel Date:</strong> ${selectedDate}</li>
+                  <li><strong>Departure Time:</strong> ${selectedDepartureTime}</li>
+                  <li><strong>Seat Number:</strong> S${selectedSeatNumber}</li>
+                  <li><strong>Total Price:</strong> Ksh ${selectedBusPrice.toFixed(2)}</li>
+                  <li><strong>Payment Status:</strong> Paid</li>
+              </ul>
+              <p>Thank you for choosing Prince Alex Travel. We look forward to serving you!</p>
+              <p>Best regards,<br>Prince Alex Travel Team</p>
+              <hr>
+              <p style="font-size: 0.8em; color: #777;">&copy; 2025 Prince Alex Digital. All rights reserved.</p>
+          `,
         },
         createdAt: serverTimestamp()
       });
+      console.log("Admin-initiated booking confirmation email queued successfully.");
     }
+
+    $("#seatModal").classList.add("hidden");
+    e.target.reset(); // Reset the passenger details form
+    showCustomAlert("Booking created & marked PAID. Confirmation email sent!", "success");
+    
+    // Unsubscribe from seat listener when booking is confirmed
+    if (seatSelectionUnsubscribe) {
+        seatSelectionUnsubscribe();
+        seatSelectionUnsubscribe = null;
+    }
+    loadBookings(); // Reload bookings table
+    // Optionally, switch to the bookings tab
+    $(".tab-btn[data-tab='tabBookings']").click();
+
   } catch (err) {
     console.error(err);
-    toast("Booking failed: " + err.message, "error");
+    showCustomAlert("Booking failed: " + err.message, "error");
   }
 });
 </script>
@@ -533,13 +795,80 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
 .seat-container.booked{cursor:not-allowed}
 .seat-container.booked .seat-icon,.seat-container.booked .seat-number{color:#c0392b}
 .seat-container.booked::after{content:"X";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2em;color:#fff;background:rgba(0,0,0,.25);border-radius:8px}
+.driver-area { /* Style for the "Front (Driver)" label */
+    grid-column: 1 / -1; /* Span all columns */
+    text-align: center;
+    margin-bottom: 15px;
+    font-weight: bold;
+    color: var(--primary-color);
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+}
+.aisle-space { /* For the gap in the seat layout */
+    width: 100%;
+    height: 100%;
+}
 
-/* Toast */
-.toast{position:fixed;right:20px;bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transform:translateY(8px);transition:.25s;z-index:2000}
-.toast.show{opacity:1;transform:translateY(0)}
-.toast.success{background:#1f8b3f}
-.toast.warn{background:#8a6d3b}
-.toast.error{background:#c0392b}
+/* Toast (Custom Alert/Confirm) */
+.custom-alert-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* Higher than other modals */
+}
+.custom-alert-content {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    text-align: center;
+    max-width: 400px;
+    box-shadow: 0 4px 8px rgba(0,0,0,.2);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.custom-alert-content p {
+    margin-bottom: 0; /* Remove default paragraph margin */
+    font-size: 1.1em;
+    color: var(--text-dark);
+}
+.custom-alert-content button {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color .3s ease;
+}
+.custom-alert-content button:hover {
+    background-color: #001a4d;
+}
+.confirm-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+.confirm-buttons .confirm-yes {
+    background-color: var(--success-color); /* Green for Yes */
+}
+.confirm-buttons .confirm-yes:hover {
+    background-color: #218838;
+}
+.confirm-buttons .confirm-no {
+    background-color: var(--error-color); /* Red for No */
+}
+.confirm-buttons .confirm-no:hover {
+    background-color: #c82333;
+}
+
 
 /* Login */
 .login-card{max-width:420px;margin:48px auto}
@@ -605,11 +934,13 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
           <h3>Add New Bus</h3>
           <form id="addBusForm" class="grid grid-3" style="margin-top:10px">
             <div><label>Company</label><input id="busCompany" required></div>
-            <div><label>From</label><input id="busFrom" required></div>
-            <div><label>To</label><input id="busTo" required></div>
+            <div><label>From (Origin)</label><input id="busFrom" required></div>
+            <div><label>To (Destination)</label><input id="busTo" required></div>
+            <div><label>Travel Date</label><input id="busTravelDate" type="date" required></div> <!-- New Field -->
             <div><label>Departure Time</label><input id="busTime" placeholder="e.g. 08:00 AM" required></div>
             <div><label>Price (KES)</label><input id="busPrice" type="number" min="0" required></div>
             <div><label>Total Seats</label><input id="busSeats" type="number" min="1" value="32" required></div>
+            <div style="grid-column: span 2;"><label>Image URL (Optional)</label><input id="busImage" type="text" placeholder="https://example.com/bus.png"></div> <!-- New Field -->
             <div class="nowrap" style="align-self:end"><button class="btn" type="submit">Add Bus</button></div>
           </form>
         </div>
@@ -617,7 +948,7 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
           <h3>All Buses</h3>
           <table class="table" style="margin-top:8px">
             <thead><tr>
-              <th>Company</th><th>From</th><th>To</th><th>Departure</th><th>Price</th><th>Seats</th><th>Actions</th>
+              <th>Company</th><th>From</th><th><th>To</th><th>Travel Date</th><th>Departure</th><th>Price</th><th>Total Seats</th><th>Available Seats</th><th>Actions</th>
             </tr></thead>
             <tbody id="busTableBody"></tbody>
           </table>
@@ -639,7 +970,7 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
           <table class="table" style="margin-top:8px">
             <thead>
               <tr>
-                <th>Ref</th><th>Name</th><th>Email</th><th>From</th><th>To</th><th>Date</th><th>Seat</th><th>Price</th><th>Status</th><th>Actions</th>
+                <th>Ref</th><th>Name</th><th>Email</th><th>Route</th><th>Travel Date</th><th>Seat</th><th>Price</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody id="bookingTableBody"></tbody>
@@ -652,9 +983,9 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
         <div class="card">
           <h3>Find Bus</h3>
           <form id="adminBookingSearch" class="grid grid-3" style="margin-top:10px">
-            <div><label>From</label><input id="abFrom" required></div>
-            <div><label>To</label><input id="abTo" required></div>
-            <div><label>Date</label><input id="abDate" type="date" required></div>
+            <div><label>From (Origin)</label><input id="abFrom" required></div>
+            <div><label>To (Destination)</label><input id="abTo" required></div>
+            <div><label>Travel Date</label><input id="abDate" type="date" required></div>
             <div class="nowrap" style="grid-column: 1 / -1; text-align:right">
               <button class="btn" type="submit">Search</button>
             </div>
@@ -668,7 +999,18 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
             <div><label>Full Name</label><input id="abName" required></div>
             <div><label>Email</label><input id="abEmail" type="email"></div>
             <div><label>Phone</label><input id="abPhone"></div>
-            <div><label>Price (KES)</label><input id="abPrice" type="number" min="0"></div>
+            <div><label>ID Number</label><input id="abID" required></div> <!-- New Field -->
+            <div>
+              <label>Gender</label>
+              <select id="abGender" required> <!-- New Field -->
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div><label>Price (KES per seat)</label><input id="abPrice" type="number" min="0" readonly></div> <!-- Display price for clarity -->
+            <input type="hidden" id="selectedSeatNumberAdmin"> <!-- To store selected seat -->
             <div class="nowrap" style="grid-column: 1 / -1; text-align:right">
               <button class="btn" type="submit">Confirm Booking (Paid)</button>
             </div>
@@ -685,11 +1027,13 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
       <form id="editBusForm" class="grid grid-3" style="margin-top:10px">
         <input type="hidden" id="editBusId">
         <div><label>Company</label><input id="editBusCompany" required></div>
-        <div><label>From</label><input id="editBusFrom" required></div>
-        <div><label>To</label><input id="editBusTo" required></div>
+        <div><label>From (Origin)</label><input id="editBusFrom" required></div>
+        <div><label>To (Destination)</label><input id="editBusTo" required></div>
+        <div><label>Travel Date</label><input id="editBusTravelDate" type="date" required></div> <!-- New Field -->
         <div><label>Departure Time</label><input id="editBusTime" required></div>
         <div><label>Price (KES)</label><input id="editBusPrice" type="number" required></div>
         <div><label>Total Seats</label><input id="editBusSeats" type="number" min="1" required></div>
+        <div style="grid-column: span 2;"><label>Image URL (Optional)</label><input id="editBusImage" type="text" placeholder="https://example.com/bus.png"></div> <!-- New Field -->
         <div class="nowrap" style="grid-column:1/-1; text-align:right; display:flex; gap:8px; justify-content:flex-end">
           <button type="button" class="btn" id="editBusCancel">Cancel</button>
           <button class="btn" type="submit">Save Changes</button>
@@ -701,7 +1045,7 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
   <!-- Seat Modal -->
   <div id="seatModal" class="modal hidden">
     <div class="box">
-      <h3>Select Seat</h3>
+      <h3>Select Seat for <span id="selectedBusInfoAdmin"></span></h3>
       <div id="seatGrid"></div>
       <div style="text-align:right; display:flex; gap:8px; justify-content:flex-end">
         <button class="btn" id="seatCancel">Close</button>
