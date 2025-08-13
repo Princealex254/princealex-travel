@@ -91,18 +91,12 @@
             font-family: 'Segoe UI', sans-serif;
             background-color: var(--light-bg);
             color: var(--text-dark);
-            padding-top: 120px; /* Space for fixed header */
-            padding-bottom: 70px; /* Space for fixed footer */
-            /* Use: Sets global font, background, and text color, with padding for fixed header/footer. */
+            /* Use: Sets global font, background, and text color. */
         }
         .navbar {
             background-color: var(--primary-color);
             padding: 15px 0;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            position: fixed; /* Lock header in place */
-            top: 0; /* Position at the top */
-            width: 100%; /* Take full width */
-            z-index: 1000; /* Ensure it's above other content */
             /* Use: Styles the top navigation bar with a background, padding, and subtle shadow. */
         }
         .navbar-container {
@@ -403,10 +397,6 @@
             padding: 20px;
             text-align: center;
             font-size: 14px;
-            position: fixed; /* Lock footer in place */
-            bottom: 0; /* Position at the bottom */
-            width: 100%; /* Take full width */
-            z-index: 1000; /* Ensure it's above other content */
             /* Use: Styles the footer background, text color, padding, and font size. */
         }
         .footer-content {
@@ -1328,8 +1318,7 @@
                 });
 
                 attachBookNowListeners();
-            }
-            catch (error) {
+            } catch (error) {
                 console.error('Error fetching buses:', error.message);
                 resultsContainer.innerHTML += `<p style="color: red; text-align: center;">Error fetching buses: ${error.message}</p>`;
             }
@@ -1913,3 +1902,4 @@
 
 </body>
 </html>
+
