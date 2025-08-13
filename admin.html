@@ -103,6 +103,7 @@ onAuthStateChanged(auth, async (user) => {
     // load data
     attachRealtimeBuses();
     attachRealtimeBookings();
+    populateRouteDropdowns(); // Populate dropdowns after auth
   } else {
     await signOut(auth);
     currentAdmin = null;
@@ -207,6 +208,7 @@ $("#addBusForm").addEventListener("submit", async (e)=>{
     await addDoc(busesCol, data);
     e.target.reset();
     showCustomAlert("Bus added.", "success");
+    populateRouteDropdowns(); // Refresh dropdowns after adding a new bus
   } catch (err) {
     console.error(err);
     showCustomAlert("Failed to add bus: " + err.message, "error");
@@ -222,6 +224,7 @@ $("#busTableBody").addEventListener("click", async (e)=>{
             try {
               await deleteDoc(doc(db, "buses", id));
               showCustomAlert("Bus deleted.", "success");
+              populateRouteDropdowns(); // Refresh dropdowns after deleting a bus
             } catch (err) {
               showCustomAlert("Delete failed: " + err.message, "error");
             }
@@ -267,6 +270,7 @@ $("#editBusForm").addEventListener("submit", async (e)=>{
     await updateDoc(doc(db, "buses", id), updatedData);
     $("#editBusModal").classList.add("hidden");
     showCustomAlert("Bus updated.", "success");
+    populateRouteDropdowns(); // Refresh dropdowns after updating a bus
   } catch (err) {
     showCustomAlert("Update failed: " + err.message, "error");
   }
@@ -560,11 +564,50 @@ document.addEventListener('DOMContentLoaded', () => {
     $("#passengerDetailsCard").classList.add("hidden");
 });
 
+async function populateRouteDropdowns() {
+    const fromDropdown = $("#abFrom");
+    const toDropdown = $("#abTo");
+
+    // Clear existing options
+    fromDropdown.innerHTML = '<option value="">Select Origin</option>';
+    toDropdown.innerHTML = '<option value="">Select Destination</option>';
+
+    const uniqueOrigins = new Set();
+    const uniqueDestinations = new Set();
+
+    try {
+        const querySnapshot = await getDocs(busesCol);
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.origin) uniqueOrigins.add(data.origin);
+            if (data.destination) uniqueDestinations.add(data.destination);
+        });
+
+        uniqueOrigins.forEach(origin => {
+            const option = document.createElement('option');
+            option.value = origin;
+            option.textContent = origin;
+            fromDropdown.appendChild(option);
+        });
+
+        uniqueDestinations.forEach(destination => {
+            const option = document.createElement('option');
+            option.value = destination;
+            option.textContent = destination;
+            toDropdown.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error("Error populating route dropdowns:", error);
+        showCustomAlert("Error loading bus routes. Please try again.", "error");
+    }
+}
+
 
 $("#adminBookingSearch").addEventListener("submit", async (e)=>{
   e.preventDefault();
-  const origin = $("#abFrom").value.trim(); // Changed from 'from' to 'origin'
-  const destination = $("#abTo").value.trim(); // Changed from 'to' to 'destination'
+  const origin = $("#abFrom").value.trim(); // Now a select dropdown
+  const destination = $("#abTo").value.trim(); // Now a select dropdown
   const date = $("#abDate").value;
 
   if (!origin || !destination || !date) {
@@ -1157,8 +1200,18 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
         <div class="card">
           <h3>Find Bus</h3>
           <form id="adminBookingSearch" class="grid grid-3" style="margin-top:10px">
-            <div><label>From (Origin)</label><input id="abFrom" required></div>
-            <div><label>To (Destination)</label><input id="abTo" required></div>
+            <div>
+              <label>From (Origin)</label>
+              <select id="abFrom" required>
+                <option value="">Select Origin</option>
+              </select>
+            </div>
+            <div>
+              <label>To (Destination)</label>
+              <select id="abTo" required>
+                <option value="">Select Destination</option>
+              </select>
+            </div>
             <div><label>Travel Date</label><input id="abDate" type="date" required></div>
             <div class="nowrap" style="grid-column: 1 / -1; text-align:right">
               <button class="btn" type="submit">Search</button>
