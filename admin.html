@@ -119,7 +119,9 @@ $("#loginForm").addEventListener("submit", async (e)=>{
   try {
     await signInWithEmailAndPassword(auth, email, pass);
     showCustomAlert("Login successful!", "success");
-  } catch (err) {
+  } /*
+   * Error Handling
+   */ catch (err) {
     console.error(err);
     showCustomAlert(err.message || "Login failed", "error");
   }
@@ -130,7 +132,9 @@ $("#logoutBtn").addEventListener("click", async ()=>{
       try {
         await signOut(auth);
         showCustomAlert("Logged out.", "info");
-      } catch (err) {
+      } /*
+       * Error Handling
+       */ catch (err) {
         showCustomAlert("Logout failed: " + err.message, "error");
       }
     }
@@ -207,7 +211,9 @@ $("#addBusForm").addEventListener("submit", async (e)=>{
     await addDoc(busesCol, data);
     e.target.reset();
     showCustomAlert("Bus added.", "success");
-  } catch (err) {
+  } /*
+   * Error Handling
+   */ catch (err) {
     console.error(err);
     showCustomAlert("Failed to add bus: " + err.message, "error");
   }
@@ -222,7 +228,9 @@ $("#busTableBody").addEventListener("click", async (e)=>{
             try {
               await deleteDoc(doc(db, "buses", id));
               showCustomAlert("Bus deleted.", "success");
-            } catch (err) {
+            } /*
+             * Error Handling
+             */ catch (err) {
               showCustomAlert("Delete failed: " + err.message, "error");
             }
         }
@@ -267,7 +275,9 @@ $("#editBusForm").addEventListener("submit", async (e)=>{
     await updateDoc(doc(db, "buses", id), updatedData);
     $("#editBusModal").classList.add("hidden");
     showCustomAlert("Bus updated.", "success");
-  } catch (err) {
+  } /*
+   * Error Handling
+   */ catch (err) {
     showCustomAlert("Update failed: " + err.message, "error");
   }
 });
@@ -309,7 +319,7 @@ function renderBookingTable(items) {
         ${paid ? "" : `<button class="btn sm success" data-action="markpaid" data-id="${b.id}"><i class="fa-solid fa-check"></i> Paid</button>`}
         <button class="btn sm" data-action="ticket" data-id="${b.id}"><i class="fa-solid fa-ticket"></i></button>
         <button class="btn sm danger" data-action="del" data-id="${b.id}"><i class="fa-solid fa-trash"></i></button>
-      </td>
+        </td>
     `;
     body.appendChild(tr);
   }
@@ -345,7 +355,9 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
                     console.log(`Available seat incremented for bus ${item.bus_id}`);
                 }
                 showCustomAlert("Booking deleted.", "success");
-            } catch (err) {
+            } /*
+             * Error Handling
+             */ catch (err) {
                 showCustomAlert("Delete failed: " + err.message, "error");
             }
         }
@@ -372,7 +384,9 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
           createdAt: serverTimestamp()
         });
       }
-    } catch (err) {
+    } /*
+     * Error Handling
+     */ catch (err) {
       showCustomAlert("Failed to mark paid: " + err.message, "error");
     }
   } else if (btn.dataset.action === "ticket") {
@@ -436,7 +450,9 @@ function generateTicketPDF(booking) {
         if (canvasElement) {
             qrCodeImgData = canvasElement.toDataURL("image/png");
         }
-    } catch (qrError) {
+    } /*
+     * Error Handling
+     */ catch (qrError) {
         console.error("Error generating QR code:", qrError);
     } finally {
         // Clean up the temporary div
@@ -556,6 +572,8 @@ let seatSelectionUnsubscribe = null; // For real-time seat updates in modal
 // Initially disable the confirm booking button
 document.addEventListener('DOMContentLoaded', () => {
     $("#adminConfirmBooking button[type='submit']").disabled = true;
+    // Hide the passenger details card initially
+    $("#passengerDetailsCard").classList.add("hidden");
 });
 
 
@@ -716,7 +734,14 @@ async function openSeatSelectionModal(busId, travelDate, totalSeats, currentAvai
                   selectedSeatNumber = parseInt(this.dataset.seat);
                   $("#selectedSeatNumberAdmin").value = `S${selectedSeatNumber}`; // Update hidden input
                   showCustomAlert(`Seat S${selectedSeatNumber} selected.`, "info", null);
+                  
+                  // Close seat modal
+                  $("#seatModal").classList.add("hidden"); 
+
+                  // Show passenger details card
+                  $("#passengerDetailsCard").classList.remove("hidden");
                   $("#adminConfirmBooking button[type='submit']").disabled = false; // Enable confirm button
+                  $("#abName").focus(); // Focus on the first passenger detail input
               };
           }
           seatGrid.appendChild(seatContainer);
@@ -749,6 +774,7 @@ $("#seatCancel").addEventListener("click", ()=>{
     selectedTotalSeats = null;
     selectedSeatNumber = null;
     $("#adminConfirmBooking button[type='submit']").disabled = true; // Re-disable confirm button
+    $("#passengerDetailsCard").classList.add("hidden"); // Hide passenger details card
 });
 
 $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
@@ -862,6 +888,7 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
     $("#seatModal").classList.add("hidden");
     e.target.reset(); // Reset the passenger details form
     $("#adminConfirmBooking button[type='submit']").disabled = true; // Disable button after booking
+    $("#passengerDetailsCard").classList.add("hidden"); // Hide passenger details card again
     showCustomAlert("Booking created & marked PAID. Confirmation email sent!", "success", () => {
         // Automatically generate and download PDF receipt after successful booking
         generateTicketPDF(bookingData); 
@@ -872,15 +899,25 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
         seatSelectionUnsubscribe();
         seatSelectionUnsubscribe = null;
     }
-    loadBookings(); // Reload bookings table
+    loadBookings(); // Reload bookings table (need to define this function or call attachRealtimeBookings)
     // Optionally, switch to the bookings tab
-    $(".tab-btn[data-tab='tabBookings']").click();
+    // This is already handled by onSnapshot in attachRealtimeBookings, so no need for explicit switch
+    // $(".tab-btn[data-tab='tabBookings']").click();
 
-  } catch (err) {
+  } /*
+   * Error Handling
+   */ catch (err) {
     console.error(err);
     showCustomAlert("Booking failed: " + err.message, "error");
   }
 });
+
+// Helper function to reload bookings table for consistency if needed
+// This is already done via onSnapshot in attachRealtimeBookings,
+// but adding a function for explicit calls if other parts need it.
+function loadBookings() {
+    attachRealtimeBookings();
+}
 </script>
 
 <style>
@@ -1146,7 +1183,7 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
           <div id="abResults" class="grid" style="margin-top:10px; gap:14px"></div>
         </div>
 
-        <div class="card">
+        <div id="passengerDetailsCard" class="card hidden"> <!-- Added ID and hidden class -->
           <h3>Passenger Details</h3>
           <form id="adminConfirmBooking" class="grid grid-3" style="margin-top:10px">
             <div><label>Full Name</label><input id="abName" required></div>
