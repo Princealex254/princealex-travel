@@ -119,9 +119,7 @@ $("#loginForm").addEventListener("submit", async (e)=>{
   try {
     await signInWithEmailAndPassword(auth, email, pass);
     showCustomAlert("Login successful!", "success");
-  } /*
-   * Error Handling
-   */ catch (err) {
+  } catch (err) {
     console.error(err);
     showCustomAlert(err.message || "Login failed", "error");
   }
@@ -132,9 +130,7 @@ $("#logoutBtn").addEventListener("click", async ()=>{
       try {
         await signOut(auth);
         showCustomAlert("Logged out.", "info");
-      } /*
-       * Error Handling
-       */ catch (err) {
+      } catch (err) {
         showCustomAlert("Logout failed: " + err.message, "error");
       }
     }
@@ -211,9 +207,7 @@ $("#addBusForm").addEventListener("submit", async (e)=>{
     await addDoc(busesCol, data);
     e.target.reset();
     showCustomAlert("Bus added.", "success");
-  } /*
-   * Error Handling
-   */ catch (err) {
+  } catch (err) {
     console.error(err);
     showCustomAlert("Failed to add bus: " + err.message, "error");
   }
@@ -228,9 +222,7 @@ $("#busTableBody").addEventListener("click", async (e)=>{
             try {
               await deleteDoc(doc(db, "buses", id));
               showCustomAlert("Bus deleted.", "success");
-            } /*
-             * Error Handling
-             */ catch (err) {
+            } catch (err) {
               showCustomAlert("Delete failed: " + err.message, "error");
             }
         }
@@ -275,9 +267,7 @@ $("#editBusForm").addEventListener("submit", async (e)=>{
     await updateDoc(doc(db, "buses", id), updatedData);
     $("#editBusModal").classList.add("hidden");
     showCustomAlert("Bus updated.", "success");
-  } /*
-   * Error Handling
-   */ catch (err) {
+  } catch (err) {
     showCustomAlert("Update failed: " + err.message, "error");
   }
 });
@@ -319,7 +309,7 @@ function renderBookingTable(items) {
         ${paid ? "" : `<button class="btn sm success" data-action="markpaid" data-id="${b.id}"><i class="fa-solid fa-check"></i> Paid</button>`}
         <button class="btn sm" data-action="ticket" data-id="${b.id}"><i class="fa-solid fa-ticket"></i></button>
         <button class="btn sm danger" data-action="del" data-id="${b.id}"><i class="fa-solid fa-trash"></i></button>
-        </td>
+      </td>
     `;
     body.appendChild(tr);
   }
@@ -355,9 +345,7 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
                     console.log(`Available seat incremented for bus ${item.bus_id}`);
                 }
                 showCustomAlert("Booking deleted.", "success");
-            } /*
-             * Error Handling
-             */ catch (err) {
+            } catch (err) {
                 showCustomAlert("Delete failed: " + err.message, "error");
             }
         }
@@ -384,9 +372,7 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
           createdAt: serverTimestamp()
         });
       }
-    } /*
-     * Error Handling
-     */ catch (err) {
+    } catch (err) {
       showCustomAlert("Failed to mark paid: " + err.message, "error");
     }
   } else if (btn.dataset.action === "ticket") {
@@ -450,9 +436,7 @@ function generateTicketPDF(booking) {
         if (canvasElement) {
             qrCodeImgData = canvasElement.toDataURL("image/png");
         }
-    } /*
-     * Error Handling
-     */ catch (qrError) {
+    } catch (qrError) {
         console.error("Error generating QR code:", qrError);
     } finally {
         // Clean up the temporary div
@@ -733,6 +717,7 @@ async function openSeatSelectionModal(busId, travelDate, totalSeats, currentAvai
                   this.classList.add("selected");
                   selectedSeatNumber = parseInt(this.dataset.seat);
                   $("#selectedSeatNumberAdmin").value = `S${selectedSeatNumber}`; // Update hidden input
+                  $("#displayedSeatNumber").value = `S${selectedSeatNumber}`; // Update visible input
                   showCustomAlert(`Seat S${selectedSeatNumber} selected.`, "info", null);
                   
                   // Close seat modal
@@ -765,7 +750,8 @@ $("#seatCancel").addEventListener("click", ()=>{
     $("#abID").value = '';
     $("#abGender").value = '';
     $("#abPrice").value = ''; // Clear price input too
-    $("#selectedSeatNumberAdmin").value = ''; // Clear selected seat display
+    $("#selectedSeatNumberAdmin").value = ''; // Clear hidden selected seat input
+    $("#displayedSeatNumber").value = ''; // Clear displayed seat input
     selectedBusId = null;
     selectedDate = null;
     selectedDepartureTime = null;
@@ -904,9 +890,7 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
     // This is already handled by onSnapshot in attachRealtimeBookings, so no need for explicit switch
     // $(".tab-btn[data-tab='tabBookings']").click();
 
-  } /*
-   * Error Handling
-   */ catch (err) {
+  } catch (err) {
     console.error(err);
     showCustomAlert("Booking failed: " + err.message, "error");
   }
@@ -1103,7 +1087,7 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
           <input id="loginPassword" type="password" placeholder="********" required>
         </div>
         <button class="btn" type="submit">Login</button>
-        <p style="font-size:12px;opacity:.8">
+        <p style="font-size:12px;opacity:.8">Access requires an entry in <code>admins/{uid}</code> with <code>isAdmin: true</code>.</p>
     </form>
     </section>
 
@@ -1200,7 +1184,8 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
               </select>
             </div>
             <div><label>Price (KES per seat)</label><input id="abPrice" type="number" min="0" readonly></div> <!-- Display price for clarity -->
-            <input type="hidden" id="selectedSeatNumberAdmin"> <!-- To store selected seat -->
+            <div><label>Selected Seat</label><input id="displayedSeatNumber" type="text" readonly></div> <!-- New visible field for selected seat -->
+            <input type="hidden" id="selectedSeatNumberAdmin"> <!-- This will still hold the programmatic value -->
             <div class="nowrap" style="grid-column: 1 / -1; text-align:right">
               <button class="btn" type="submit">Confirm Booking (Paid)</button>
             </div>
@@ -1244,4 +1229,3 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
   </div>
 </body>
 </html>
-
