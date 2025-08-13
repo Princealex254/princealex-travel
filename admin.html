@@ -166,8 +166,8 @@ function attachRealtimeBuses() {
       // Display fields consistent with index.html's implied structure
       tr.innerHTML = `
         <td>${d.company ?? "-"}</td>
-        <td>${d.from ?? "-"}</td>
-        <td>${d.to ?? "-"}</td>
+        <td>${d.origin ?? "-"}</td> <!-- Changed from d.from to d.origin -->
+        <td>${d.destination ?? "-"}</td> <!-- Changed from d.to to d.destination -->
         <td>${d.travelDate ?? "-"}</td>
         <td>${d.departureTime ?? "-"}</td>
         <td>${d.price ? "KES "+Number(d.price).toLocaleString() : "-"}</td>
@@ -186,8 +186,8 @@ $("#addBusForm").addEventListener("submit", async (e)=>{
   e.preventDefault();
   const data = {
     company: $("#busCompany").value.trim(),
-    from: $("#busFrom").value.trim(), // Maps to origin
-    to: $("#busTo").value.trim(),     // Maps to destination
+    origin: $("#busFrom").value.trim(), // Mapped to origin
+    destination: $("#busTo").value.trim(),     // Mapped to destination
     travelDate: $("#busTravelDate").value, // New field for consistency
     departureTime: $("#busTime").value.trim(), // Maps to time
     price: Number($("#busPrice").value),
@@ -197,7 +197,7 @@ $("#addBusForm").addEventListener("submit", async (e)=>{
     createdAt: serverTimestamp()
   };
 
-  if (!data.company || !data.from || !data.to || !data.travelDate || !data.departureTime || isNaN(data.price) || data.price <= 0 || isNaN(data.totalSeats) || data.totalSeats <= 0) {
+  if (!data.company || !data.origin || !data.destination || !data.travelDate || !data.departureTime || isNaN(data.price) || data.price <= 0 || isNaN(data.totalSeats) || data.totalSeats <= 0) {
       showCustomAlert("Please fill all required fields correctly (Company, From, To, Travel Date, Departure Time, Price, Total Seats).", "error");
       return;
   }
@@ -233,8 +233,8 @@ $("#busTableBody").addEventListener("click", async (e)=>{
     const d = s.data();
     $("#editBusId").value = id;
     $("#editBusCompany").value = d.company ?? "";
-    $("#editBusFrom").value = d.from ?? "";
-    $("#editBusTo").value = d.to ?? "";
+    $("#editBusFrom").value = d.origin ?? ""; // Changed from d.from to d.origin
+    $("#editBusTo").value = d.destination ?? ""; // Changed from d.to to d.destination
     $("#editBusTravelDate").value = d.travelDate ?? ""; // New field
     $("#editBusTime").value = d.departureTime ?? "";
     $("#editBusPrice").value = d.price ?? "";
@@ -248,8 +248,8 @@ $("#editBusForm").addEventListener("submit", async (e)=>{
   const id = $("#editBusId").value;
   const updatedData = {
     company: $("#editBusCompany").value.trim(),
-    from: $("#editBusFrom").value.trim(),
-    to: $("#editBusTo").value.trim(),
+    origin: $("#editBusFrom").value.trim(), // Mapped to origin
+    destination: $("#editBusTo").value.trim(),     // Mapped to destination
     travelDate: $("#editBusTravelDate").value, // New field
     departureTime: $("#editBusTime").value.trim(),
     price: Number($("#editBusPrice").value),
@@ -257,7 +257,7 @@ $("#editBusForm").addEventListener("submit", async (e)=>{
     image: $("#editBusImage").value.trim() // New field
   };
 
-  if (!updatedData.company || !updatedData.from || !updatedData.to || !updatedData.travelDate || !updatedData.departureTime || isNaN(updatedData.price) || updatedData.price <= 0 || isNaN(updatedData.totalSeats) || updatedData.totalSeats <= 0) {
+  if (!updatedData.company || !updatedData.origin || !updatedData.destination || !updatedData.travelDate || !updatedData.departureTime || isNaN(updatedData.price) || updatedData.price <= 0 || isNaN(updatedData.totalSeats) || updatedData.totalSeats <= 0) {
       showCustomAlert("Please fill all required fields correctly (Company, From, To, Travel Date, Departure Time, Price, Total Seats).", "error");
       return;
   }
@@ -318,7 +318,7 @@ $("#bookingSearch").addEventListener("input", ()=>{
   if (!q) return renderBookingTable(bookingCache);
   const results = bookingCache.filter(b=>{
     return (b.passenger_name??"").toLowerCase().includes(q)
-      || (b.passenger_email??"").toLowerCase().includes(q) // Fix: Removed extra characters
+      || (b.passenger_email??"").toLowerCase().includes(q) 
       || (b.booking_ref??b.reference??b.ref??"").toLowerCase().includes(q);
   });
   renderBookingTable(results);
@@ -431,18 +431,18 @@ let seatSelectionUnsubscribe = null; // For real-time seat updates in modal
 
 $("#adminBookingSearch").addEventListener("submit", async (e)=>{
   e.preventDefault();
-  const from = $("#abFrom").value.trim();
-  const to = $("#abTo").value.trim();
+  const origin = $("#abFrom").value.trim(); // Changed from 'from' to 'origin'
+  const destination = $("#abTo").value.trim(); // Changed from 'to' to 'destination'
   const date = $("#abDate").value;
 
-  if (!from || !to || !date) {
+  if (!origin || !destination || !date) {
     return showCustomAlert("Please select origin, destination, and travel date.", "warn");
   }
   
   selectedDate = date;
 
   // Find buses for route and date
-  const q1 = query(busesCol, where("from","==",from), where("to","==",to), where("travelDate", "==", date));
+  const q1 = query(busesCol, where("origin","==",origin), where("destination","==",destination), where("travelDate", "==", date)); // Changed fields in query
   const qs = await getDocs(q1);
   const list = $("#abResults");
   list.innerHTML = "";
@@ -459,7 +459,7 @@ $("#adminBookingSearch").addEventListener("submit", async (e)=>{
     card.innerHTML = `
       <div class="result-details">
         <h4>${d.company ?? "Bus"}</h4>
-        <p><strong>Route:</strong> ${d.from} → ${d.to}</p>
+        <p><strong>Route:</strong> ${d.origin} → ${d.destination}</p> <!-- Changed from d.from to d.origin and d.to to d.destination -->
         <p><strong>Travel Date:</strong> ${d.travelDate}</p>
         <p><strong>Depart:</strong> ${d.departureTime ?? "-"}</p>
         <p><strong>Price:</strong> KES ${d.price ? Number(d.price).toLocaleString() : "-"}</p>
@@ -470,7 +470,7 @@ $("#adminBookingSearch").addEventListener("submit", async (e)=>{
             data-total-seats="${d.totalSeats ?? TOTAL_SEATS_DEFAULT}"
             data-departure-time="${d.departureTime ?? "-"}"
             data-bus-price="${d.price ?? 0}"
-            data-bus-route="${d.from} to ${d.to}"
+            data-bus-route="${d.origin} to ${d.destination}" <!-- Changed to d.origin and d.destination -->
             data-available-seats="${d.available_seats ?? d.totalSeats ?? 0}"
             >Select Seats</button>
       </div>
@@ -489,6 +489,9 @@ $("#abResults").addEventListener("click", async (e)=>{
   selectedBusPrice = Number(btn.dataset.busPrice);
   selectedBusRoute = btn.dataset.busRoute;
   const availableSeats = Number(btn.dataset.availableSeats);
+
+  // Set the price in the passenger details form
+  $("#abPrice").value = selectedBusPrice;
 
   if (availableSeats <= 0) {
       showCustomAlert("Sorry, this bus is fully booked. Please choose another one.", "warn");
@@ -700,7 +703,6 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
                   <li><strong>Payment Status:</strong> Paid</li>
               </ul>
               <p>Thank you for choosing Prince Alex Travel. We look forward to serving you!</p>
-              <p>Best regards,<br>Prince Alex Travel Team</p>
               <hr>
               <p style="font-size: 0.8em; color: #777;">&copy; 2025 Prince Alex Digital. All rights reserved.</p>
           `,
@@ -948,7 +950,7 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
           <h3>All Buses</h3>
           <table class="table" style="margin-top:8px">
             <thead><tr>
-              <th>Company</th><th>From</th><th><th>To</th><th>Travel Date</th><th>Departure</th><th>Price</th><th>Total Seats</th><th>Available Seats</th><th>Actions</th>
+              <th>Company</th><th>From</th><th>To</th><th>Travel Date</th><th>Departure</th><th>Price</th><th>Total Seats</th><th>Available Seats</th><th>Actions</th>
             </tr></thead>
             <tbody id="busTableBody"></tbody>
           </table>
