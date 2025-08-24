@@ -591,10 +591,9 @@
                 let yPos = 20; // Initial Y position for content
 
                 // --- 1. Header with Logo and QR Code ---
-                // Add Logo: Using a smaller, simpler placeholder to reduce PDF size.
-                const logoPlaceholder = "https://placehold.co/100x40/002d6b/ffffff?text=LOGO"; // Smaller placeholder
-                // Removed the await for img loading as we are using a direct URL now.
-                doc.addImage(logoPlaceholder, 'PNG', 15, yPos, 40, 40); // x, y, width, height
+                // Add Logo: Using a very small, transparent Base64 PNG to reduce PDF size and ensure compatibility.
+                const tinyTransparentPngBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+                doc.addImage(tinyTransparentPngBase64, 'PNG', 15, yPos, 40, 40); // x, y, width, height
 
 
                 // Title
