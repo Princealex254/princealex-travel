@@ -774,31 +774,42 @@
 
                 const passengerEmail = booking.passenger_email;
                 const bookingId = booking.booking_ref;
+                const passengerName = booking.passenger_name || 'Valued Customer'; // Default value
+
+                console.log('Attempting to send email:');
+                console.log('Passenger Email:', passengerEmail);
+                console.log('Booking ID:', bookingId);
+                console.log('Passenger Name:', passengerName);
+
 
                 if (!passengerEmail || !isValidEmail(passengerEmail)) {
                     showCustomAlert("Invalid or missing passenger email address.", 'error');
+                    console.error("Email send failed: Invalid or missing passenger email.");
                     return;
                 }
 
                 showCustomAlert("Preparing and sending your ticket...", 'info');
 
                 try {
-                    const doc = await generatePdfContent(booking);
-                    const pdfDataUri = doc.output("datauristring");
+                    const pdfDoc = await generatePdfContent(booking);
+                    const pdfDataUri = pdfDoc.output("datauristring");
                     const pdfBase64 = pdfDataUri.split(",")[1]; // Get just the Base64 part
 
                     if (!pdfBase64) {
                         showCustomAlert("Failed to generate PDF for email. Please try again.", 'error');
+                        console.error("Email send failed: PDF Base64 content is empty.");
                         return;
                     }
+                    console.log("PDF Base64 content length:", pdfBase64.length);
 
-                    await window.addDoc(collection(window.firebaseDb, "mail"), { // Explicitly use window.addDoc
+
+                    const emailDocPayload = {
                         to: passengerEmail,
                         message: {
                             subject: "Your Booking Ticket - Prince Alex Travel",
-                            text: `Hello ${booking.passenger_name},\n\nYour Prince Alex Travel ticket for booking reference ${bookingId} is attached as a PDF file.\n\nThank you for choosing Prince Alex Travel.`,
+                            text: `Hello ${passengerName},\n\nYour Prince Alex Travel ticket for booking reference ${bookingId} is attached as a PDF file.\n\nThank you for choosing Prince Alex Travel.`,
                             html: `
-                                <p>Hello ${booking.passenger_name},</p>
+                                <p>Hello ${passengerName},</p>
                                 <p>Thank you for booking with <strong>Prince Alex Travel</strong>!</p>
                                 <p>Your ticket for booking reference <strong>${bookingId}</strong> is attached as a PDF file.</p>
                                 <p>We look forward to seeing you onboard!</p>
@@ -812,14 +823,23 @@
                                 }
                             ]
                         }
-                    });
+                    };
+
+                    console.log("Attempting to add email document to Firestore 'mail' collection with payload:", emailDocPayload);
+
+                    await window.addDoc(collection(window.firebaseDb, "mail"), emailDocPayload);
 
                     showCustomAlert("Ticket sent to your email successfully!", 'success');
-                    console.log("Email document added to Firestore 'mail' collection.");
+                    console.log("Email document added to Firestore 'mail' collection successfully.");
 
                 } catch (error) {
                     console.error("Error sending ticket to email:", error);
-                    showCustomAlert("Failed to send ticket to email. Please try again.", 'error');
+                    // Provide more specific error details if possible
+                    if (error.code) {
+                        showCustomAlert(`Failed to send ticket to email: Firebase error - ${error.code}. Please try again.`, 'error');
+                    } else {
+                        showCustomAlert("Failed to send ticket to email. Please check console for details.", 'error');
+                    }
                 }
             }
 
