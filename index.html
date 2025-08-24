@@ -1733,8 +1733,8 @@
             yPos += 5;
             doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
 
-            // Return the PDF as a Base64 encoded string
-            return doc.output('datauristring').split(',')[1]; // Split to get just the base64 part
+            const base64String = doc.output('datauristring').split(',')[1];
+            return typeof base64String === 'string' ? base64String : ''; // Ensure it's a string, or empty string
         }
 
 
@@ -1847,8 +1847,17 @@
                     ...newBookingDoc, // Pass all booking details to the PDF generation function
                     bus_id: currentBusId, // Ensure bus_id is passed
                 });
+                console.log("Generated PDF Base64 length:", pdfBase64.length);
                 // --- End Generate PDF as Base64 ---
 
+                const emailAttachments = [];
+                if (pdfBase64) { // Only add attachment if pdfBase64 is a non-empty string
+                    emailAttachments.push({
+                        filename: `Ticket_${bookingRef}.pdf`,
+                        content: pdfBase64,
+                        encoding: "base64"
+                    });
+                }
 
                 // Prepare email document for 'mail' collection
                 const emailDoc = {
@@ -1868,16 +1877,12 @@
                                 <li><strong>Price:</strong> Ksh ${currentBusPrice.toLocaleString()}</li>
                                 <li><strong>Booking Reference:</strong> ${bookingRef}</li>
                             </ul>
-                            <p>Your ticket is attached to this email.</p>
+                            <p>${pdfBase64 ? 'Your ticket is attached to this email.' : 'Please contact support if you did not receive your ticket attachment.'}</p>
                             <p>We look forward to seeing you onboard!</p>
                             <p>Thank you,</p>
                             <p>The Prince Alex Travel Team</p>
                         `,
-                        attachments: [{
-                            filename: `Ticket_${bookingRef}.pdf`,
-                            content: pdfBase64,
-                            encoding: "base64"
-                        }]
+                        attachments: emailAttachments // Conditionally include attachments
                     }
                 };
                 emailsToInsert.push(emailDoc);
