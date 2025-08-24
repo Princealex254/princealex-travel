@@ -118,6 +118,14 @@
                     }
                 });
 
+                // --- START: Added Confirmation Email Message ---
+                const confirmationEmailMessage = document.createElement('p');
+                confirmationEmailMessage.classList.add('email-confirmation-message');
+                confirmationEmailMessage.innerHTML = `✅ A booking confirmation email has been sent to <strong>${currentBookingData.passenger_email || 'your provided email address'}</strong>`;
+                document.getElementById('bookingDetails').after(confirmationEmailMessage);
+                // --- END: Added Confirmation Email Message ---
+
+
                 // Implement payNowBtn if you have a payment gateway integration
                 // document.getElementById('payNowBtn').addEventListener('click', () => {
                 //     showCustomAlert("Payment integration not yet implemented.", 'info');
@@ -576,6 +584,25 @@
              .nav-links a::after { /* Adjust hover line for stacked links */
                 width: 25%; /* Shorter line for better visual */
             }
+        }
+        
+        .email-confirmation-message {
+            font-size: 1.1em;
+            color: #28a745; /* Green for success */
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 15px;
+            background-color: #e6ffe6; /* Light green background */
+            border-radius: 8px;
+            border: 1px solid #a7e6a7;
+            max-width: 600px; /* Limit width for better readability */
+            margin-left: auto;
+            margin-right: auto;
         }
     </style>
 </head>
