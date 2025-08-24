@@ -795,12 +795,13 @@
                     const pdfDataUri = pdfDoc.output("datauristring");
                     const pdfBase64 = pdfDataUri.split(",")[1]; // Get just the Base64 part
 
-                    if (!pdfBase64) {
-                        showCustomAlert("Failed to generate PDF for email. Please try again.", 'error');
-                        console.error("Email send failed: PDF Base64 content is empty.");
+                    if (!pdfBase64 || typeof pdfBase64 !== 'string') { // Added type check for robustness
+                        showCustomAlert("Failed to generate PDF for email. PDF content is invalid.", 'error');
+                        console.error("Email send failed: PDF Base64 content is empty or not a string.");
                         return;
                     }
                     console.log("PDF Base64 content length:", pdfBase64.length);
+                    console.log("PDF Base64 content type:", typeof pdfBase64); // Added for extra check
 
 
                     const emailDocPayload = {
