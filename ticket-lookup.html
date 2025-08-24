@@ -494,6 +494,11 @@
             // Variable to store the fetched booking data, including its Firestore document ID
             let fetchedBookingData = null;
 
+            // Maximum allowed size for Base64 PDF content in bytes (approx 800KB for safety, Firestore limit is 1MB)
+            // Base64 encoding increases size by about 33%, so 1MB / 1.33 = ~750KB.
+            // Keeping it slightly lower to account for other document fields.
+            const MAX_PDF_BASE64_SIZE_BYTES = 800 * 1024; // 800KB
+
 
             lookupTicketBtn.addEventListener('click', loadBookingDetails);
             downloadTicketBtn.addEventListener('click', downloadTicket);
@@ -795,13 +800,23 @@
                     const pdfDataUri = pdfDoc.output("datauristring");
                     const pdfBase64 = pdfDataUri.split(",")[1]; // Get just the Base64 part
 
-                    if (!pdfBase64 || typeof pdfBase64 !== 'string') { // Added type check for robustness
+                    if (!pdfBase64 || typeof pdfBase64 !== 'string') {
                         showCustomAlert("Failed to generate PDF for email. PDF content is invalid.", 'error');
                         console.error("Email send failed: PDF Base64 content is empty or not a string.");
                         return;
                     }
-                    console.log("PDF Base64 content length:", pdfBase64.length);
-                    console.log("PDF Base64 content type:", typeof pdfBase64); // Added for extra check
+
+                    // Calculate the size of the Base64 string in bytes (each char is 1 byte in ASCII)
+                    const pdfBase64SizeBytes = new TextEncoder().encode(pdfBase64).length;
+                    console.log("PDF Base64 content length (characters):", pdfBase64.length);
+                    console.log("PDF Base64 content size (bytes):", pdfBase64SizeBytes);
+                    console.log("PDF Base64 content type:", typeof pdfBase64);
+
+                    if (pdfBase64SizeBytes > MAX_PDF_BASE64_SIZE_BYTES) {
+                        showCustomAlert(`The generated ticket PDF is too large (${(pdfBase64SizeBytes / 1024).toFixed(2)} KB). It exceeds the allowed size of ${(MAX_PDF_BASE64_SIZE_BYTES / 1024).toFixed(2)} KB for email attachments via Firestore. Please try to download it locally instead.`, 'error');
+                        console.error(`Email send failed: PDF Base64 content size (${pdfBase64SizeBytes} bytes) exceeds limit (${MAX_PDF_BASE64_SIZE_BYTES} bytes).`);
+                        return;
+                    }
 
 
                     const emailDocPayload = {
