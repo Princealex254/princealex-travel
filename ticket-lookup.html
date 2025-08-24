@@ -591,21 +591,10 @@
                 let yPos = 20; // Initial Y position for content
 
                 // --- 1. Header with Logo and QR Code ---
-                // Add Logo
-                const img = new Image();
-                img.src = 'mylogo.png'; // Ensure this path is correct
-                await new Promise((resolve) => {
-                    img.onload = () => resolve();
-                    img.onerror = () => {
-                        console.error("Error loading logo image: Mylogo.png. Please ensure the file exists and the path is correct.");
-                        resolve(); // Resolve even on error to allow PDF generation to continue
-                    };
-                });
-                if (img.complete && img.naturalWidth !== 0) { // Check if image loaded successfully
-                    doc.addImage(img, 'PNG', 15, yPos, 40, 40); // x, y, width, height
-                } else {
-                    console.warn("Logo image not loaded, skipping addition to PDF.");
-                }
+                // Add Logo: Using a smaller, simpler placeholder to reduce PDF size.
+                const logoPlaceholder = "https://placehold.co/100x40/002d6b/ffffff?text=LOGO"; // Smaller placeholder
+                // Removed the await for img loading as we are using a direct URL now.
+                doc.addImage(logoPlaceholder, 'PNG', 15, yPos, 40, 40); // x, y, width, height
 
 
                 // Title
