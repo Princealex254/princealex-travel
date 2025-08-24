@@ -360,34 +360,86 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
       showCustomAlert("Marked as PAID.", "success");
       // Send confirmation email (requires Firebase Trigger Email extension)
       if (item.passenger_email) {
-        await addDoc(collection(db,"mail"), {
-          to: [item.passenger_email],
-          message: {
-            subject: "Payment Confirmed – Prince Alex Travel",
-            text: `Hi ${item.passenger_name??"Customer"}, your payment for booking ${item.booking_ref??id} has been received. Seat ${item.seat_number??"-"} on ${item.travel_date??"-"} (${item.bus_route??"-"}). Thank you!`,
-            html: `<p>Hi ${item.passenger_name??"Customer"},</p>
-                   <p>Your payment for booking <strong>${item.booking_ref??id}</strong> has been received.</p>
-                   <p><strong>Trip:</strong> ${item.bus_route??"-"}<br>
-                   <strong>Date:</strong> ${item.travel_date??"-"}<br>
-                   <strong>Seat:</strong> ${item.seat_number??"-"}<br>
-                   <strong>Amount:</strong> KES ${item.price?Number(item.price).toLocaleString():"-"}</p>
-                   <p>Thank you for choosing Prince Alex Travel.</p>`
-          },
-          createdAt: serverTimestamp()
-        });
+        // Generate PDF content for the email attachment
+        const pdfDoc = await generatePdfContent(item);
+        const pdfDataUri = pdfDoc.output("datauristring");
+        const pdfBase64 = pdfDataUri.split(",")[1];
+
+        // Max PDF size check (copied from ticket-lookup.html)
+        const MAX_PDF_BASE64_SIZE_BYTES = 800 * 1024;
+        const pdfBase64SizeBytes = new TextEncoder().encode(pdfBase64).length;
+
+        if (pdfBase64SizeBytes > MAX_PDF_BASE64_SIZE_BYTES) {
+            console.warn(`PDF for email is too large (${(pdfBase64SizeBytes / 1024).toFixed(2)} KB). Skipping email attachment.`);
+            showCustomAlert(`Marked as PAID. Note: Ticket PDF was too large for email attachment (${(pdfBase64SizeBytes / 1024).toFixed(2)} KB). Please download it locally.`, 'warning');
+            // Send email without attachment if too large
+            await addDoc(collection(db,"mail"), {
+                to: [item.passenger_email],
+                message: {
+                    subject: "Your Prince Alex Travel Booking Confirmation", // Updated subject
+                    text: `Dear ${item.passenger_name??"Customer"},\n\nThank you for booking a ticket with us!.\nYour ticket has been booked successfully. \n\nYour Ticket details:\nBooking Reference: ${item.booking_ref??id}\nRoute: ${item.bus_route??"-"}\nTravel Date: ${item.travel_date??"-"}\nDeparture Time: ${item.bus_time??"-"}\nSeat: ${item.seat_number??"-"}\nPrice: KES ${item.price?Number(item.price).toLocaleString():"-"}`,
+                    html: `<p>Dear ${item.passenger_name??"Customer"},</p>
+                           <p>Thank you for booking a ticket with us!</p>
+                           <p>Your ticket has been booked successfully.</p>
+                           <p>Your Ticket details:</p>
+                           <ul>
+                               <li><strong>Booking Reference:</strong> ${item.booking_ref??id}</li>
+                               <li><strong>Route:</strong> ${item.bus_route??"-"}</li>
+                               <li><strong>Travel Date:</strong> ${item.travel_date??"-"}</li>
+                               <li><strong>Departure Time:</strong> ${item.bus_time??"-"}</li>
+                               <li><strong>Seat:</strong> ${item.seat_number??"-"}</li>
+                               <li><strong>Price:</strong> KES ${item.price?Number(item.price).toLocaleString():"-"}</li>
+                           </ul>
+                           <p>Thank you for choosing Prince Alex Travel.</p>`
+                },
+                createdAt: serverTimestamp()
+            });
+        } else {
+            await addDoc(collection(db,"mail"), {
+                to: [item.passenger_email],
+                message: {
+                    subject: "Your Prince Alex Travel Booking Confirmation", // Updated subject
+                    text: `Dear ${item.passenger_name??"Customer"},\n\nThank you for booking a ticket with us!.\nYour ticket has been booked successfully. Please find your e-Ticket attached.\n\nYour Ticket details:\nBooking Reference: ${item.booking_ref??id}\nRoute: ${item.bus_route??"-"}\nTravel Date: ${item.travel_date??"-"}\nDeparture Time: ${item.bus_time??"-"}\nSeat: ${item.seat_number??"-"}\nPrice: KES ${item.price?Number(item.price).toLocaleString():"-"}`,
+                    html: `<p>Dear ${item.passenger_name??"Customer"},</p>
+                           <p>Thank you for booking a ticket with us!</p>
+                           <p>Your ticket has been booked successfully. Please find your e-Ticket attached.</p>
+                           <p>Your Ticket details:</p>
+                           <ul>
+                               <li><strong>Booking Reference:</strong> ${item.booking_ref??id}</li>
+                               <li><strong>Route:</strong> ${item.bus_route??"-"}</li>
+                               <li><strong>Travel Date:</strong> ${item.travel_date??"-"}</li>
+                               <li><strong>Departure Time:</strong> ${item.bus_time??"-"}</li>
+                               <li><strong>Seat:</strong> ${item.seat_number??"-"}</li>
+                               <li><strong>Price:</strong> KES ${item.price?Number(item.price).toLocaleString():"-"}</li>
+                           </ul>
+                           <p>Thank you for choosing Prince Alex Travel.</p>`,
+                    attachments: [
+                        {
+                            filename: `PrinceAlex_Ticket_${item.booking_ref??id}.pdf`,
+                            content: pdfBase64,
+                            encoding: "base64"
+                        }
+                    ]
+                },
+                createdAt: serverTimestamp()
+            });
+            showCustomAlert("Marked as PAID. Confirmation email with ticket sent!", "success");
+        }
       }
     } catch (err) {
-      showCustomAlert("Failed to mark paid: " + err.message, "error");
+      console.error("Error marking paid or sending email:", err);
+      showCustomAlert("Failed to mark paid or send email: " + err.message, "error");
     }
   } else if (btn.dataset.action === "ticket") {
+    // This will download the PDF for the admin directly
     generateTicketPDF(item);
   }
 });
 
 /** =======================
- * Ticket PDF
+ * Ticket PDF (Reusable function for both Admin & Public view)
  * ======================= */
-function generateTicketPDF(booking) {
+async function generatePdfContent(booking) { // Changed to async to support image loading
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
@@ -395,16 +447,13 @@ function generateTicketPDF(booking) {
     const primaryColor = '#002d6b';
     const accentColor = '#c69214';
     const darkTextColor = '#1a1a1a';
-    // const secondaryTextColor = '#555'; // Not used in this PDF directly
 
     let yPos = 20; // Initial Y position for content
 
     // --- 1. Header with Logo and QR Code ---
-    // Add Logo (using a placeholder as 'mylogo.png' is not directly accessible in this environment)
-    // In a real application, you would load your actual logo image here.
-    const logoPlaceholder = "https://placehold.co/100x40/002d6b/ffffff?text=LOGO"; // Placeholder image
-    doc.addImage(logoPlaceholder, 'PNG', 15, yPos, 40, 40); // x, y, width, height
-
+    // Add Logo: Using a very small, transparent Base64 PNG to reduce PDF size and ensure compatibility.
+    const tinyTransparentPngBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    doc.addImage(tinyTransparentPngBase64, 'PNG', 15, yPos, 40, 40); // x, y, width, height
 
     // Title
     doc.setFontSize(24);
@@ -416,7 +465,7 @@ function generateTicketPDF(booking) {
     doc.text("E-Ticket & Booking Confirmation", 60, yPos + 25);
 
     // Generate QR Code dynamically
-    const qrCodeData = booking.booking_ref; // Data to encode in QR code
+    const qrCodeData = booking.booking_ref ?? booking.id; // Use booking_ref or ID
     const qrCodeContainer = document.createElement('div');
     qrCodeContainer.style.display = 'none'; // Hide it
     document.body.appendChild(qrCodeContainer);
@@ -433,9 +482,7 @@ function generateTicketPDF(booking) {
         });
 
         // Wait a tiny bit for QR code to render to canvas/img
-        // This is a common pattern for async rendering to canvas/img
-        // For a more robust solution in a production environment, consider a dedicated QR code library that provides direct image data or promises.
-        // For this environment, a small timeout is often sufficient.
+        await new Promise(resolve => setTimeout(resolve, 50));
         const canvasElement = qrCodeContainer.querySelector('canvas');
         if (canvasElement) {
             qrCodeImgData = canvasElement.toDataURL("image/png");
@@ -443,8 +490,7 @@ function generateTicketPDF(booking) {
     } catch (qrError) {
         console.error("Error generating QR code:", qrError);
     } finally {
-        // Clean up the temporary div
-        if (qrCodeContainer.parentNode) { // Check if it's still attached to the DOM
+        if (qrCodeContainer.parentNode) {
             document.body.removeChild(qrCodeContainer);
         }
     }
@@ -540,8 +586,18 @@ function generateTicketPDF(booking) {
     yPos += 5;
     doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
 
-    doc.save(`PrinceAlex_Ticket_${booking.booking_ref ?? booking.id}.pdf`);
-    console.log("PDF download initiated successfully.");
+    return doc; // Return the PDF document object
+}
+
+// This is the function called when the admin clicks "ticket" button in Manage Bookings
+function generateTicketPDF(booking) {
+    generatePdfContent(booking).then(doc => {
+        doc.save(`PrinceAlex_Ticket_${booking.booking_ref ?? booking.id}.pdf`);
+        console.log("PDF download initiated successfully for admin.");
+    }).catch(error => {
+        console.error("Error generating PDF for admin download:", error);
+        showCustomAlert("Failed to generate ticket PDF for download. Please try again.", 'error');
+    });
 }
 
 
@@ -556,6 +612,9 @@ let selectedBusRoute = null; // Store bus route (From -> To)
 let selectedTotalSeats = null;
 let selectedSeatNumber = null; // For single seat selection in admin make booking
 let seatSelectionUnsubscribe = null; // For real-time seat updates in modal
+
+// Maximum allowed size for Base64 PDF content in bytes (approx 800KB for safety, Firestore limit is 1MB)
+const MAX_PDF_BASE64_SIZE_BYTES = 800 * 1024; // 800KB
 
 // Initially disable the confirm booking button
 document.addEventListener('DOMContentLoaded', () => {
@@ -885,54 +944,97 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
         available_seats: increment(-1)
     });
 
-    // Send confirmation email (requires Firebase Trigger Email extension)
+    // --- Generate PDF and send email ---
     if (passenger_email) {
-      await addDoc(collection(db,"mail"), {
-        to: [passenger_email],
-        message: {
-          subject: "Your Prince Alex Travel Booking is Confirmed (Admin Booking)",
-          html: `
-              <p>Dear ${passenger_name},</p>
-              <p>Your booking with reference <strong>${booking_ref}</strong> has been successfully created by our administration team.</p>
-              <p>The payment for this booking is confirmed.</p>
-              <h3>Booking Details:</h3>
-              <ul>
-                  <li><strong>Route:</strong> ${selectedBusRoute}</li>
-                  <li><strong>Travel Date:</strong> ${selectedDate}</li>
-                  <li><strong>Departure Time:</strong> ${selectedDepartureTime}</li>
-                  <li><strong>Seat Number:</strong> S${selectedSeatNumber}</li>
-                  <li><strong>Total Price:</strong> Ksh ${selectedBusPrice.toFixed(2)}</li>
-                  <li><strong>Payment Status:</strong> Paid</li>
-              </ul>
-              <p>Thank you for choosing Prince Alex Travel. We look forward to serving you!</p>
-              <hr>
-              <p style="font-size: 0.8em; color: #777;">&copy; 2025 Prince Alex Digital. All rights reserved.</p>
-          `,
-        },
-        createdAt: serverTimestamp()
-      });
-      console.log("Admin-initiated booking confirmation email queued successfully.");
+        try {
+            const pdfDoc = await generatePdfContent(bookingData); // Use the bookingData for PDF generation
+            const pdfDataUri = pdfDoc.output("datauristring");
+            const pdfBase64 = pdfDataUri.split(",")[1];
+
+            const pdfBase64SizeBytes = new TextEncoder().encode(pdfBase64).length;
+
+            let mailPayload;
+            // Common email details for both cases (with/without attachment)
+            const commonEmailDetails = {
+                subject: "Your Prince Alex Travel Ticket Confirmation", // Updated subject
+                text: `Dear ${passenger_name},\n\nThank you for booking a ticket with us!.\nYour ticket has been booked successfully.`,
+                html: `<p>Dear ${passenger_name},</p>
+                       <p>Thank you for booking a ticket with us!</p>
+                       <p>Your ticket has been booked successfully.</p>`,
+            };
+
+            // Add ticket details to the text and HTML bodies
+            const ticketDetailsText = `\n\nYour Ticket details:\nBooking Reference: ${booking_ref}\nRoute: ${selectedBusRoute}\nTravel Date: ${selectedDate}\nDeparture Time: ${selectedDepartureTime}\nSeat: S${selectedSeatNumber}\nPrice: KES ${selectedBusPrice.toFixed(2)}`;
+            const ticketDetailsHtml = `
+                <p>Your Ticket details,</p>
+                <ul>
+                    <li><strong>Booking Reference:</strong> ${booking_ref}</li>
+                    <li><strong>Route:</strong> ${selectedBusRoute}</li>
+                    <li><strong>Travel Date:</strong> ${selectedDate}</li>
+                    <li><strong>Departure Time:</strong> ${selectedDepartureTime}</li>
+                    <li><strong>Seat:</strong> S${selectedSeatNumber}</li>
+                    <li><strong>Price:</strong> KES ${selectedBusPrice.toFixed(2)}</li>
+                </ul>
+            `;
+            const closingHtml = `<p>Thank you for choosing Prince Alex Travel.</p><p style="font-size: 0.8em; color: #777;">&copy; 2025 Prince Alex Digital. All rights reserved.</p>`;
+
+
+            if (pdfBase64SizeBytes > MAX_PDF_BASE64_SIZE_BYTES) {
+                console.warn(`PDF for email is too large (${(pdfBase64SizeBytes / 1024).toFixed(2)} KB). Skipping email attachment.`);
+                showCustomAlert(`Booking created & marked PAID. Note: Ticket PDF was too large for email attachment (${(pdfBase64SizeBytes / 1024).toFixed(2)} KB). Confirmation email sent without attachment.`, 'warning');
+                mailPayload = {
+                    to: [passenger_email],
+                    message: {
+                        subject: commonEmailDetails.subject,
+                        text: commonEmailDetails.text + ticketDetailsText,
+                        html: commonEmailDetails.html + ticketDetailsHtml + closingHtml,
+                    },
+                    createdAt: serverTimestamp()
+                };
+            } else {
+                mailPayload = {
+                    to: [passenger_email],
+                    message: {
+                        subject: commonEmailDetails.subject,
+                        text: commonEmailDetails.text + ` Please find your e-Ticket attached.` + ticketDetailsText,
+                        html: commonEmailDetails.html + `<p>Please find your e-Ticket attached.</p>` + ticketDetailsHtml + closingHtml,
+                        attachments: [
+                            {
+                                filename: `PrinceAlex_Ticket_${booking_ref}.pdf`,
+                                content: pdfBase64,
+                                encoding: "base64"
+                            }
+                        ]
+                    },
+                    createdAt: serverTimestamp()
+                };
+                showCustomAlert("Booking created & marked PAID. Confirmation email with ticket sent!", "success");
+            }
+            await addDoc(collection(db,"mail"), mailPayload);
+            console.log("Admin-initiated booking confirmation email queued successfully in mail collection.");
+
+        } catch (pdfError) {
+            console.error("Error generating PDF or queuing email:", pdfError);
+            showCustomAlert("Booking created & marked PAID. Failed to generate ticket PDF or send email.", "error");
+        }
+    } else {
+        showCustomAlert("Booking created & marked PAID. No email sent as passenger email is missing.", "info");
     }
 
     $("#seatModal").classList.add("hidden");
     e.target.reset(); // Reset the passenger details form
     $("#adminConfirmBooking button[type='submit']").disabled = true; // Disable button after booking
     $("#passengerDetailsCard").classList.add("hidden"); // Hide passenger details card again
-    showCustomAlert("Booking created & marked PAID. Confirmation email sent!", "success", () => {
-        // Automatically generate and download PDF receipt after successful booking
-        generateTicketPDF(bookingData); 
-    });
+    
+    // Automatically download PDF receipt for the admin
+    generateTicketPDF(bookingData); 
     
     // Unsubscribe from seat listener when booking is confirmed
     if (seatSelectionUnsubscribe) {
         seatSelectionUnsubscribe();
         seatSelectionUnsubscribe = null;
     }
-    loadBookings(); // Reload bookings table (need to define this function or call attachRealtimeBookings)
-    // Optionally, switch to the bookings tab
-    // This is already handled by onSnapshot in attachRealtimeBookings, so no need for explicit switch
-    // $(".tab-btn[data-tab='tabBookings']").click();
-
+    loadBookings(); // Reload bookings table
   } catch (err) {
     console.error(err);
     showCustomAlert("Booking failed: " + err.message, "error");
@@ -940,8 +1042,6 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
 });
 
 // Helper function to reload bookings table for consistency if needed
-// This is already done via onSnapshot in attachRealtimeBookings,
-// but adding a function for explicit calls if other parts need it.
 function loadBookings() {
     attachRealtimeBookings();
 }
@@ -1282,4 +1382,3 @@ label{font-size:13px;color:#333;margin-bottom:6px;display:block}
   </div>
 </body>
 </html>
-
