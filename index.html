@@ -1620,6 +1620,7 @@
 
 
             const bookingsToInsert = [];
+            const emailsToInsert = []; // New array for email documents
             let lastBookingRef = null;
 
             // Fetch the current bus document to get the latest available_seats
@@ -1657,7 +1658,9 @@
                 currentAvailableSeats--; // Tentatively decrement for each selected seat
 
                 const bookingRef = 'PA-' + Date.now().toString().slice(-6) + '-' + String(seatNumber).padStart(2, '0'); // Unique Booking Reference
-                const newBooking = {
+                
+                // Create booking document for 'bookings' collection
+                const newBookingDoc = { 
                     booking_ref: bookingRef,
                     passenger_name: name,
                     passenger_id: idNumber,
@@ -1674,13 +1677,19 @@
                     booking_date: new Date().toISOString(), // ISO string for consistent date format
                     user_id: window.currentUser ? window.currentUser.uid : null, // Store Firebase user ID if logged in
                     createdAt: serverTimestamp(), // Add server timestamp
-                    // Fields for Firebase Trigger Email extension
+                };
+
+                bookingsToInsert.push(newBookingDoc);
+                lastBookingRef = bookingRef; // Keep track of the last one for redirect
+
+                // Prepare email document for 'mail' collection
+                const emailDoc = {
                     to: email,
                     message: {
                         subject: "Your Booking Confirmation - Prince Alex Travel",
                         html: `
                             <p>Hello ${name},</p>
-                            <p>Thank you for booking with Prince Alex Travel!</p>
+                            <p>Thank you for booking with <strong>Prince Alex Travel</strong>!</p>
                             <p>Here are your booking details:</p>
                             <ul>
                                 <li><strong>Route:</strong> ${currentBusRoute}</li>
@@ -1696,14 +1705,18 @@
                         `
                     }
                 };
-                bookingsToInsert.push(newBooking);
-                lastBookingRef = bookingRef; // Keep track of the last one for redirect
+                emailsToInsert.push(emailDoc);
             }
             
             try {
                 // Add new records to the 'bookings' collection
                 for (const booking of bookingsToInsert) {
                     await addDoc(collection(firebaseDb, "bookings"), booking);
+                }
+
+                // Add email records to the 'mail' collection
+                for (const emailDoc of emailsToInsert) { // Renamed loop variable to avoid conflict
+                    await addDoc(collection(firebaseDb, "mail"), emailDoc);
                 }
 
                 // Update available seats for the bus
