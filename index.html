@@ -1673,7 +1673,28 @@
                     status: 'pending', // Set to pending, payment gateway would confirm to 'paid'
                     booking_date: new Date().toISOString(), // ISO string for consistent date format
                     user_id: window.currentUser ? window.currentUser.uid : null, // Store Firebase user ID if logged in
-                    createdAt: serverTimestamp() // Add server timestamp
+                    createdAt: serverTimestamp(), // Add server timestamp
+                    // Fields for Firebase Trigger Email extension
+                    to: email,
+                    message: {
+                        subject: "Your Booking Confirmation - Prince Alex Travel",
+                        html: `
+                            <p>Hello ${name},</p>
+                            <p>Thank you for booking with Prince Alex Travel!</p>
+                            <p>Here are your booking details:</p>
+                            <ul>
+                                <li><strong>Route:</strong> ${currentBusRoute}</li>
+                                <li><strong>Seat Number:</strong> ${formattedSeatNumber}</li>
+                                <li><strong>Travel Date:</strong> ${currentTravelDate}</li>
+                                <li><strong>Departure Time:</strong> ${currentBusTime}</li>
+                                <li><strong>Price:</strong> Ksh ${currentBusPrice.toLocaleString()}</li>
+                                <li><strong>Booking Reference:</strong> ${bookingRef}</li>
+                            </ul>
+                            <p>We look forward to seeing you onboard!</p>
+                            <p>Thank you,</p>
+                            <p>The Prince Alex Travel Team</p>
+                        `
+                    }
                 };
                 bookingsToInsert.push(newBooking);
                 lastBookingRef = bookingRef; // Keep track of the last one for redirect
@@ -1902,4 +1923,3 @@
 
 </body>
 </html>
-
