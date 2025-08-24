@@ -11,7 +11,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         // Re-added 'collection', 'query', and 'where' for querying by field
-        import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -36,6 +36,7 @@
         window.query = query;
         window.where = where;
         window.getDocs = getDocs; // Make getDocs available globally
+        window.addDoc = addDoc; // Make addDoc available globally for the mail collection
     </script>
     <style>
         /* Re-use CSS from dashboard/booking-success for consistency */
@@ -278,6 +279,25 @@
             background-color: #218838;
             transform: translateY(-2px);
         }
+        /* New button for sending email */
+        .send-email-button {
+            background-color: var(--accent-color); /* Gold for email */
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            margin-top: 20px;
+            margin-left: 10px; /* Spacing from download button */
+        }
+        .send-email-button:hover {
+            background-color: #b27e0f;
+            transform: translateY(-2px);
+        }
+
         .footer {
             background-color: var(--primary-color);
             color: white;
@@ -372,6 +392,16 @@
                 display: inline-block;
                 margin: 0 5px;
             }
+
+            /* Adjust button layout for mobile */
+            .button-group-ticket {
+                flex-direction: column;
+                gap: 10px; /* Space out buttons */
+            }
+            .download-button, .send-email-button {
+                width: 100%; /* Full width buttons */
+                margin-left: 0; /* Remove left margin */
+            }
         }
     </style>
 </head>
@@ -421,7 +451,11 @@
             <p><strong>Price:</strong> Ksh <span id="price"></span></p>
             <p><strong>Status:</strong> <span id="status"></span></p>
             <p><strong>Booking Date:</strong> <span id="bookingDate"></span></p>
-            <button id="downloadTicketBtn" class="download-button">Download Ticket (PDF)</button>
+            
+            <div class="button-group-ticket"> <!-- New container for ticket action buttons -->
+                <button id="downloadTicketBtn" class="download-button"><i class="fas fa-download"></i> Download Ticket (PDF)</button>
+                <button id="sendEmailBtn" class="send-email-button"><i class="fas fa-envelope"></i> Send Ticket to Email</button>
+            </div>
         </div>
     </div>
 
@@ -453,6 +487,7 @@
             const messageElem = document.getElementById('message');
             const ticketDetailsSection = document.getElementById('ticketDetailsSection');
             const downloadTicketBtn = document.getElementById('downloadTicketBtn');
+            const sendEmailBtn = document.getElementById('sendEmailBtn'); // Get the new button
             const mobileMenuToggle = document.getElementById('mobile-menu'); // Get hamburger icon
             const mainNav = document.getElementById('main-nav'); // Get nav links container
 
@@ -462,6 +497,7 @@
 
             lookupTicketBtn.addEventListener('click', loadBookingDetails);
             downloadTicketBtn.addEventListener('click', downloadTicket);
+            sendEmailBtn.addEventListener('click', sendTicketToEmail); // Attach event listener for new button
 
             // Hamburger menu toggle logic
             if (mobileMenuToggle && mainNav) {
@@ -536,19 +572,8 @@
                 }
             }
 
-            async function downloadTicket() {
-                if (!fetchedBookingData) {
-                    showCustomAlert("No ticket details available to download. Please search for a ticket first.");
-                    return;
-                }
-
-                const booking = fetchedBookingData; // Use the already fetched data
-
-                if (booking.status !== 'paid') {
-                    showCustomAlert('Ticket can only be downloaded after payment is confirmed.');
-                    return;
-                }
-
+            // Function to generate PDF (for both download and email)
+            async function generatePdfContent(booking) {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
 
@@ -556,7 +581,7 @@
                 const primaryColor = '#002d6b';
                 const accentColor = '#c69214';
                 const darkTextColor = '#1a1a1a';
-                const secondaryTextColor = '#555';
+                // const secondaryTextColor = '#555'; // Not directly used in PDF, kept for reference
 
                 let yPos = 20; // Initial Y position for content
 
@@ -564,11 +589,10 @@
                 // Add Logo
                 const img = new Image();
                 img.src = 'mylogo.png'; // Ensure this path is correct
-                await new Promise((resolve, reject) => {
+                await new Promise((resolve) => {
                     img.onload = () => resolve();
                     img.onerror = () => {
                         console.error("Error loading logo image: Mylogo.png. Please ensure the file exists and the path is correct.");
-                        // Optionally, you can add a fallback or skip adding the image
                         resolve(); // Resolve even on error to allow PDF generation to continue
                     };
                 });
@@ -614,7 +638,9 @@
                     console.error("Error generating QR code:", qrError);
                 } finally {
                     // Clean up the temporary div
-                    document.body.removeChild(qrCodeContainer);
+                    if (qrCodeContainer.parentNode) {
+                        document.body.removeChild(qrCodeContainer);
+                    }
                 }
 
                 if (qrCodeImgData) {
@@ -707,28 +733,122 @@
                 yPos += 5;
                 doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
 
+                return doc;
+            }
 
-                doc.save(`PrinceAlex_Ticket_${booking.booking_ref}.pdf`);
-                console.log("PDF download initiated successfully.");
+            async function downloadTicket() {
+                if (!fetchedBookingData) {
+                    showCustomAlert("No ticket details available to download. Please search for a ticket first.");
+                    return;
+                }
 
+                const booking = fetchedBookingData;
+
+                if (booking.status !== 'paid') {
+                    showCustomAlert('Ticket can only be downloaded after payment is confirmed.');
+                    return;
+                }
+                
+                try {
+                    const doc = await generatePdfContent(booking);
+                    doc.save(`PrinceAlex_Ticket_${booking.booking_ref}.pdf`);
+                    console.log("PDF download initiated successfully.");
+                } catch (error) {
+                    console.error("Error downloading PDF:", error);
+                    showCustomAlert("Failed to download ticket. Please try again.", 'error');
+                }
+            }
+
+            async function sendTicketToEmail() {
+                if (!fetchedBookingData) {
+                    showCustomAlert("No ticket details available to send. Please search for a ticket first.");
+                    return;
+                }
+
+                const booking = fetchedBookingData;
+
+                if (booking.status !== 'paid') {
+                    showCustomAlert('Ticket can only be sent after payment is confirmed.');
+                    return;
+                }
+
+                const passengerEmail = booking.passenger_email;
+                const bookingId = booking.booking_ref;
+
+                if (!passengerEmail || !isValidEmail(passengerEmail)) {
+                    showCustomAlert("Invalid or missing passenger email address.", 'error');
+                    return;
+                }
+
+                showCustomAlert("Preparing and sending your ticket...", 'info');
+
+                try {
+                    const doc = await generatePdfContent(booking);
+                    const pdfDataUri = doc.output("datauristring");
+                    const pdfBase64 = pdfDataUri.split(",")[1]; // Get just the Base64 part
+
+                    if (!pdfBase64) {
+                        showCustomAlert("Failed to generate PDF for email. Please try again.", 'error');
+                        return;
+                    }
+
+                    await window.addDoc(collection(window.firebaseDb, "mail"), { // Explicitly use window.addDoc
+                        to: passengerEmail,
+                        message: {
+                            subject: "Your Booking Ticket - Prince Alex Travel",
+                            text: `Hello ${booking.passenger_name},\n\nYour Prince Alex Travel ticket for booking reference ${bookingId} is attached as a PDF file.\n\nThank you for choosing Prince Alex Travel.`,
+                            html: `
+                                <p>Hello ${booking.passenger_name},</p>
+                                <p>Thank you for booking with <strong>Prince Alex Travel</strong>!</p>
+                                <p>Your ticket for booking reference <strong>${bookingId}</strong> is attached as a PDF file.</p>
+                                <p>We look forward to seeing you onboard!</p>
+                                <p>The Prince Alex Travel Team</p>
+                            `,
+                            attachments: [
+                                {
+                                    filename: `Ticket_${bookingId}.pdf`,
+                                    content: pdfBase64,
+                                    encoding: "base64"
+                                }
+                            ]
+                        }
+                    });
+
+                    showCustomAlert("Ticket sent to your email successfully!", 'success');
+                    console.log("Email document added to Firestore 'mail' collection.");
+
+                } catch (error) {
+                    console.error("Error sending ticket to email:", error);
+                    showCustomAlert("Failed to send ticket to email. Please try again.", 'error');
+                }
             }
 
             // Custom Alert (replaces browser's alert)
-            function showCustomAlert(message) {
+            function showCustomAlert(message, type = 'info', callback = null) {
                 const modal = document.createElement('div');
                 modal.style.cssText = `
                     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
                     background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
                     align-items: center; z-index: 1001;
                 `;
+                const bgColor = type === 'error' ? '#dc3545' : (type === 'success' ? '#28a745' : '#002d6b');
                 modal.innerHTML = `
-                    <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    <div style="background: ${bgColor}; color: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
                         <p style="margin-bottom: 20px; font-size: 1.1em;">${message}</p>
-                        <button style="background-color: #002d6b; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.parentNode.parentNode.remove()">OK</button>
+                        <button style="background-color: white; color: ${bgColor}; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;"
+                                onclick="this.parentNode.parentNode.remove(); if(typeof window.alertCallback === 'function') window.alertCallback();">OK</button>
                     </div>
                 `;
                 document.body.appendChild(modal);
+                window.alertCallback = callback; // Store callback globally
             }
+
+            // Helper function for email validation (used by sendTicketToEmail)
+            function isValidEmail(email) {
+                const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+                return re.test(String(email).toLowerCase());
+            }
+
         });
     </script>
 
