@@ -801,7 +801,8 @@ async function openSeatSelectionModal(busId, travelDate, totalSeats, currentAvai
           seatContainer.appendChild(seatIcon);
           seatContainer.appendChild(seatNumSpan);
 
-          if (bookedSeatsForThisTrip.has(String(i))) { // Firestore stores as string
+          // FIX: Correctly check for booked seats using the "S<number>" format
+          if (bookedSeatsForThisTrip.has(`S${i}`)) { 
               seatContainer.classList.add("booked");
               seatContainer.onclick = null;
           } else {
