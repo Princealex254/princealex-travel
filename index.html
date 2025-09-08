@@ -223,14 +223,15 @@
                 right: -100%; /* Start off-screen */
                 width: 70%; /* Adjust as needed */
                 height: 100%;
-                background-color: var(--primary-color);
+                background: var(--gradient-primary); /* Use gradient background for better visibility */
                 padding-top: 100px; /* Space for logo/header */
-                box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+                box-shadow: -2px 0 20px rgba(0,0,0,0.3); /* Stronger shadow for better visibility */
                 transition: right 0.3s ease-in-out, opacity 0.3s ease-in-out;
                 z-index: 10000;
                 opacity: 0; /* Initially hidden */
                 pointer-events: none; /* Disable interaction when hidden */
                 display: flex; /* Keep it as flex for transitions, but visually hidden */
+                backdrop-filter: blur(10px); /* Add blur effect for modern look */
             }
 
             .nav-links.open { /* This class will be toggled by JS */
@@ -241,13 +242,19 @@
 
             .nav-links a {
                 padding: 15px 20px;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
+                border-bottom: 1px solid rgba(255,255,255,0.2); /* More visible border */
                 text-align: left;
                 width: 100%;
                 font-size: 1.1em;
+                color: var(--white); /* Ensure white text */
+                font-weight: 600; /* Make text bolder */
             }
             .nav-links a:last-child {
                 border-bottom: none;
+            }
+            .nav-links a:hover {
+                background-color: rgba(255,255,255,0.1); /* Add hover background */
+                color: var(--accent-light);
             }
         }
 
