@@ -105,6 +105,7 @@
             font-family: 'Segoe UI', sans-serif;
             background-color: var(--light-bg);
             color: var(--text-dark);
+            scroll-behavior: smooth;
             /* Use: Sets global font, background, and text color. */
         }
         .navbar {
@@ -658,6 +659,10 @@
         .footer-section {
             flex: 1;
             min-width: 200px;
+        }
+
+        #contact-us, #hero {
+            scroll-margin-top: 80px; /* Account for sticky navbar */
         }
 
         .contact-info p {
@@ -1401,7 +1406,7 @@
                 <span class="bar"></span>
             </div>
             <nav class="nav-links" id="main-nav">
-                <a href="index.html">Home</a>
+                <a href="#hero">Home</a>
                 <a href="about-us.html">About Us</a>
                 <a href="#contact-us">Contact</a>
                 <a href="ticket-lookup.html">Print Ticket</a>
@@ -1413,7 +1418,7 @@
         </div>
     </header>
 
-    <section class="hero">
+    <section class="hero" id="hero">
         <div class="hero-background">
             <div class="hero-waves"></div>
         </div>
@@ -1656,7 +1661,22 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Ensure modals are hidden on load
             document.getElementById("seatModal").style.display = "none";
-            document.getElementById("loginChoiceModal").style.display = "none"; 
+            document.getElementById("loginChoiceModal").style.display = "none";
+            
+            // Add smooth scrolling for all anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            }); 
             
             document.getElementById('aiAssistantButton').addEventListener('click', toggleChat);
             const aiAssistantChat = document.getElementById('aiAssistantChat');
@@ -1702,9 +1722,27 @@
                 // Close menu when clicking on nav links
                 mainNav.addEventListener('click', (e) => {
                     if (e.target.tagName === 'A') {
+                        console.log('Nav link clicked:', e.target.href);
+                        
+                        // Close the mobile menu
                         mainNav.classList.remove('open');
                         mobileMenuToggle.classList.remove('open');
                         document.body.classList.remove('menu-open');
+                        
+                        // Handle smooth scrolling for anchor links
+                        if (e.target.getAttribute('href').startsWith('#')) {
+                            e.preventDefault();
+                            const targetId = e.target.getAttribute('href').substring(1);
+                            const targetElement = document.getElementById(targetId);
+                            if (targetElement) {
+                                setTimeout(() => {
+                                    targetElement.scrollIntoView({ 
+                                        behavior: 'smooth',
+                                        block: 'start'
+                                    });
+                                }, 300); // Wait for menu to close
+                            }
+                        }
                     }
                 });
 
