@@ -1056,27 +1056,7 @@
                 justify-content: space-between;
                 align-items: center;
             }
-            .nav-links {
-                flex-direction: column;
-                position: fixed;
-                top: 0;
-                right: -100%;
-                width: 80%;
-                height: 100%;
-                background: var(--gradient-primary);
-                padding-top: 100px;
-                box-shadow: var(--shadow-xl);
-                transition: right 0.3s ease-in-out, opacity 0.3s ease-in-out;
-                z-index: 10000;
-                opacity: 0;
-                pointer-events: none;
-                display: flex;
-            }
-            .nav-links.open {
-                right: 0;
-                opacity: 1;
-                pointer-events: auto;
-            }
+            /* Mobile nav styles are handled in the earlier media query */
             .menu-toggle {
                 display: flex;
             }
@@ -1417,7 +1397,7 @@
                 <img src="mylogo.png" alt="Prince Alex Logo" />
             </div>
             <!-- Hamburger Menu Icon -->
-            <div class="menu-toggle" id="mobile-menu">
+            <div class="menu-toggle" id="mobile-menu" onclick="toggleMobileMenu()">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
@@ -1660,6 +1640,15 @@
         const mobileMenuToggle = document.getElementById('mobile-menu');
         const mainNav = document.getElementById('main-nav');
 
+        // Fallback mobile menu toggle function
+        function toggleMobileMenu() {
+            if (mainNav && mobileMenuToggle) {
+                mainNav.classList.toggle('open');
+                mobileMenuToggle.classList.toggle('open');
+                document.body.classList.toggle('menu-open');
+            }
+        }
+
 
         document.addEventListener('DOMContentLoaded', () => {
             // Ensure modals are hidden on load
@@ -1688,21 +1677,40 @@
                 await logout(); // Use await for async logout
             });
 
-            // Toggle mobile menu
-            mobileMenuToggle.addEventListener('click', () => {
-                mobileMenuToggle.classList.toggle('open');
-                // The main change: directly toggle the 'open' class on the nav-links element
-                mainNav.classList.toggle('open'); 
-            });
+            // Mobile Menu Toggle Functionality
+            if (mobileMenuToggle && mainNav) {
+                console.log('Mobile menu elements found:', mobileMenuToggle, mainNav);
+                mobileMenuToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('Mobile menu clicked');
+                    // Toggle the open class on nav-links
+                    mainNav.classList.toggle('open');
+                    mobileMenuToggle.classList.toggle('open');
 
-            // Close mobile menu when a link is clicked
-            mainNav.querySelectorAll('a').forEach(link => {
-                link.addEventListener('click', () => {
-                    mobileMenuToggle.classList.remove('open');
-                    // Remove the 'open' class from the nav-links element
-                    mainNav.classList.remove('open'); 
+                    // Toggle the menu-open class on body for backdrop
+                    document.body.classList.toggle('menu-open');
                 });
-            });
+
+                // Close menu when clicking on nav links
+                mainNav.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'A') {
+                        mainNav.classList.remove('open');
+                        mobileMenuToggle.classList.remove('open');
+                        document.body.classList.remove('menu-open');
+                    }
+                });
+
+                // Close menu when clicking on backdrop
+                document.addEventListener('click', (e) => {
+                    if (document.body.classList.contains('menu-open') &&
+                        !mainNav.contains(e.target) &&
+                        !mobileMenuToggle.contains(e.target)) {
+                        mainNav.classList.remove('open');
+                        mobileMenuToggle.classList.remove('open');
+                        document.body.classList.remove('menu-open');
+                    }
+                });
+            }
         });
 
         // Global function to update navbar links based on auth state
