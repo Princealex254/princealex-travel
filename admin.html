@@ -1255,7 +1255,9 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
     // --- Generate PDF and send email ---
     if (passenger_email) {
         try {
-            const pdfDoc = await generatePdfContent(bookingData); // Use the bookingData for PDF generation
+            // Ensure PDF shows "PAID" status for admin bookings
+            const pdfBookingData = { ...bookingData, status: "paid" };
+            const pdfDoc = await generatePdfContent(pdfBookingData); // Use the updated bookingData for PDF generation
             const pdfDataUri = pdfDoc.output("datauristring");
             const pdfBase64 = pdfDataUri.split(",")[1];
 
@@ -1423,7 +1425,8 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
     $("#passengerDetailsCard").classList.add("hidden"); // Hide passenger details card again
     
     // Automatically download PDF receipt for the admin
-    generateTicketPDF(bookingData); 
+    const adminPdfData = { ...bookingData, status: "paid" };
+    generateTicketPDF(adminPdfData); 
     
     // Unsubscribe from seat listener when booking is confirmed
     if (seatSelectionUnsubscribe) {
