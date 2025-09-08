@@ -191,10 +191,11 @@
             width: 30px;
             height: 25px;
             cursor: pointer;
-            z-index: 10001; /* Above nav links when open */
+            z-index: 10002; /* Above everything including backdrop */
             padding: 5px;
             border-radius: 8px;
             transition: background-color 0.3s ease;
+            position: relative; /* Ensure proper stacking context */
         }
         
         .menu-toggle:hover {
@@ -228,14 +229,9 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 9999;
+            background: rgba(0,0,0,0.3);
+            z-index: 9998;
             transition: opacity 0.3s ease;
-            opacity: 0;
-            pointer-events: none;
-        }
-        
-        body.menu-open::after {
             opacity: 1;
             pointer-events: auto;
         }
@@ -250,7 +246,7 @@
                 right: 0;
                 width: 70%; /* Adjust as needed */
                 height: 100%;
-                background: rgba(30, 58, 138, 0.95); /* Semi-transparent background */
+                background: rgba(0, 45, 107, 0.98); /* Clearer, more opaque background */
                 padding-top: 100px; /* Space for logo/header */
                 box-shadow: -2px 0 20px rgba(0,0,0,0.3); /* Stronger shadow for better visibility */
                 transition: transform 0.4s ease, opacity 0.4s ease;
@@ -258,7 +254,7 @@
                 opacity: 0; /* Initially hidden */
                 pointer-events: none; /* Disable interaction when hidden */
                 display: flex; /* Keep it as flex for transitions, but visually hidden */
-                backdrop-filter: blur(12px); /* Enhanced blur effect for premium look */
+                backdrop-filter: blur(8px); /* Reduced blur for clarity */
                 transform: translateX(100%); /* Start off-screen */
             }
 
@@ -1058,7 +1054,9 @@
             }
             /* Mobile nav styles are handled in the earlier media query */
             .menu-toggle {
-                display: flex;
+                display: flex !important;
+                z-index: 10002 !important;
+                position: relative !important;
             }
             
             /* Hero Section Mobile */
@@ -1420,9 +1418,9 @@
             <div class="hero-waves"></div>
         </div>
         <div class="hero-content">
-            <h1>Welcome to Prince Alex Digital Travel Services</h1>
-            <h2>Travel with Comfort and Safety</h2>
-            <p>Your journey, our priority. Book your bus tickets online with Prince Alex Travel Services for a seamless experience.</p>
+        <h1>Welcome to Prince Alex Digital Travel Services</h1>
+        <h2>Travel with Comfort and Safety</h2>
+        <p>Your journey, our priority. Book your bus tickets online with Prince Alex Travel Services for a seamless experience.</p>
             <div class="hero-actions">
                 <button class="cta-button primary" onclick="scrollToBooking()">
                     <i class="fas fa-ticket-alt"></i>
@@ -1442,39 +1440,39 @@
             <form class="booking-form" onsubmit="event.preventDefault(); searchResults();">
                 <div class="form-group">
                     <label for="from">From</label>
-                    <select id="from" required>
+                <select id="from" required>
                         <option value="">Select Origin</option>
-                        <option>Nairobi</option>
-                        <option>Kisumu</option>
-                        <option>Eldoret</option>
-                        <option>Mombasa</option>
-                        <option>Nakuru</option>
-                        <option>Kericho</option>
-                        <option>Kakamega</option>
-                        <option>Kitale</option>
-                        <option>Nyeri</option>
-                        <option>Busia</option>
-                    </select>
+                    <option>Nairobi</option>
+                    <option>Kisumu</option>
+                    <option>Eldoret</option>
+                    <option>Mombasa</option>
+                    <option>Nakuru</option>
+                    <option>Kericho</option>
+                    <option>Kakamega</option>
+                    <option>Kitale</option>
+                    <option>Nyeri</option>
+                    <option>Busia</option>
+                </select>
                 </div>
                 <div class="form-group">
                     <label for="to">To</label>
-                    <select id="to" required>
+                <select id="to" required>
                         <option value="">Select Destination</option>
-                        <option>Nairobi</option>
-                        <option>Kisumu</option>
-                        <option>Eldoret</option>
-                        <option>Mombasa</option>
-                        <option>Nakuru</option>
-                        <option>Kericho</option>
-                        <option>Kakamega</option>
-                        <option>Kitale</option>
-                        <option>Nyeri</option>
-                        <option>Busia</option>
-                    </select>
+                    <option>Nairobi</option>
+                    <option>Kisumu</option>
+                    <option>Eldoret</option>
+                    <option>Mombasa</option>
+                    <option>Nakuru</option>
+                    <option>Kericho</option>
+                    <option>Kakamega</option>
+                    <option>Kitale</option>
+                    <option>Nyeri</option>
+                    <option>Busia</option>
+                </select>
                 </div>
                 <div class="form-group">
                     <label for="travelDate">Travel Date</label>
-                    <input type="date" id="travelDate" required />
+                <input type="date" id="travelDate" required />
                 </div>
                 <button type="submit">
                     <i class="fas fa-search"></i> Search Buses
@@ -1641,8 +1639,13 @@
         const mainNav = document.getElementById('main-nav');
 
         // Fallback mobile menu toggle function
-        function toggleMobileMenu() {
+        function toggleMobileMenu(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             if (mainNav && mobileMenuToggle) {
+                console.log('Fallback toggle function called');
                 mainNav.classList.toggle('open');
                 mobileMenuToggle.classList.toggle('open');
                 document.body.classList.toggle('menu-open');
@@ -1680,8 +1683,13 @@
             // Mobile Menu Toggle Functionality
             if (mobileMenuToggle && mainNav) {
                 console.log('Mobile menu elements found:', mobileMenuToggle, mainNav);
+                
+                // Remove any existing event listeners to prevent conflicts
+                mobileMenuToggle.removeEventListener('click', toggleMobileMenu);
+                
                 mobileMenuToggle.addEventListener('click', (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     console.log('Mobile menu clicked');
                     // Toggle the open class on nav-links
                     mainNav.classList.toggle('open');
