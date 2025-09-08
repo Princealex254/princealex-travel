@@ -192,6 +192,13 @@
             height: 25px;
             cursor: pointer;
             z-index: 10001; /* Above nav links when open */
+            padding: 5px;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .menu-toggle:hover {
+            background-color: rgba(255,255,255,0.15);
         }
 
         .menu-toggle .bar {
@@ -199,7 +206,7 @@
             height: 3px;
             background-color: white;
             border-radius: 5px;
-            transition: all 0.3s ease;
+            transition: transform 0.4s ease, opacity 0.4s ease;
         }
 
         /* Animation for hamburger to close icon */
@@ -213,6 +220,26 @@
             transform: translateY(-11px) rotate(-45deg);
         }
 
+        /* Background Dim Overlay */
+        body.menu-open::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        body.menu-open::after {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         /* Mobile Navigation Overlay */
         /* This class will be applied to the .nav-links element on mobile */
         @media (max-width: 768px) {
@@ -220,22 +247,23 @@
                 flex-direction: column;
                 position: fixed;
                 top: 0;
-                right: -100%; /* Start off-screen */
+                right: 0;
                 width: 70%; /* Adjust as needed */
                 height: 100%;
-                background: var(--gradient-primary); /* Use gradient background for better visibility */
+                background: rgba(30, 58, 138, 0.95); /* Semi-transparent background */
                 padding-top: 100px; /* Space for logo/header */
                 box-shadow: -2px 0 20px rgba(0,0,0,0.3); /* Stronger shadow for better visibility */
-                transition: right 0.3s ease-in-out, opacity 0.3s ease-in-out;
+                transition: transform 0.4s ease, opacity 0.4s ease;
                 z-index: 10000;
                 opacity: 0; /* Initially hidden */
                 pointer-events: none; /* Disable interaction when hidden */
                 display: flex; /* Keep it as flex for transitions, but visually hidden */
-                backdrop-filter: blur(10px); /* Add blur effect for modern look */
+                backdrop-filter: blur(12px); /* Enhanced blur effect for premium look */
+                transform: translateX(100%); /* Start off-screen */
             }
 
             .nav-links.open { /* This class will be toggled by JS */
-                right: 0; /* Slide in */
+                transform: translateX(0); /* Slide in smoothly */
                 opacity: 1; /* Make visible */
                 pointer-events: auto; /* Enable interaction */
             }
@@ -1055,6 +1083,32 @@
         }
         /* --- End Chat Message Styling --- */
 
+        /* Quick Action Buttons */
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+
+        .quick-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .quick-btn:hover {
+            background-color: var(--accent-color);
+            transform: translateY(-1px);
+        }
+
 
         .chat-footer {
             padding: 15px;
@@ -1276,6 +1330,12 @@
         </div>
         <div class="chat-body" id="chatBody">
             <p class="bot-message">Hello! I am your Prince Alex Travel AI Assistant. I can answer general questions about travel or provide information about bus routes if you tell me the origin and destination. How can I assist you today?</p>
+            <div class="quick-actions">
+                <button class="quick-btn" onclick="sendQuickMessage('Show me buses from Nairobi to Kisumu')">Nairobi → Kisumu</button>
+                <button class="quick-btn" onclick="sendQuickMessage('What are your contact details?')">Contact Info</button>
+                <button class="quick-btn" onclick="sendQuickMessage('How much does a ticket cost?')">Pricing</button>
+                <button class="quick-btn" onclick="sendQuickMessage('Tell me about your services')">Our Services</button>
+            </div>
         </div>
         <div class="chat-footer">
             <input type="text" placeholder="Type your message..." id="chatInput" />
@@ -2001,6 +2061,45 @@
             chatBody.scrollTop = chatBody.scrollHeight; // Scroll to bottom
         }
 
+        // Function to send quick messages from buttons
+        function sendQuickMessage(message) {
+            const chatInput = document.getElementById('chatInput');
+            chatInput.value = message;
+            handleChatInput();
+        }
+
+        // Fallback response function for when AI API is not available
+        function generateFallbackResponse(message, additionalContext) {
+            const lowerMessage = message.toLowerCase();
+            
+            // Bus route queries
+            if (lowerMessage.includes('bus') || lowerMessage.includes('route') || lowerMessage.includes('ticket')) {
+                if (additionalContext && additionalContext.includes('bus schedule information')) {
+                    return `Based on your query about bus routes, here's what I found:\n\n${additionalContext}\n\nFor real-time booking and more detailed information, please use our booking form above or contact our support team at senerwaalex@gmail.com or call +254 717 384 875.`;
+                } else {
+                    return `I can help you with bus route information! Please specify your origin and destination (e.g., "buses from Nairobi to Kisumu") and I'll provide you with available routes and schedules.\n\nYou can also use our booking form above to search for buses directly.`;
+                }
+            }
+            
+            // Contact/support queries
+            if (lowerMessage.includes('contact') || lowerMessage.includes('support') || lowerMessage.includes('help')) {
+                return `For immediate assistance, please contact our support team:\n\n📧 Email: senerwaalex@gmail.com\n📞 Phone: +254 717 384 875\n📍 Location: Nairobi, Kenya\n\nWe're here to help with your travel needs!`;
+            }
+            
+            // General travel questions
+            if (lowerMessage.includes('travel') || lowerMessage.includes('journey') || lowerMessage.includes('trip')) {
+                return `Welcome to Prince Alex Travel Services! We provide comfortable and safe bus travel across Kenya.\n\nOur services include:\n• Online ticket booking\n• Multiple routes across Kenya\n• Comfortable, air-conditioned buses\n• Professional drivers\n• 24/7 customer support\n\nTo book your ticket, use our booking form above or contact us directly.`;
+            }
+            
+            // Pricing questions
+            if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('fare')) {
+                return `Our ticket prices vary depending on the route and travel date. To get accurate pricing for your specific journey:\n\n1. Use our booking form above to search for buses\n2. Select your preferred route and date\n3. View real-time pricing and availability\n\nFor special group bookings or inquiries, please contact us at senerwaalex@gmail.com or call +254 717 384 875.`;
+            }
+            
+            // Default response
+            return `Thank you for your message! I'm here to help with your travel inquiries.\n\nI can assist you with:\n• Bus route information\n• Booking assistance\n• Travel advice\n• Contact information\n\nFor specific questions about routes, please mention your origin and destination. For immediate support, contact us at senerwaalex@gmail.com or call +254 717 384 875.`;
+        }
+
         // Function to search buses for the AI assistant
         async function searchBusesForAI(from, to, date) {
             const busesRef = collection(firebaseDb, "buses");
@@ -2091,9 +2190,27 @@
                 chatHistoryForGemini.push({ role: "user", parts: [{ text: promptText + additionalContext }] });
 
                 try {
-                    const payload = { contents: chatHistoryForGemini };
-                    const apiKey = ""; // Canvas will automatically provide the API key for gemini-2.0-flash
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    // Check if we have a valid API key
+                    const apiKey = "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o"; // Using the same Firebase API key for now
+                    
+                    if (!apiKey || apiKey === "") {
+                        // Fallback response when no API key is available
+                        typingIndicator.remove();
+                        const fallbackResponse = generateFallbackResponse(message, additionalContext);
+                        appendMessage(fallbackResponse, 'bot');
+                        return;
+                    }
+
+                    const payload = { 
+                        contents: chatHistoryForGemini,
+                        generationConfig: {
+                            temperature: 0.7,
+                            topK: 40,
+                            topP: 0.95,
+                            maxOutputTokens: 1024,
+                        }
+                    };
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
                     const response = await fetch(apiUrl, {
                         method: 'POST',
@@ -2106,7 +2223,9 @@
                         const errorBody = await response.text(); // Get raw error body
                         console.error(`Gemini API HTTP Error: ${response.status} ${response.statusText}`, errorBody);
                         typingIndicator.remove();
-                        appendMessage(`There was an issue with the AI service. Please try again later. (HTTP Error: ${response.status})`, 'bot');
+                        // Use fallback response instead of generic error
+                        const fallbackResponse = generateFallbackResponse(message, additionalContext);
+                        appendMessage(fallbackResponse, 'bot');
                         return;
                     }
 
@@ -2126,15 +2245,18 @@
                     } else {
                         // Check for prompt feedback (e.g., safety issues)
                         if (result.promptFeedback && result.promptFeedback.blockReason) {
-                            appendMessage(`Sorry, I cannot respond to that query. It was blocked due to: ${result.promptFeedback.blockReason}. Please try rephrasing your question.`, 'bot');
+                            const fallbackResponse = generateFallbackResponse(message, additionalContext);
+                            appendMessage(fallbackResponse, 'bot');
                             console.warn("Gemini API blocked response:", result.promptFeedback);
                         } else if (result.candidates && result.candidates.length > 0 && result.candidates[0].finishReason) {
                             // Check for finish reason if no content was generated
-                            appendMessage(`Sorry, I couldn't generate a complete response for that. Reason: ${result.candidates[0].finishReason}. Please try again.`, 'bot');
+                            const fallbackResponse = generateFallbackResponse(message, additionalContext);
+                            appendMessage(fallbackResponse, 'bot');
                             console.warn("Gemini API finished without content:", result.candidates[0].finishReason);
                         } else {
                             // Generic error if structure is unexpected
-                            appendMessage("Sorry, I couldn't get a meaningful response from the AI. The response structure was unexpected. Please try again.", 'bot');
+                            const fallbackResponse = generateFallbackResponse(message, additionalContext);
+                            appendMessage(fallbackResponse, 'bot');
                             console.error("AI response structure unexpected or empty candidates:", result);
                         }
                     }
@@ -2144,7 +2266,9 @@
                     if (currentTypingIndicator) {
                         currentTypingIndicator.remove();
                     }
-                    appendMessage("There was an error connecting to the AI. Please check your network connection and try again.", 'bot');
+                    // Use fallback response instead of generic error message
+                    const fallbackResponse = generateFallbackResponse(message, additionalContext);
+                    appendMessage(fallbackResponse, 'bot');
                     console.error("Error calling Gemini API:", error);
                 }
             }
@@ -2186,6 +2310,41 @@
                 logoutLink.addEventListener('click', async (e) => {
                     e.preventDefault();
                     await logout();
+                });
+            }
+            
+            // Mobile Menu Toggle Functionality
+            const menuToggle = document.getElementById('mobile-menu');
+            const navLinks = document.getElementById('main-nav');
+            
+            if (menuToggle && navLinks) {
+                menuToggle.addEventListener('click', () => {
+                    // Toggle the open class on nav-links
+                    navLinks.classList.toggle('open');
+                    menuToggle.classList.toggle('open');
+                    
+                    // Toggle the menu-open class on body for backdrop
+                    document.body.classList.toggle('menu-open');
+                });
+                
+                // Close menu when clicking on nav links
+                navLinks.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'A') {
+                        navLinks.classList.remove('open');
+                        menuToggle.classList.remove('open');
+                        document.body.classList.remove('menu-open');
+                    }
+                });
+                
+                // Close menu when clicking on backdrop
+                document.addEventListener('click', (e) => {
+                    if (document.body.classList.contains('menu-open') && 
+                        !navLinks.contains(e.target) && 
+                        !menuToggle.contains(e.target)) {
+                        navLinks.classList.remove('open');
+                        menuToggle.classList.remove('open');
+                        document.body.classList.remove('menu-open');
+                    }
                 });
             }
         });
