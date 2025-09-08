@@ -360,8 +360,11 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
       showCustomAlert("Marked as PAID.", "success");
       // Send confirmation email (requires Firebase Trigger Email extension)
       if (item.passenger_email) {
+        // Update the item status to "paid" for PDF generation
+        const updatedItem = { ...item, status: "paid" };
+        
         // Generate PDF content for the email attachment
-        const pdfDoc = await generatePdfContent(item);
+        const pdfDoc = await generatePdfContent(updatedItem);
         const pdfDataUri = pdfDoc.output("datauristring");
         const pdfBase64 = pdfDataUri.split(",")[1];
 
@@ -378,19 +381,50 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
                 message: {
                     subject: "Your Prince Alex Travel Booking Confirmation", // Updated subject
                     text: `Dear ${item.passenger_name??"Customer"},\n\nThank you for booking a ticket with us!.\nYour ticket has been booked successfully. \n\nYour Ticket details:\nBooking Reference: ${item.booking_ref??id}\nRoute: ${item.bus_route??"-"}\nTravel Date: ${item.travel_date??"-"}\nDeparture Time: ${item.bus_time??"-"}\nSeat: ${item.seat_number??"-"}\nPrice: KES ${item.price?Number(item.price).toLocaleString():"-"}`,
-                    html: `<p>Dear ${item.passenger_name??"Customer"},</p>
-                           <p>Thank you for booking a ticket with us!</p>
-                           <p>Your ticket has been booked successfully.</p>
-                           <p>Your Ticket details:</p>
-                           <ul>
-                               <li><strong>Booking Reference:</strong> ${item.booking_ref??id}</li>
-                               <li><strong>Route:</strong> ${item.bus_route??"-"}</li>
-                               <li><strong>Travel Date:</strong> ${item.travel_date??"-"}</li>
-                               <li><strong>Departure Time:</strong> ${item.bus_time??"-"}</li>
-                               <li><strong>Seat:</strong> ${item.seat_number??"-"}</li>
-                               <li><strong>Price:</strong> KES ${item.price?Number(item.price).toLocaleString():"-"}</li>
-                           </ul>
-                           <p>Thank you for choosing Prince Alex Travel.</p>`
+                    html: `<!DOCTYPE html>
+                           <html>
+                           <head>
+                               <meta charset="utf-8">
+                               <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                               <title>Payment Confirmed - Prince Alex Travel</title>
+                               <style>
+                                   body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                                   .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                                   .header { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                                   .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+                                   .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+                               </style>
+                           </head>
+                           <body>
+                               <div class="container">
+                                   <div class="header">
+                                       <h1>💳 Payment Confirmed!</h1>
+                                       <p>Prince Alex Travel - Payment Successfully Processed</p>
+                                   </div>
+                                   <div class="content">
+                                       <h2>Dear ${item.passenger_name??"Customer"},</h2>
+                                       <p>Great news! Your payment has been successfully processed and your ticket is now confirmed!</p>
+                                       <p><strong>Your Ticket Details:</strong></p>
+                                       <ul>
+                                           <li><strong>Booking Reference:</strong> ${item.booking_ref??id}</li>
+                                           <li><strong>Route:</strong> ${item.bus_route??"-"}</li>
+                                           <li><strong>Travel Date:</strong> ${item.travel_date??"-"}</li>
+                                           <li><strong>Departure Time:</strong> ${item.bus_time??"-"}</li>
+                                           <li><strong>Seat:</strong> ${item.seat_number??"-"}</li>
+                                           <li><strong>Price:</strong> KES ${item.price?Number(item.price).toLocaleString():"-"}</li>
+                                       </ul>
+                                       <p><strong>📱 Need Help?</strong></p>
+                                       <p>If you have any questions or need assistance, please don't hesitate to contact us:</p>
+                                       <p><strong>📧 Email:</strong> senerwaalex@gmail.com<br>
+                                       <strong>📞 Phone:</strong> +254 717 384 875</p>
+                                   </div>
+                                   <div class="footer">
+                                       <p>© 2025 Prince Alex Digital. All rights reserved.</p>
+                                       <p>Nairobi, Kenya | Prince Alex Travel Services</p>
+                                   </div>
+                               </div>
+                           </body>
+                           </html>`
                 },
                 createdAt: serverTimestamp()
             });
@@ -807,24 +841,57 @@ async function generatePdfContent(booking) { // Changed to async to support imag
     doc.text("• Present this ticket (digital or printed) to driver", 15, yPos + 22);
     yPos += 35;
 
-    // --- 9. FOOTER ---
-    yPos = doc.internal.pageSize.height - 20;
+    // --- 9. PROFESSIONAL FOOTER ---
+    yPos = doc.internal.pageSize.height - 25;
+    
+    // Footer background
+    doc.setFillColor(248, 250, 252); // Light background
+    doc.rect(0, yPos - 5, 210, 25, 'F');
     
     // Footer line
     doc.setDrawColor(primaryColor);
     doc.setLineWidth(1);
     doc.line(10, yPos, 200, yPos);
-    yPos += 5;
+    yPos += 3;
+    
+    // Company logo in footer
+    doc.setFillColor(primaryColor);
+    doc.circle(20, yPos + 2, 3, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "bold");
+    doc.text("PA", 18.5, yPos + 3.5);
     
     // Contact information
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
     doc.setTextColor(lightTextColor);
-    doc.text("Prince Alex Travel Services", doc.internal.pageSize.width / 2, yPos, { align: "center" });
-    yPos += 4;
-    doc.text("Email: senerwaalex@gmail.com | Phone: +254 717 384 875", doc.internal.pageSize.width / 2, yPos, { align: "center" });
-    yPos += 4;
-    doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("Prince Alex Travel Services", 30, yPos);
+    
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text("📧 senerwaalex@gmail.com", 30, yPos + 4);
+    doc.text("📞 +254 717 384 875", 30, yPos + 8);
+    
+    // Right side - Website and copyright
+    doc.setTextColor(lightTextColor);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text("🌐 travel.princealex.pro", 120, yPos);
+    doc.text("© 2025 Prince Alex Digital", 120, yPos + 4);
+    doc.text("Nairobi, Kenya", 120, yPos + 8);
+    
+    // Bottom copyright line
+    yPos += 12;
+    doc.setDrawColor(lightTextColor);
+    doc.setLineWidth(0.5);
+    doc.line(10, yPos, 200, yPos);
+    yPos += 3;
+    
+    doc.setTextColor(lightTextColor);
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.text("This is an official e-ticket. Please present this document at the terminal.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
 
     return doc;
 }
