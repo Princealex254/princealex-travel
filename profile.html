@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - Prince Alex Travel Services</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode.js/1.0.0/qrcode.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            signOut, 
+            updateEmail, 
+            updatePassword 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc,
+            setDoc,
+            updateDoc, 
+            collection, 
+            query, 
+            where, 
+            getDocs 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
+            authDomain: "princealextravel.firebaseapp.com",
+            projectId: "princealextravel",
+            storageBucket: "princealextravel.firebasestorage.app",
+            messagingSenderId: "947577729462",
+            appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Make Firebase instances and functions globally accessible
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.signOutFirebase = signOut; // Renamed to avoid conflict
+        window.updateEmailFirebase = updateEmail; // Renamed to avoid conflict
+        window.updatePasswordFirebase = updatePassword; // Renamed to avoid conflict
+        window.getDoc = getDoc;
+        window.setDoc = setDoc;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+        window.collection = collection;
+        window.query = query;
+        window.where = where;
+        window.getDocs = getDocs;
+
+        // Global variable for current user, populated by onAuthStateChanged
+        window.currentUser = null;
+
+        // Listen for authentication state changes
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // User is signed in
+                window.currentUser = user;
+                document.getElementById('profileContent').style.display = 'block';
+                document.getElementById('loggedOutMessage').style.display = 'none';
+                
+                // Only load profile if no welcome message is already displayed
+                const currentMessage = document.getElementById('profileMessage');
+                if (!currentMessage.textContent.includes('Welcome')) {
+                    await loadUserProfile(user);
+                }
+                await loadPastBookings(user.uid);
+            } else {
+                // User is signed out
+                window.currentUser = null;
+                document.getElementById('profileContent').style.display = 'none';
+                document.getElementById('loggedOutMessage').style.display = 'block';
+            }
+            updateAuthLinks(); // Update navigation links based on auth state
+        });
+    </script>
+    <style>
+        /* Modern CSS Variables for Enhanced Design */
+        :root {
+            --primary-color: #1e3a8a; /* Modern deep blue */
+            --primary-light: #3b82f6; /* Lighter blue for accents */
+            --accent-color: #f59e0b; /* Modern amber/gold */
+            --accent-light: #fbbf24; /* Light amber */
+            --light-bg: #f8fafc; /* Clean light background */
+            --white: #ffffff;
+            --text-dark: #1e293b;
+            --text-light: #ffffff;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+            --gradient-accent: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --border-radius: 12px;
+            --border-radius-lg: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+        .navbar {
+            background: var(--gradient-primary);
+            padding: 1rem 0;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        .navbar-container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 0 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            background: var(--white);
+            padding: 0.75rem 1rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+        }
+        .logo:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        .logo img {
+            height: 50px;
+            display: block;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            position: relative;
+            padding: 0.5rem 0;
+            transition: var(--transition);
+        }
+        .nav-links a::after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 2px;
+            background: var(--accent-color);
+            transition: var(--transition);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            border-radius: 1px;
+        }
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+        .nav-links a:hover {
+            color: var(--accent-light);
+            transform: translateY(-1px);
+        }
+
+        /* Hamburger Menu Icon */
+        .menu-toggle {
+            display: none; /* Hidden by default, shown on mobile */
+            flex-direction: column;
+            justify-content: space-around;
+            width: 30px;
+            height: 25px;
+            cursor: pointer;
+            z-index: 10001; /* Above nav links when open */
+        }
+
+        .menu-toggle .bar {
+            width: 100%;
+            height: 3px;
+            background-color: white;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        /* Animation for hamburger to close icon */
+        .menu-toggle.open .bar:nth-child(1) {
+            transform: translateY(11px) rotate(45deg);
+        }
+        .menu-toggle.open .bar:nth-child(2) {
+            opacity: 0;
+        }
+        .menu-toggle.open .bar:nth-child(3) {
+            transform: translateY(-11px) rotate(-45deg);
+        }
+        .footer {
+            background: var(--gradient-primary);
+            color: var(--text-light);
+            padding: 2rem 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            margin-top: 3rem;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .footer-content {
+            max-width: 1200px;
+            margin: auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 2rem;
+            text-align: left;
+        }
+        .footer-section {
+            flex: 1;
+            min-width: 200px;
+        }
+        .footer-section h4 {
+            color: var(--accent-light);
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        .footer-section a,
+        .footer-section p {
+            display: block;
+            color: var(--text-light);
+            margin: 0.5rem 0;
+            text-decoration: none;
+            opacity: 0.9;
+            transition: var(--transition);
+        }
+        .footer-section a:hover {
+            color: var(--accent-light);
+            opacity: 1;
+        }
+        .footer-bottom {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        /* Modern Profile Page Styles */
+        .profile-container {
+            max-width: 800px;
+            margin: 3rem auto;
+            padding: 2.5rem;
+            background: var(--white);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-xl);
+            text-align: center;
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: var(--transition);
+        }
+        .profile-container:hover {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+        .profile-container h1 {
+            color: var(--text-dark);
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        .profile-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+        .profile-info div {
+            padding: 1.25rem 1.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--border-radius);
+            background: #f8fafc;
+            transition: var(--transition);
+        }
+        .profile-info div:hover {
+            background: #f1f5f9;
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+        .profile-info label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .profile-info p {
+            font-size: 1.1rem;
+            color: var(--text-dark);
+        }
+        .profile-form .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        .profile-form .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+        }
+        .profile-form .form-group input[type="text"],
+        .profile-form .form-group input[type="email"],
+        .profile-form .form-group input[type="tel"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            transition: var(--transition);
+            background: var(--white);
+            box-sizing: border-box;
+        }
+        .profile-form .form-group input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+        .profile-form .form-group input:hover {
+            border-color: #cbd5e1;
+        }
+        .profile-actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .profile-actions button {
+            background: var(--gradient-accent);
+            color: var(--white);
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+        }
+        .profile-actions button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .profile-actions button:active {
+            transform: translateY(0);
+        }
+        .message {
+            margin-top: 1.5rem;
+            padding: 0.75rem 1rem;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            text-align: center;
+            display: none;
+            border: 1px solid transparent;
+        }
+        .message.error {
+            background: #fee2e2;
+            color: var(--error);
+            border-color: #fca5a5;
+        }
+        .message.success {
+            background: #d1fae5;
+            color: var(--success);
+            border-color: #a7f3d0;
+        }
+        .message.warning {
+            background: #fef3c7;
+            color: var(--warning);
+            border-color: #fcd34d;
+        }
+        /* Modern logged-out message */
+        .logged-out-message {
+            text-align: center;
+            padding: 3rem;
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            margin-top: 3rem;
+            background: var(--white);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-xl);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .logged-out-message a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        .logged-out-message a:hover {
+            color: var(--accent-color);
+            text-decoration: underline;
+        }
+
+        /* Modern Past Bookings Section */
+        .past-bookings-section {
+            margin-top: 3rem;
+            text-align: left;
+            border-top: 2px solid #e2e8f0;
+            padding-top: 2rem;
+        }
+        .past-bookings-section h2 {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--text-dark);
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+        .booking-card {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #e2e8f0;
+            transition: var(--transition);
+        }
+        .booking-card:hover {
+            background: #f1f5f9;
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        .booking-card p {
+            margin: 0;
+            font-size: 0.95rem;
+            flex: 1 1 auto;
+            min-width: 150px;
+        }
+        .booking-card strong {
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+        .booking-card .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--white);
+            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .booking-card .status-badge.paid { background: var(--success); }
+        .booking-card .status-badge.pending { background: var(--warning); }
+        .booking-card .status-badge.cancelled { background: var(--error); }
+        .booking-card .download-btn {
+            background: var(--success);
+            color: var(--white);
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: var(--transition);
+            margin-left: auto;
+            box-shadow: var(--shadow-sm);
+        }
+        .booking-card .download-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        .no-bookings-message {
+            text-align: center;
+            color: var(--text-muted);
+            font-style: italic;
+            padding: 2rem;
+            font-size: 1.1rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .navbar-container {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                position: relative;
+            }
+            .nav-links {
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background: var(--gradient-primary);
+                box-shadow: var(--shadow-lg);
+                overflow: hidden;
+                max-height: 0;
+                transition: max-height 0.3s ease-in-out;
+                z-index: 9999;
+                border-radius: 0 0 1rem 1rem;
+            }
+            .nav-links.open {
+                max-height: 500px;
+            }
+            .nav-links a {
+                padding: 0.75rem 1rem;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                text-align: left;
+                width: 100%;
+                font-size: 1.1em;
+            }
+            .nav-links a:last-child {
+                border-bottom: none;
+            }
+            .menu-toggle {
+                display: flex;
+            }
+            .profile-container {
+                margin: 2rem auto;
+                padding: 2rem 1.5rem;
+            }
+            .profile-container h1 {
+                font-size: 2rem;
+            }
+            .profile-info {
+                grid-template-columns: 1fr;
+            }
+            .booking-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .booking-card .download-btn {
+                margin-left: 0;
+                width: 100%;
+            }
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .profile-container {
+                padding: 1.5rem 1rem;
+            }
+            .profile-container h1 {
+                font-size: 1.75rem;
+            }
+            .profile-form .form-group input {
+                padding: 0.6rem 0.8rem;
+            }
+            .profile-actions button {
+                padding: 0.6rem 1.5rem;
+                font-size: 0.9rem;
+            }
+            .booking-card {
+                padding: 1rem;
+            }
+            .booking-card p {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="logo">
+                <img src="mylogo.png" alt="Prince Alex Logo" />
+            </div>
+            <!-- Hamburger Menu Icon -->
+            <div class="menu-toggle" id="mobile-menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+            <nav class="nav-links" id="main-nav">
+                <a href="index.html">Home</a>
+                <a href="about-us.html">About Us</a>
+                <a href="#contact-us">Contact</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="admin.html">Admin Login</a>
+                <a href="profile.html" id="myProfileLink" style="display:none;">My Profile</a>
+                <a href="login-register.html" id="loginRegisterLink">Login / Register</a>
+                <a href="#" id="logoutLink" style="display:none;">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="profile-container" id="profileContent">
+        <h1>My Profile</h1>
+        <div id="profileMessage" class="message"></div>
+
+        <div class="profile-info">
+            <div>
+                <label>Full Name:</label>
+                <p id="profileFullName"></p>
+            </div>
+            <div>
+                <label>National ID:</label>
+                <p id="profileNationalId"></p>
+            </div>
+            <div>
+                <label>Email:</label>
+                <p id="profileEmail"></p>
+            </div>
+            <div>
+                <label>Phone Number:</label>
+                <p id="profilePhone"></p>
+            </div>
+        </div>
+
+        <h2>Update Information</h2>
+        <form id="profileForm" class="profile-form">
+            <div class="form-group">
+                <label for="newFullName">New Full Name:</label>
+                <input type="text" id="newFullName" placeholder="Enter new full name">
+            </div>
+            <div class="form-group">
+                <label for="newPhoneNumber">New Phone Number:</label>
+                <input type="tel" id="newPhoneNumber" placeholder="Enter new phone number">
+            </div>
+            <div class="form-group">
+                <label for="newIdNumber">New ID Number:</label>
+                <input type="text" id="newIdNumber" placeholder="Enter new ID number">
+            </div>
+            <div class="form-group">
+                <label for="newEmail">New Email:</label>
+                <input type="email" id="newEmail" placeholder="Enter new email">
+            </div>
+            <div class="profile-actions">
+                <button type="submit">Update Profile</button>
+            </div>
+        </form>
+
+        <section class="past-bookings-section">
+            <h2>My Past Bookings</h2>
+            <div id="pastBookingsList">
+                <p class="no-bookings-message">Loading past bookings...</p>
+            </div>
+        </section>
+    </div>
+
+    <div class="logged-out-message" id="loggedOutMessage" style="display:none;">
+        <p>You need to be logged in to view your profile.</p>
+        <p><a href="login-register.html">Login or Register here</a></p>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Contact Us</h4>
+                <p>Email: senerwaalex@gmail.com</p>
+                <p>Phone: +254 717 384 875</p>
+                <p>Location: Nairobi, Kenya</p>
+            </div>
+            <div class="footer-section">
+                <h4>Follow Us</h4>
+                <a href="#">Facebook</a>
+                <a href="#">Instagram</a>
+                <a href="#">Twitter</a>
+            </div>
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <a href="index.html">Home</a>
+                <a href="about-us.html">About Us</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="login-register.html">Login / Register</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Prince Alex Digital. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        // Navbar link references (declare once globally)
+        const myProfileLink = document.getElementById('myProfileLink');
+        const loginRegisterLink = document.getElementById('loginRegisterLink');
+        const logoutLink = document.getElementById('logoutLink');
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Attach logout handler
+            logoutLink.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await logout();
+            });
+
+            // Handle profile update
+            const profileForm = document.getElementById('profileForm');
+            profileForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await updateProfile();
+            });
+
+            // Hamburger menu functionality
+            const mobileMenuToggle = document.getElementById('mobile-menu');
+            const mainNav = document.getElementById('main-nav');
+
+            if (mobileMenuToggle && mainNav) {
+                mobileMenuToggle.addEventListener('click', function () {
+                    this.classList.toggle('open');
+                    mainNav.classList.toggle('open');
+                });
+
+                mainNav.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', () => {
+                        mobileMenuToggle.classList.remove('open');
+                        mainNav.classList.remove('open');
+                    });
+                });
+            }
+
+            // ✅ Check for new user welcome message
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('newUser') === '1') {
+                displayMessage('profileMessage', '👋 Welcome! Please complete your profile details.', 'warning');
+            }
+            
+            // Ensure navbar is correct on load
+            updateAuthLinks();
+        });
+
+        // --- Load User Profile Data ---
+        async function loadUserProfile(user) {
+            const userDocRef = doc(firebaseDb, "users", user.uid);
+            const docSnap = await getDoc(userDocRef);
+
+            if (!docSnap.exists()) {
+                // Check if we already have a welcome message displayed
+                const currentMessage = document.getElementById('profileMessage');
+                if (!currentMessage.textContent.includes('Welcome')) {
+                    displayMessage('profileMessage', 'Please update your profile details.', 'warning');
+                }
+                return;
+            }
+
+            const profileData = docSnap.data();
+
+            // Display profile values
+            document.getElementById('profileFullName').textContent = profileData.passenger_name || 'N/A';
+            document.getElementById('profileNationalId').textContent = profileData.passenger_id || 'N/A';
+            document.getElementById('profileEmail').textContent = profileData.passenger_email || 'N/A';
+            document.getElementById('profilePhone').textContent = profileData.passenger_phone || 'N/A';
+
+            // Pre-fill form values
+            document.getElementById('newFullName').value = profileData.passenger_name || '';
+            document.getElementById('newPhoneNumber').value = profileData.passenger_phone || '';
+            document.getElementById('newIdNumber').value = profileData.passenger_id || '';
+            document.getElementById('newEmail').value = profileData.passenger_email || '';
+        }
+
+        // --- Load Past Bookings for the User ---
+        async function loadPastBookings(userId) {
+            const pastBookingsList = document.getElementById('pastBookingsList');
+            pastBookingsList.innerHTML = '<p class="no-bookings-message">Loading past bookings...</p>';
+
+            try {
+                const bookingsCol = collection(firebaseDb, "bookings");
+                
+                // Try user_id first
+                const q = query(bookingsCol, where("user_id", "==", userId));
+                const querySnapshot = await getDocs(q);
+
+                let bookings = [];
+                querySnapshot.forEach((doc) => bookings.push({ id: doc.id, ...doc.data() }));
+
+                // If no bookings found with user_id, try passenger_email as fallback
+                if (bookings.length === 0) {
+                    const user = firebaseAuth.currentUser;
+                    if (user) {
+                        const emailQuery = query(bookingsCol, where("passenger_email", "==", user.email));
+                        const emailSnapshot = await getDocs(emailQuery);
+                        
+                        emailSnapshot.forEach((doc) => bookings.push({ id: doc.id, ...doc.data() }));
+                    }
+                }
+
+                if (bookings.length === 0) {
+                    pastBookingsList.innerHTML = '<p class="no-bookings-message">No past bookings found.</p>';
+                    return;
+                }
+
+                bookings.sort((a, b) => {
+                    const dateA = new Date(`${a.travel_date}T${a.bus_time.slice(0,2)}:${a.bus_time.slice(2)}:00`);
+                    const dateB = new Date(`${b.travel_date}T${b.bus_time.slice(0,2)}:${b.bus_time.slice(2)}:00`);
+                    return dateB - dateA;
+                });
+
+                pastBookingsList.innerHTML = '';
+                bookings.forEach(booking => {
+                    const bookingCard = document.createElement('div');
+                    bookingCard.classList.add('booking-card');
+                    const statusClass = booking.status.toLowerCase();
+                    bookingCard.innerHTML = `
+                        <p><strong>Ref:</strong> ${booking.booking_ref}</p>
+                        <p><strong>Route:</strong> ${booking.bus_route}</p>
+                        <p><strong>Date:</strong> ${booking.travel_date}</p>
+                        <p><strong>Time:</strong> ${booking.bus_time}</p>
+                        <p><strong>Seat:</strong> ${booking.seat_number}</p>
+                        <p><strong>Price:</strong> Ksh ${booking.price.toFixed(2)}</p>
+                        <p><strong>Status:</strong> <span class="status-badge ${statusClass}">${booking.status.toUpperCase()}</span></p>
+                    `;
+                    pastBookingsList.appendChild(bookingCard);
+                });
+
+            } catch (error) {
+                console.error("Error loading bookings:", error);
+                pastBookingsList.innerHTML = '<p class="no-bookings-message error">Error loading bookings: ' + error.message + '</p>';
+            }
+        }
+
+        // --- Update User Profile Data ---
+        async function updateProfile() {
+            const newFullName = document.getElementById('newFullName').value.trim();
+            const newPhoneNumber = document.getElementById('newPhoneNumber').value.trim();
+            const newIdNumber = document.getElementById('newIdNumber').value.trim();
+            const newEmail = document.getElementById('newEmail').value.trim();
+
+            const user = firebaseAuth.currentUser;
+            if (!user) {
+                displayMessage('profileMessage', 'You must be logged in to update.', 'error');
+                return;
+            }
+
+            try {
+                const userDocRef = doc(firebaseDb, "users", user.uid);
+                const updates = {};
+
+                if (newFullName) updates.passenger_name = newFullName;
+                if (newPhoneNumber) updates.passenger_phone = newPhoneNumber;
+                if (newIdNumber) updates.passenger_id = newIdNumber;
+                if (newEmail && newEmail !== user.email) {
+                    updates.passenger_email = newEmail;
+                    try {
+                        await updateEmailFirebase(user, newEmail); // keep Auth email in sync
+                    } catch (emailError) {
+                        if (emailError.code === 'auth/requires-recent-login') {
+                            displayMessage('profileMessage', 'Please log out and log in again before updating your email.', 'error');
+                            return;
+                        }
+                        throw emailError; // Re-throw other errors
+                    }
+                }
+
+                // Use setDoc with merge: true to create document if it doesn't exist
+                await setDoc(userDocRef, updates, { merge: true });
+
+                displayMessage('profileMessage', '✅ Profile updated successfully!', 'success');
+                await loadUserProfile(user);
+
+            } catch (error) {
+                console.error("Error updating profile:", error);
+                displayMessage('profileMessage', 'Update failed: ' + error.message, 'error');
+            }
+        }
+
+        // --- Logout Function ---
+        async function logout() {
+            try {
+                await signOutFirebase(firebaseAuth);
+                // onAuthStateChanged listener will handle UI updates
+                showCustomAlert('Logged out successfully!');
+                window.location.href = 'index.html'; // Redirect to home page after logout
+            } catch (error) {
+                console.error("An unexpected error occurred during logout:", error);
+                showCustomAlert('An unexpected error occurred during logout.');
+            }
+        }
+
+        // --- Update Authentication Links ---
+        function updateAuthLinks() {
+            if (window.currentUser) {
+                // User is logged in
+                loginRegisterLink.style.display = 'none';
+                myProfileLink.style.display = 'block';
+                logoutLink.style.display = 'block';
+
+                // Highlight My Profile link if on this page
+                if (window.location.pathname.includes('profile.html')) {
+                    myProfileLink.style.color = 'var(--accent-color)';
+                    myProfileLink.style.borderBottom = '2px solid var(--accent-color)';
+                } else {
+                    myProfileLink.style.color = 'white';
+                    myProfileLink.style.borderBottom = 'none';
+                }
+            } else {
+                // User is not logged in
+                loginRegisterLink.style.display = 'block';
+                myProfileLink.style.display = 'none';
+                logoutLink.style.display = 'none';
+            }
+        }
+
+        // --- General Email Validation ---
+        function validateEmail(email) {
+            const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            return re.test(String(email).toLowerCase());
+        }
+
+        // --- Custom Alert Modals (replaces browser's alert) ---
+        function showCustomAlert(message) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
+                align-items: center; z-index: 1001;
+            `;
+            modal.innerHTML = `
+                <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    <p style="margin-bottom: 20px; font-size: 1.1em;">${message}</p>
+                    <button style="background-color: var(--primary-color); color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.parentNode.parentNode.remove()">OK</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function displayMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            
+            // For warning messages, add a close button
+            if (type === 'warning') {
+                element.innerHTML = `
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.style.display='none'" 
+                            style="background: none; border: none; color: inherit; font-size: 1.2em; cursor: pointer; margin-left: 10px; float: right;">×</button>
+                `;
+            } else {
+                element.textContent = message;
+            }
+            
+            element.className = `message ${type}`; // Add type class (error or success)
+            element.style.display = 'block';
+            
+            // Don't auto-hide warnings
+            if (type === 'warning') return;
+            
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 5000);
+        }
+
+        // --- PDF Generation Function (reused from ticket-lookup.html, adjusted for direct booking object) ---
+        // This function needs to be global or accessible from loadPastBookings
+        async function downloadTicketFromBooking(bookingId) {
+            // Fetch the booking data directly for this specific ticket download
+            const bookingDocRef = doc(firebaseDb, "bookings", bookingId);
+            const docSnap = await getDoc(bookingDocRef);
+
+            if (!docSnap.exists()) {
+                console.error("Error fetching booking for PDF generation: No such document!");
+                showCustomAlert("Failed to retrieve booking details for PDF. Please try again.");
+                return;
+            }
+            const booking = { id: docSnap.id, ...docSnap.data() };
+
+            if (booking.status !== 'paid') {
+                showCustomAlert('Ticket can only be downloaded after payment is confirmed.');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            let y = 20;
+            const lineHeight = 7;
+            const leftMargin = 20;
+
+            // Define colors (matching CSS variables, directly from the CSS in the HTML)
+            const primaryColor = '#002d6b';
+            const accentColor = '#c69214';
+            const darkTextColor = '#1a1a1a';
+            const secondaryTextColor = '#555';
+
+
+            // --- 1. Header with Logo and QR Code ---
+            // Add Logo
+            const img = new Image();
+            img.src = 'mylogo.png'; // Ensure this path is correct
+            await new Promise((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => {
+                    console.error("Error loading logo image: Mylogo.png. Please ensure the file exists and the path is correct.");
+                    // Optionally, you can add a fallback or skip adding the image
+                    resolve(); // Resolve even on error to allow PDF generation to continue
+                };
+            });
+            if (img.complete && img.naturalWidth !== 0) { // Check if image loaded successfully
+                doc.addImage(img, 'PNG', 15, y, 40, 40); // x, y, width, height
+            } else {
+                console.warn("Logo image not loaded, skipping addition to PDF.");
+            }
+
+
+            // Title
+            doc.setFontSize(24);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(primaryColor);
+            doc.text("Prince Alex Travel Services", 60, y + 15);
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "normal");
+            doc.text("E-Ticket & Booking Confirmation", 60, y + 25);
+
+            // Generate QR Code
+            const qrCodeData = booking.booking_ref; // Data to encode in QR code
+            const qrCodeSize = 50; // Size of the QR code image
+
+            // Create a temporary div to render the QR code
+            const qrCodeDiv = document.createElement('div');
+            qrCodeDiv.style.display = 'none'; // Keep it hidden
+            document.body.appendChild(qrCodeDiv);
+
+            let qrCodeImgData = '';
+            try {
+                new QRCode(qrCodeDiv, {
+                    text: qrCodeData,
+                    width: qrCodeSize,
+                    height: qrCodeSize,
+                    colorDark : primaryColor, // Use company color for QR code
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+
+                // Wait a tiny bit for QR code to render to canvas/img
+                await new Promise(resolve => setTimeout(resolve, 50));
+                qrCodeImgData = qrCodeDiv.querySelector('canvas').toDataURL("image/png");
+
+            } catch (qrError) {
+                console.error("Error generating QR code:", qrError);
+            } finally {
+                // Clean up the temporary div
+                document.body.removeChild(qrCodeDiv);
+            }
+
+            if (qrCodeImgData) {
+                 doc.addImage(qrCodeImgData, 'PNG', 160, y, 40, 40); // x, y, width, height
+            } else {
+                console.warn("QR Code image data not generated, skipping addition to PDF.");
+            }
+
+
+            y += 55; // Move Y position down after header content
+
+            // --- Drawing the main ticket body container ---
+            doc.setDrawColor(primaryColor);
+            doc.setLineWidth(1.5);
+            doc.line(10, y, 200, y); // Horizontal line below header
+
+            y += 10; // Space after line
+
+            // --- 2. Booking Reference (Prominent) ---
+            doc.setFontSize(18);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(accentColor);
+            doc.text(`Booking Reference: ${booking.booking_ref}`, 20, y);
+            y += 15;
+
+            // --- 3. Passenger Details Section ---
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(primaryColor);
+            doc.text("Passenger Details:", 20, y);
+            y += 8;
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(darkTextColor);
+            doc.text(`Name: ${booking.passenger_name}`, 20, y); y += lineHeight;
+            doc.text(`Phone: ${booking.passenger_phone}`, 20, y); y += lineHeight;
+            doc.text(`Email: ${booking.passenger_email || 'N/A'}`, 20, y); y += 12;
+
+            // --- 4. Journey Details Section ---
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(primaryColor);
+            doc.text("Journey Details:", 20, y);
+            y += 8;
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(darkTextColor);
+            doc.text(`Route: ${booking.bus_route}`, 20, y); y += lineHeight;
+            doc.text(`Travel Date: ${booking.travel_date}`, 20, y); y += lineHeight;
+            doc.text(`Departure Time: ${booking.bus_time}`, 20, y); y += lineHeight;
+            doc.text(`Bus ID: ${booking.bus_id || 'N/A'}`, 20, y); y += lineHeight;
+            doc.text(`Seat Number: ${booking.seat_number}`, 20, y); y += 12;
+
+            // --- 5. Payment Summary Section ---
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(primaryColor);
+            doc.text("Payment Summary:", 20, y);
+            y += 8;
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(darkTextColor);
+            doc.text(`Amount: Ksh ${booking.price.toFixed(2)}`, 20, y); y += lineHeight;
+            doc.text(`Payment Status: ${booking.status.toUpperCase()}`, 20, y); y += 12;
+            doc.text(`Booking Date: ${new Date(booking.booking_date).toLocaleDateString()}`, 20, y); y += 12;
+
+            // --- 6. Special Note for PENDING Status ---
+            if (booking.status.toUpperCase() === 'PENDING') {
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(200, 0, 0); // Red color for warning
+                doc.text("NOTE: This ticket is PENDING PAYMENT. Please complete payment to validate.", 20, y);
+                y += 5;
+                doc.text("Contact support for assistance: +254 717 384 875", 20, y);
+                doc.setTextColor(darkTextColor); // Reset color
+                y += 15;
+            }
+
+            // --- 7. Footer ---
+            y = doc.internal.pageSize.height - 25; // Position footer from bottom
+            doc.setDrawColor(primaryColor);
+            doc.setLineWidth(0.5);
+            doc.line(10, y, 200, y); // Horizontal line above footer
+            y += 5;
+
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(darkTextColor);
+            doc.text("Prince Alex Travel Services | Email: senerwaalex@gmail.com | Phone: +254 717 384 875", doc.internal.pageSize.width / 2, y, { align: "center" });
+            y += 5;
+            doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, y, { align: "center" });
+
+
+            doc.save(`ticket-${booking.booking_ref}.pdf`);
+        }
+    </script>
+</body>
+</html>

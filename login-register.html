@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login / Register - Prince Alex Travel Services</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            sendPasswordResetEmail,
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc,
+            addDoc,
+            collection
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
+            authDomain: "princealextravel.firebaseapp.com",
+            projectId: "princealextravel",
+            storageBucket: "princealextravel.firebasestorage.app",
+            messagingSenderId: "947577729462",
+            appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Make Firebase instances globally accessible for inline scripts if needed,
+        // though it's better to keep logic within modules or pass them.
+        // For simplicity in this migration, we'll attach them to window.
+        window.firebaseApp = app;
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.sendPasswordResetEmail = sendPasswordResetEmail;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.setDoc = setDoc;
+        window.doc = doc;
+        window.addDoc = addDoc;
+        window.collection = collection;
+
+        // Initial Auth State Check
+        onAuthStateChanged(auth, (user) => {
+            // No automatic redirect - let users stay on login page if they want
+            // Redirect only happens after successful login in the login() function
+        });
+    </script>
+    <style>
+        /* Modern CSS Variables for Enhanced Design */
+        :root {
+            --primary-color: #1e3a8a; /* Modern deep blue */
+            --primary-light: #3b82f6; /* Lighter blue for accents */
+            --accent-color: #f59e0b; /* Modern amber/gold */
+            --accent-light: #fbbf24; /* Light amber */
+            --light-bg: #f8fafc; /* Clean light background */
+            --white: #ffffff;
+            --text-dark: #1e293b;
+            --text-light: #64748b;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+            --gradient-accent: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --border-radius: 12px;
+            --border-radius-lg: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1.5rem;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .container {
+            background: var(--white);
+            padding: 2.5rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-xl);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: var(--transition);
+        }
+        .container:hover {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+        .form-tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            background: #f1f5f9;
+            border-radius: var(--border-radius);
+            padding: 0.25rem;
+            gap: 0.25rem;
+        }
+        .tab-button {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-light);
+            background: transparent;
+            border: none;
+            border-radius: calc(var(--border-radius) - 0.25rem);
+            transition: var(--transition);
+            position: relative;
+        }
+        .tab-button.active {
+            background: var(--white);
+            color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+        }
+        .tab-button:hover:not(.active) {
+            color: var(--text-dark);
+            background: rgba(255,255,255,0.5);
+        }
+        .form-section {
+            padding: 1rem 0;
+        }
+        .hidden {
+            display: none;
+        }
+        h2 {
+            color: var(--text-dark);
+            margin-bottom: 2rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            transition: var(--transition);
+            background: var(--white);
+            box-sizing: border-box;
+        }
+        .form-group input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .form-group input:hover {
+            border-color: #cbd5e1;
+        }
+        button {
+            background: var(--gradient-primary);
+            color: var(--white);
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: var(--transition);
+            width: 100%;
+            margin-top: 1rem;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .message {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: 1px solid transparent;
+        }
+        .message.success {
+            background: #d1fae5;
+            color: var(--success);
+            border-color: #a7f3d0;
+        }
+        .message.error {
+            background: #fee2e2;
+            color: var(--error);
+            border-color: #fca5a5;
+        }
+        .message.warning {
+            background: #fef3c7;
+            color: var(--warning);
+            border-color: #fcd34d;
+        }
+        .password-strength {
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            text-align: center;
+            font-weight: 600;
+        }
+        .strength-weak {
+            color: var(--error);
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+        }
+        .strength-medium {
+            color: var(--warning);
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+        }
+        .strength-strong {
+            color: var(--success);
+            background: #d1fae5;
+            border: 1px solid #a7f3d0;
+        }
+        .forgot-password {
+            display: block;
+            margin-top: 1rem;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        .forgot-password:hover {
+            color: var(--accent-color);
+            text-decoration: underline;
+        }
+        /* Modern back home button */
+        .back-home-button {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: var(--white);
+            border: 2px solid #e2e8f0;
+            border-radius: 50%;
+            width: 3rem;
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            cursor: pointer;
+            transition: var(--transition);
+            z-index: 10;
+            box-shadow: var(--shadow-sm);
+        }
+        .back-home-button:hover {
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            .container {
+                padding: 2rem 1.5rem;
+                max-width: 100%;
+            }
+            .form-tabs {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .tab-button {
+                padding: 0.6rem 1rem;
+            }
+            h2 {
+                font-size: 1.25rem;
+            }
+            .form-group input {
+                padding: 0.6rem 0.8rem;
+            }
+            button {
+                padding: 0.6rem 1.5rem;
+                font-size: 0.9rem;
+            }
+            .back-home-button {
+                width: 2.5rem;
+                height: 2.5rem;
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1.5rem 1rem;
+            }
+            .form-group {
+                margin-bottom: 1rem;
+            }
+            .form-group input {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.85rem;
+            }
+            button {
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+            }
+            .message {
+                font-size: 0.8rem;
+                padding: 0.5rem 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Back Home Button - Moved outside the container -->
+    <button class="back-home-button" onclick="window.location.href='index.html'">
+        <i class="fas fa-arrow-left"></i>
+    </button>
+
+    <div class="container">
+        <div class="form-tabs">
+            <button class="tab-button active" id="loginTabBtn" onclick="showForm('login')">Login</button>
+            <button class="tab-button" id="registerTabBtn" onclick="showForm('register')">Register</button>
+            <button class="tab-button" id="resetTabBtn" onclick="showForm('reset')">Reset Password</button>
+        </div>
+
+        <div id="loginForm" class="form-section">
+            <h2>Login to Your Account</h2>
+            <div class="form-group">
+                <label for="loginEmail">Email:</label>
+                <input type="email" id="loginEmail" placeholder="Your Email" required oninput="validateInput(this, 'email')">
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">Password:</label>
+                <input type="password" id="loginPassword" placeholder="Your Password" required>
+            </div>
+            <p id="loginMessage" class="message hidden"></p>
+            <button onclick="login()">Login</button>
+            <a href="#" class="forgot-password" onclick="showForm('reset'); return false;">Forgot Password?</a>
+        </div>
+
+        <div id="registerForm" class="form-section hidden">
+            <h2>Create New Account</h2>
+            <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                Create your account with just email and password. You can complete your profile details later.
+            </p>
+            <div class="form-group">
+                <label for="registerEmail">Email:</label>
+                <input type="email" id="registerEmail" placeholder="Your Email" required oninput="validateInput(this, 'email')">
+            </div>
+            <div class="form-group">
+                <label for="registerPassword">Password:</label>
+                <input type="password" id="registerPassword" placeholder="Minimum 6 characters" required oninput="checkPasswordStrength()">
+                <p id="passwordStrength" class="password-strength hidden"></p>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password:</label>
+                <input type="password" id="confirmPassword" placeholder="Confirm Your Password" required oninput="checkPasswordMatch()">
+                <p id="passwordMatchStatus" class="password-strength hidden"></p>
+            </div>
+            <p id="registerMessage" class="message hidden"></p>
+            <button onclick="register()">Create Account</button>
+        </div>
+
+        <div id="resetForm" class="form-section hidden">
+            <h2>Reset Your Password</h2>
+            <p>Enter your email address and we'll send you a link to reset your password.</p>
+            <div class="form-group">
+                <label for="resetEmail">Email:</label>
+                <input type="email" id="resetEmail" placeholder="Your Email" required oninput="validateInput(this, 'email')">
+            </div>
+            <p id="resetMessage" class="message hidden"></p>
+            <button onclick="resetPassword()">Send Reset Link</button>
+        </div>
+    </div>
+
+    <script>
+        // Function to display messages (success/error)
+        function displayMessage(elementId, message, type, autoHide = true) {
+            const messageElement = document.getElementById(elementId);
+            messageElement.textContent = message;
+            messageElement.className = `message ${type}`;
+            messageElement.classList.remove('hidden');
+            if (autoHide) {
+                setTimeout(() => {
+                    messageElement.classList.add('hidden');
+                }, 5000); // Hide after 5 seconds
+            }
+        }
+
+        // --- Form Tab Switching ---
+        function showForm(formType) {
+            document.querySelectorAll('.form-section').forEach(form => {
+                form.classList.add('hidden');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(`${formType}Form`).classList.remove('hidden');
+            document.getElementById(`${formType}TabBtn`).classList.add('active');
+
+            // Clear messages when switching tabs
+            document.querySelectorAll('.message').forEach(msg => msg.classList.add('hidden'));
+        }
+
+        // --- Welcome Email Service (using same Firebase mail collection as index.html) ---
+        async function sendWelcomeEmail(userEmail) {
+            try {
+                // Create email document for 'mail' collection (same approach as index.html booking emails)
+                const emailDoc = {
+                    to: userEmail,
+                    message: {
+                        subject: "Welcome to Prince Alex Travel Services! 🚌",
+                        html: `
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta charset="utf-8">
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                <title>Welcome to Prince Alex Travel Services</title>
+                                <style>
+                                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                                    .header { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                                    .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+                                    .button { display: inline-block; background: #1e3a8a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+                                    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+                                    .highlight { background: #fef3c7; padding: 15px; border-radius: 5px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+                                </style>
+                            </head>
+                            <body>
+                                <div class="container">
+                                    <div class="header">
+                                        <h1>🚌 Welcome to Prince Alex Travel Services!</h1>
+                                        <p>Your account has been successfully created</p>
+                                    </div>
+                                    <div class="content">
+                                        <h2>Hello!</h2>
+                                        <p>Thank you for registering with Prince Alex Travel Services. We're excited to have you on board!</p>
+                                        
+                                        <div class="highlight">
+                                            <h3>📋 Next Steps:</h3>
+                                            <ol>
+                                                <li><strong>Log in</strong> to your account using your email and password</li>
+                                                <li><strong>Complete your profile</strong> by adding your personal details</li>
+                                                <li><strong>Start booking</strong> your bus tickets for seamless travel</li>
+                                            </ol>
+                                        </div>
+
+                                        <p>To get started, please log in to your account and complete your profile:</p>
+                                        <a href="https://travel.princealex.pro/login-register.html" class="button">Log In & Complete Profile</a>
+
+                                        <h3>🎯 What you can do:</h3>
+                                        <ul>
+                                            <li>✅ Book bus tickets online</li>
+                                            <li>✅ View your booking history</li>
+                                            <li>✅ Download e-tickets</li>
+                                            <li>✅ Manage your travel preferences</li>
+                                        </ul>
+
+                                        <p>If you have any questions or need assistance, please don't hesitate to contact us:</p>
+                                        <p><strong>📧 Email:</strong> senerwaalex@gmail.com<br>
+                                        <strong>📞 Phone:</strong> +254 717 384 875</p>
+                                    </div>
+                                    <div class="footer">
+                                        <p>© 2025 Prince Alex Digital. All rights reserved.</p>
+                                        <p>Nairobi, Kenya | Prince Alex Travel Services</p>
+                                    </div>
+                                </div>
+                            </body>
+                            </html>
+                        `
+                    }
+                };
+
+                // Add email record to the 'mail' collection (same as index.html booking emails)
+                await addDoc(collection(firebaseDb, "mail"), emailDoc);
+                console.log("✅ Welcome email queued successfully for:", userEmail);
+                return true;
+
+            } catch (error) {
+                console.error("❌ Error queuing welcome email:", error);
+                return false;
+            }
+        }
+
+        // --- User Registration ---
+        async function register() {
+            const email = document.getElementById('registerEmail').value.trim();
+            const password = document.getElementById('registerPassword').value.trim();
+
+            try {
+                // Create Firebase Auth account
+                const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+                const user = userCredential.user;
+
+                // Initialize Firestore user profile
+                await setDoc(doc(firebaseDb, "users", user.uid), {
+                    passenger_email: email,
+                    createdAt: new Date().toISOString()
+                });
+
+                console.log("✅ User profile initialized in Firestore:", user.uid);
+
+                // Send welcome email
+                const emailSent = await sendWelcomeEmail(email);
+                if (emailSent) {
+                    console.log("✅ Welcome email sent successfully");
+                } else {
+                    console.log("⚠️ Welcome email failed to send, but registration was successful");
+                }
+
+                // Redirect to login page with success parameter
+                window.location.href = 'login-register.html?registered=1';
+
+            } catch (error) {
+                console.error("❌ Registration failed:", error);
+                displayMessage('registerMessage', '❌ ' + error.message, 'error');
+            }
+        }
+
+        // --- User Login ---
+        async function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!validateEmail(email)) {
+                displayMessage('loginMessage', '❌ Please enter a valid email address.', 'error');
+                return;
+            }
+
+            try {
+                await signInWithEmailAndPassword(firebaseAuth, email, password);
+                displayMessage('loginMessage', '✅ Login successful! Redirecting...', 'success', false);
+
+                // Redirect to profile page after short delay
+                setTimeout(() => {
+                    window.location.href = 'profile.html?newUser=1';
+                }, 1500);
+
+            } catch (error) {
+                displayMessage('loginMessage', '❌ Login failed: ' + error.message, 'error');
+            }
+        }
+
+        // --- Password Reset ---
+        async function resetPassword() {
+            const email = document.getElementById('resetEmail').value.trim();
+
+            if (!validateEmail(email)) {
+                displayMessage('resetMessage', 'Please enter a valid email address.', 'error');
+                return;
+            }
+
+            try {
+                await sendPasswordResetEmail(firebaseAuth, email);
+                displayMessage('resetMessage', 'If an account with this email exists, a password reset link has been sent to it.', 'success');
+            } catch (error) {
+                displayMessage('resetMessage', 'Password reset failed: ' + error.message, 'error');
+            }
+        }
+
+        // --- Password Strength/Match Checks ---
+        function checkPasswordStrength() {
+            const passwordInput = document.getElementById('registerPassword');
+            const passwordStrength = document.getElementById('passwordStrength');
+            const password = passwordInput.value;
+
+            let strength = 0;
+            if (password.length >= 6) strength += 1;
+            if (password.match(/[a-z]/)) strength += 1;
+            if (password.match(/[A-Z]/)) strength += 1;
+            if (password.match(/[0-9]/)) strength += 1;
+            if (password.match(/[^a-zA-Z0-9]/)) strength += 1;
+
+            passwordStrength.classList.remove('hidden');
+            if (strength < 3) {
+                passwordStrength.textContent = 'Weak';
+                passwordStrength.className = 'password-strength strength-weak';
+            } else if (strength < 5) {
+                passwordStrength.textContent = 'Medium';
+                passwordStrength.className = 'password-strength strength-medium';
+            } else {
+                passwordStrength.textContent = 'Strong';
+                passwordStrength.className = 'password-strength strength-strong';
+            }
+            checkPasswordMatch(); // Also check match when strength changes
+        }
+
+        function checkPasswordMatch() {
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const passwordMatchStatus = document.getElementById('passwordMatchStatus');
+
+            passwordMatchStatus.classList.remove('hidden');
+            if (confirmPassword === '') {
+                passwordMatchStatus.classList.add('hidden'); // Hide if confirm is empty
+            } else if (password === confirmPassword) {
+                passwordMatchStatus.textContent = 'Passwords match!';
+                passwordMatchStatus.className = 'password-strength strength-strong';
+            } else {
+                passwordMatchStatus.textContent = 'Passwords do not match!';
+                passwordMatchStatus.className = 'password-strength strength-weak';
+            }
+        }
+
+        // General email validation helper
+        function validateEmail(email) {
+            const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            return re.test(String(email).toLowerCase());
+        }
+
+        function validateInput(inputElement, type) {
+            if (type === 'email' && !validateEmail(inputElement.value)) {
+                // Not setting custom validity directly, using displayMessage for consistency
+            } else {
+                inputElement.setCustomValidity('');
+            }
+        }
+
+        // Check for registration success parameter
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('registered')) {
+                // Show success banner and switch to login form
+                displayMessage('loginMessage', '✅ Account created successfully! A welcome email has been sent to your inbox. Please log in.', 'success', false);
+                showForm('login');
+            }
+        });
+    </script>
+</body>
+</html>

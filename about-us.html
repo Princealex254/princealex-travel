@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - Prince Alex Travel Services</title>
+    <meta name="description" content="Learn more about Prince Alex Digital Travel Services, our vision for comfortable and safe bus travel, our modern fleet, and our founder Alex Senerwa Keverenge. Discover why we are the leading digital travel service provider in Kenya.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
+            authDomain: "princealextravel.firebaseapp.com",
+            projectId: "princealextravel",
+            storageBucket: "princealextravel.firebasestorage.app",
+            messagingSenderId: "947577729462",
+            appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Make Firebase instances globally accessible
+        window.firebaseAuth = auth;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.signOutFirebase = signOut;
+
+        // Global variable for current user, populated by onAuthStateChanged
+        window.currentUser = null;
+
+        // Listen for authentication state changes
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in
+                window.currentUser = user;
+            } else {
+                // User is signed out
+                window.currentUser = null;
+            }
+            updateAuthLinks(); // Update navigation links based on auth state
+        });
+    </script>
+    <style>
+        /* Add specific styles for about-us.html if needed, or reuse styles from index.html */
+        :root {
+            --primary-color: #1e3a8a;
+            --accent-color: #f59e0b;
+            --accent-light: #fbbf24;
+            --light-bg: #f8fafc;
+            --text-dark: #1e293b;
+            --text-light: #ffffff;
+            --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, #3b82f6 100%);
+            --gradient-accent: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --border-radius: 0.75rem;
+            --border-radius-lg: 1rem;
+        }
+        body {
+            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: var(--text-dark);
+            line-height: 1.7;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--text-light);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-xl);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1, h2 {
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+        h2 {
+            font-size: 2rem;
+            margin-top: 2.5rem;
+        }
+        p {
+            margin-bottom: 1rem;
+            text-align: justify;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            opacity: 0.9;
+        }
+        .founder-info {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: var(--light-bg);
+            padding: 2rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+        .founder-info img {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--accent-color);
+            box-shadow: var(--shadow-lg);
+            transition: var(--transition);
+        }
+        .founder-info img:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-xl);
+        }
+        .founder-details {
+            max-width: 500px;
+        }
+        .founder-details h3 {
+            background: var(--gradient-accent);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .bus-info img {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--border-radius-lg);
+            margin-top: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            transition: var(--transition);
+        }
+        .bus-info img:hover {
+            transform: scale(1.02);
+            box-shadow: var(--shadow-xl);
+        }
+        .navbar {
+            background: var(--gradient-primary);
+            padding: 1rem 0;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        .navbar-container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 0 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+        .logo {
+            background: var(--text-light);
+            padding: 0.75rem 1rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+        }
+        .logo:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        .logo img {
+            height: 3rem;
+            display: block;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+        .nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            position: relative;
+            padding: 0.5rem 1rem;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+        }
+        .nav-links a::after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 2px;
+            background: var(--accent-light);
+            transition: var(--transition);
+            position: absolute;
+            bottom: 0.25rem;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .nav-links a:hover::after {
+            width: 80%;
+        }
+        .nav-links a:hover {
+            color: var(--accent-light);
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Hamburger Menu Icon */
+        .menu-toggle {
+            display: none; /* Hidden by default, shown on mobile */
+            flex-direction: column;
+            justify-content: space-around;
+            width: 30px;
+            height: 25px;
+            cursor: pointer;
+            z-index: 10001; /* Above nav links when open */
+        }
+
+        .menu-toggle .bar {
+            width: 100%;
+            height: 3px;
+            background-color: white;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        /* Animation for hamburger to close icon */
+        .menu-toggle.open .bar:nth-child(1) {
+            transform: translateY(11px) rotate(45deg);
+        }
+        .menu-toggle.open .bar:nth-child(2) {
+            opacity: 0;
+        }
+        .menu-toggle.open .bar:nth-child(3) {
+            transform: translateY(-11px) rotate(-45deg);
+        }
+
+        /* Mobile Navigation Overlay */
+        @media (max-width: 768px) {
+            .nav-links { /* Target the .nav-links directly for mobile styles */
+                flex-direction: column;
+                position: absolute; /* Position relative to .navbar-container */
+                top: 100%; /* Place it directly below the navbar */
+                left: 0;
+                width: 100%; /* Take full width of the container */
+                background-color: var(--primary-color);
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                overflow: hidden; /* Crucial for max-height transition */
+                max-height: 0; /* Initially collapsed */
+                transition: max-height 0.3s ease-in-out; /* Smooth transition for height */
+                z-index: 9999; /* Ensure it's above other content */
+            }
+
+            .nav-links.open { /* This class will be toggled by JS */
+                max-height: 500px; /* Expand to show content (adjust as needed, ensure it's larger than actual content height) */
+            }
+
+            .nav-links a {
+                padding: 15px 20px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                text-align: left;
+                width: 100%;
+                font-size: 1.1em;
+            }
+            .nav-links a:last-child {
+                border-bottom: none;
+            }
+
+            .menu-toggle {
+                display: flex; /* Show hamburger icon */
+            }
+            /* Reset desktop styles for nav-links on mobile */
+            .navbar .nav-links {
+                display: flex; /* Keep flex for column layout */
+                gap: 0; /* Remove gap for stacked links */
+            }
+        }
+
+        .footer {
+            background: var(--gradient-primary);
+            color: var(--text-light);
+            padding: 2rem 0;
+            text-align: center;
+            font-size: 0.9rem;
+            margin-top: 3rem;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .footer-content {
+            max-width: 1200px;
+            margin: auto;
+            padding: 0 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            gap: 2rem;
+            text-align: left;
+        }
+        .footer-section {
+            flex: 1;
+            min-width: 200px;
+        }
+        .footer-section h4 {
+            color: var(--accent-light);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .footer-section a,
+        .footer-section p,
+        .footer-section ul li {
+            display: block;
+            color: var(--text-light);
+            margin: 0.5rem 0;
+            text-decoration: none;
+            transition: var(--transition);
+            opacity: 0.9;
+        }
+        .footer-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .footer-section a:hover {
+            color: var(--accent-light);
+            opacity: 1;
+        }
+        .footer-bottom {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        /* Added Styles for new sections */
+        .why-choose-us ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .why-choose-us ul li {
+            background: var(--text-light);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            text-align: left;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .why-choose-us ul li:hover {
+            transform: translateY(-0.5rem);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--accent-color);
+        }
+        .why-choose-us ul li i {
+            color: var(--accent-color);
+            font-size: 1.5rem;
+            margin-top: 0.25rem;
+            flex-shrink: 0;
+        }
+        .why-choose-us ul li h3 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        .why-choose-us ul li p {
+            margin: 0;
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        .testimonial-section {
+            margin-top: 2.5rem;
+            background: var(--light-bg);
+            padding: 2rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .testimonial-section blockquote {
+            font-style: italic;
+            margin: 0 auto 1rem auto;
+            max-width: 700px;
+            color: var(--text-dark);
+            font-size: 1.2rem;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        .testimonial-section cite {
+            display: block;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin-top: 0.5rem;
+            font-size: 1rem;
+        }
+        .cta-section {
+            text-align: center;
+            margin-top: 2.5rem;
+            padding: 2rem;
+            background: var(--gradient-primary);
+            color: var(--text-light);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+        }
+        .cta-section h3 {
+            color: var(--accent-light);
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .cta-section .button {
+            display: inline-block;
+            background: var(--gradient-accent);
+            color: var(--primary-color);
+            padding: 1rem 2rem;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: var(--transition);
+            box-shadow: var(--shadow-md);
+            border: none;
+            cursor: pointer;
+        }
+        .cta-section .button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            background: var(--accent-light);
+        }
+
+
+        @media (max-width: 768px) {
+            .navbar-container {
+                flex-direction: row; /* Keep logo and hamburger on one row */
+                justify-content: space-between;
+                align-items: center;
+                position: relative; /* Needed for absolute positioning of nav-links */
+            }
+            .nav-links {
+                /* This is the mobile menu style */
+                flex-direction: column;
+                position: absolute; /* Position relative to .navbar-container */
+                top: 100%; /* Place it directly below the navbar */
+                left: 0;
+                width: 100%; /* Take full width of the container */
+                background: var(--gradient-primary);
+                box-shadow: var(--shadow-lg);
+                overflow: hidden; /* Crucial for max-height transition */
+                max-height: 0; /* Initially collapsed */
+                transition: max-height 0.3s ease-in-out; /* Smooth transition for height */
+                z-index: 9999; /* Ensure it's above other content */
+                border-radius: 0 0 1rem 1rem;
+            }
+
+            .nav-links.open { /* This class will be toggled by JS */
+                max-height: 500px; /* Expand to show content (adjust as needed, ensure it's larger than actual content height) */
+            }
+
+            /* Ensure desktop nav-links are hidden on mobile */
+            .navbar .nav-links:not(.open) {
+                display: none; /* Hide when not open to prevent layout issues */
+            }
+
+            .menu-toggle {
+                display: flex; /* Show hamburger icon */
+            }
+            .container {
+                margin: 1rem auto;
+                padding: 1.5rem;
+            }
+            h1 {
+                font-size: 2rem;
+                margin-bottom: 1.5rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+                margin-bottom: 1rem;
+                margin-top: 2rem;
+            }
+            p {
+                margin-bottom: 0.75rem;
+                font-size: 1rem;
+            }
+            .founder-info {
+                flex-direction: column;
+                gap: 1rem;
+                margin-top: 1.5rem;
+                padding: 1.5rem;
+            }
+            .founder-info img {
+                width: 150px;
+                height: 150px;
+            }
+            .why-choose-us ul {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            .why-choose-us ul li {
+                padding: 1rem;
+            }
+            .testimonial-section {
+                padding: 1.5rem;
+                margin-top: 2rem;
+            }
+            .testimonial-section blockquote {
+                font-size: 1.1rem;
+            }
+            .cta-section {
+                padding: 1.5rem;
+                margin-top: 2rem;
+            }
+            .cta-section .button {
+                padding: 0.75rem 1.5rem;
+                font-size: 1rem;
+            }
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            .footer-section a,
+            .footer-section p,
+            .footer-section ul li {
+                display: block;
+                margin: 0.25rem 0;
+            }
+            .footer-section h4 {
+                margin-bottom: 0.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            /* Further adjustments for very small screens if needed,
+               but the 768px breakpoint often handles most mobile devices well. */
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="logo">
+                <img src="mylogo.png" alt="Prince Alex Logo" />
+            </div>
+            <!-- Hamburger Menu Icon -->
+            <div class="menu-toggle" id="mobile-menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+            <nav class="nav-links" id="main-nav">
+                <a href="index.html">Home</a>
+                <a href="about-us.html">About Us</a>
+                <a href="#contact-us">Contact</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="admin.html">Admin Login</a>
+                <a href="profile.html" id="myProfileLink" style="display:none;">My Profile</a>
+                <a href="login-register.html" id="loginRegisterLink">Login / Register</a>
+                <a href="#" id="logoutLink" style="display:none;">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>About Prince Alex Digital Travel Services</h1>
+
+        <section class="company-overview">
+            <h2>Our Vision & Mission</h2>
+            <p>At Prince Alex Digital Travel Services, we are committed to revolutionizing bus travel by providing a seamless, comfortable, and safe experience for all our passengers. Our vision is to be the leading digital travel service provider, connecting communities with reliable and accessible transportation solutions across Kenya and beyond.</p>
+            <p>Our mission is to offer unparalleled convenience and peace of mind from the moment you plan your journey to your arrival. We achieve this by leveraging cutting-edge technology to simplify your booking process, ensuring transparent pricing, and providing a wide range of routes tailored to your needs. Your comfort and safety are our highest priorities.</p>
+        </section>
+
+        <section class="why-choose-us">
+            <h2>Why Choose Us?</h2>
+            <ul>
+                <li>
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <h3>Reliability You Can Trust</h3>
+                        <p>We pride ourselves on punctuality and consistent service, ensuring you reach your destination on time, every time.</p>
+                    </div>
+                </li>
+                <li>
+                    <i class="fas fa-couch"></i>
+                    <div>
+                        <h3>Unmatched Comfort</h3>
+                        <p>Travel in ergonomically designed seats with ample legroom and fully air-conditioned cabins for a relaxed journey.</p>
+                    </div>
+                </li>
+                <li>
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <h3>Safety First</h3>
+                        <p>Our modern fleet undergoes rigorous maintenance, and our drivers are highly trained professionals dedicated to your security.</p>
+                    </div>
+                </li>
+                <li>
+                    <i class="fas fa-laptop-code"></i>
+                    <div>
+                        <h3>Digital Convenience</h3>
+                        <p>Enjoy effortless online booking, easy ticket lookup, and seamless digital services at your fingertips.</p>
+                    </div>
+                </li>
+                 <li>
+                    <i class="fas fa-headset"></i>
+                    <div>
+                        <h3>Dedicated Customer Support</h3>
+                        <p>Our friendly and knowledgeable team is always ready to assist you with any inquiries or travel needs.</p>
+                    </div>
+                </li>
+                 <li>
+                    <i class="fas fa-route"></i>
+                    <div>
+                        <h3>Extensive Route Network</h3>
+                        <p>Connecting communities across Kenya with a wide array of routes designed to meet diverse travel requirements.</p>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <section class="the-bus">
+            <h2>Our Modern Fleet</h2>
+            <p>Our fleet consists of modern, well-maintained buses designed with passenger comfort and safety in mind. Each bus is equipped with:</p>
+            <ul>
+                <li><strong><i class="fas fa-chair"></i> Comfortable Seating:</strong> Ergonomically designed seats with ample legroom for a relaxed journey.</li>
+                <li><strong><i class="fas fa-snowflake"></i> Air Conditioning:</strong> Fully air-conditioned cabins to ensure a pleasant environment regardless of external weather.</li>
+                <li><strong><i class="fas fa-film"></i> On-board Entertainment:</strong> Some buses may offer entertainment options to make your trip enjoyable.</li>
+                <li><strong><i class="fas fa-road"></i> Safety Features:</strong> All vehicles undergo regular maintenance checks and are fitted with advanced safety features to comply with the highest standards. Our drivers are highly trained and experienced professionals dedicated to your safety.</li>
+            </ul>
+            <p>We are continuously upgrading our fleet to incorporate the latest advancements in travel technology and passenger amenities.</p>
+            <div class="bus-info">
+                <img src="Bus2.png" alt="Prince Alex Modern Bus" style="width: 100%; max-width: 600px; display: block; margin: 20px auto;">
+                <p style="text-align: center; font-style: italic;">A glimpse of our comfortable and modern buses.</p>
+            </div>
+        </section>
+
+        <section class="founder-section">
+            <h2>Meet the Founder: Alex Senerwa Keverenge</h2>
+            <div class="founder-info">
+                <img src="Alex_Senerwa.jpeg" alt="Alex Senerwa Keverenge">
+                <div class="founder-details">
+                    <h3>Alex Senerwa Keverenge</h3>
+                    <p>Prince Alex Digital Travel Services was founded by <strong>Alex Senerwa Keverenge</strong>, a visionary entrepreneur with a passion for transforming the transportation industry. With a deep understanding of customer needs and a commitment to innovation, Alex embarked on this journey to create a travel service that stands for reliability, comfort, and digital convenience.</p>
+                    <p>His dedication to excellence and his belief in harnessing technology to improve everyday lives are the driving forces behind our company's mission. Alex envisioned a future where booking bus tickets is effortless, and every journey is an experience to remember.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="testimonial-section">
+            <h2>What Our Passengers Say</h2>
+            <blockquote>
+                "Booking with Prince Alex Digital was incredibly easy, and the journey was so comfortable. I highly recommend them for anyone looking for reliable travel!"
+            </blockquote>
+            <cite>- Mary Wanjiku, Frequent Traveler</cite>
+            <blockquote>
+                "The bus was clean, and the driver was professional. It's great to have such a trustworthy service available."
+            </blockquote>
+            <cite>- David Ochieng, Business Commuter</cite>
+        </section>
+
+        <section class="cta-section">
+            <h3>Ready for Your Next Journey?</h3>
+            <p>Experience the comfort, reliability, and convenience of Prince Alex Digital Travel Services.</p>
+            <a href="index.html" class="button">Book Your Ticket Now</a>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section" id="contact-us">
+                <h4>Contact Us</h4>
+                <p>Email: senerwaalex@gmail.com</p>
+                <p>Phone: +254 717 384 875</p>
+                <p>Location: Nairobi, Kenya</p>
+            </div>
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <a href="index.html">Home</a>
+                <a href="about-us.html">About Us</a>
+                <a href="ticket-lookup.html">Print Ticket</a>
+                <a href="admin.html">Admin Login</a>
+            </div>
+            <div class="footer-section">
+                <h4>Follow Us</h4>
+                <a href="#">Facebook</a>
+                <a href="#">Instagram</a>
+                <a href="#">Twitter</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Prince Alex Digital. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuToggle = document.getElementById('mobile-menu');
+            const mainNav = document.getElementById('main-nav');
+
+            if (mobileMenuToggle && mainNav) {
+                mobileMenuToggle.addEventListener('click', function () {
+                    this.classList.toggle('open');
+                    mainNav.classList.toggle('open');
+                });
+
+                // Close mobile menu when a link is clicked
+                mainNav.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', () => {
+                        mobileMenuToggle.classList.remove('open');
+                        mainNav.classList.remove('open');
+                    });
+                });
+            }
+        });
+
+
+        // --- Update Authentication Links ---
+        function updateAuthLinks() {
+            const myProfileLink = document.getElementById('myProfileLink');
+            const loginRegisterLink = document.getElementById('loginRegisterLink');
+            const logoutLink = document.getElementById('logoutLink');
+
+            if (window.currentUser) {
+                // User is logged in
+                loginRegisterLink.style.display = 'none';
+                myProfileLink.style.display = 'block';
+                logoutLink.style.display = 'block';
+            } else {
+                // User is not logged in
+                loginRegisterLink.style.display = 'block';
+                myProfileLink.style.display = 'none';
+                logoutLink.style.display = 'none';
+            }
+        }
+
+        // --- Logout Function ---
+        async function logout() {
+            try {
+                await window.signOutFirebase(window.firebaseAuth);
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+
+        // Add logout event listener
+        document.addEventListener('DOMContentLoaded', () => {
+            const logoutLink = document.getElementById('logoutLink');
+            if (logoutLink) {
+                logoutLink.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await logout();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
