@@ -294,6 +294,9 @@
             text-align: center;
             position: relative;
             overflow: hidden;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
             /* Modern hero section with enhanced styling */
         }
         .hero::before {
@@ -305,15 +308,97 @@
             bottom: 0;
             background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
             opacity: 0.3;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .hero-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .hero-waves {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z' fill='rgba(255,255,255,0.1)' fill-opacity='0.3'/%3E%3C/svg%3E") repeat-x;
+            animation: wave 20s linear infinite;
+        }
+
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-1200px); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
         }
         .hero-content {
             position: relative;
-            z-index: 1;
+            z-index: 2;
             max-width: 800px;
             margin: 0 auto;
         }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-button.primary {
+            background: var(--accent-color);
+            color: var(--white);
+            box-shadow: 0 4px 15px rgba(245, 209, 4, 0.3);
+        }
+
+        .cta-button.primary:hover {
+            background: #d4b800;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 209, 4, 0.4);
+        }
+
+        .cta-button.secondary {
+            background: transparent;
+            color: var(--white);
+            border: 2px solid var(--white);
+        }
+
+        .cta-button.secondary:hover {
+            background: var(--white);
+            color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .cta-button i {
+            font-size: 1.2rem;
+        }
         .hero h1 {
-            font-size: 3.5rem;
+            font-size: clamp(2.5rem, 5vw, 3.5rem);
             font-weight: 700;
             margin-bottom: 1.5rem;
             line-height: 1.2;
@@ -321,14 +406,14 @@
             /* Enhanced main heading */
         }
         .hero h2 {
-            font-size: 1.5rem;
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
             font-weight: 400;
             margin-bottom: 1rem;
             color: var(--accent-light);
             /* Subtitle styling */
         }
         .hero p {
-            font-size: 1.25rem;
+            font-size: clamp(1rem, 2.5vw, 1.25rem);
             opacity: 0.95;
             line-height: 1.6;
             margin-bottom: 2rem;
@@ -577,6 +662,166 @@
         .footer-section {
             flex: 1;
             min-width: 200px;
+        }
+
+        .contact-info p {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .contact-info i {
+            color: var(--accent-color);
+            width: 16px;
+        }
+
+        .quick-contact {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .contact-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .contact-btn.whatsapp {
+            background: #25D366;
+            color: white;
+        }
+
+        .contact-btn.whatsapp:hover {
+            background: #1ea952;
+            transform: translateY(-2px);
+        }
+
+        .contact-btn.call {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .contact-btn.call:hover {
+            background: #001c44;
+            transform: translateY(-2px);
+        }
+
+        .social-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .social-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            color: var(--text-light);
+        }
+
+        .social-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .social-link.facebook:hover {
+            color: #1877F2;
+        }
+
+        .social-link.instagram:hover {
+            color: #E4405F;
+        }
+
+        .social-link.twitter:hover {
+            color: #1DA1F2;
+        }
+
+        .newsletter-form {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .newsletter-form input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--white);
+            font-size: 0.9rem;
+        }
+
+        .newsletter-form input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .newsletter-form button {
+            padding: 0.75rem 1rem;
+            background: var(--accent-color);
+            color: var(--white);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .newsletter-form button:hover {
+            background: #d4b800;
+            transform: translateY(-2px);
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0, 45, 107, 0.1);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-spinner p {
+            color: var(--text-dark);
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .hidden {
+            display: none !important;
         }
         .footer-section h4 {
             color: var(--accent-color);
@@ -1191,10 +1436,23 @@
     </header>
 
     <section class="hero">
+        <div class="hero-background">
+            <div class="hero-waves"></div>
+        </div>
         <div class="hero-content">
             <h1>Welcome to Prince Alex Digital Travel Services</h1>
             <h2>Travel with Comfort and Safety</h2>
             <p>Your journey, our priority. Book your bus tickets online with Prince Alex Travel Services for a seamless experience.</p>
+            <div class="hero-actions">
+                <button class="cta-button primary" onclick="scrollToBooking()">
+                    <i class="fas fa-ticket-alt"></i>
+                    Book Now
+                </button>
+                <button class="cta-button secondary" onclick="scrollToContact()">
+                    <i class="fas fa-phone"></i>
+                    Contact Us
+                </button>
+            </div>
         </div>
     </section>
 
@@ -1245,7 +1503,12 @@
         </div>
     </section>
 
-    <section class="results-section" id="results"></section>
+    <section class="results-section" id="results">
+        <div id="loadingSpinner" class="loading-spinner hidden">
+            <div class="spinner"></div>
+            <p>Searching for buses...</p>
+        </div>
+    </section>
     <section class="gallery">
         <div class="gallery-container">
             <h2>Our Travel Experience</h2>
@@ -1261,9 +1524,21 @@
         <div class="footer-content">
             <div class="footer-section" id="contact-us">
                 <h4>Contact Us</h4>
-                <p>Email: senerwaalex@gmail.com</p>
-                <p>Phone: +254 717 384 875</p>
-                <p>Location: Nairobi, Kenya</p>
+                <div class="contact-info">
+                    <p><i class="fas fa-envelope"></i> senerwaalex@gmail.com</p>
+                    <p><i class="fas fa-phone"></i> +254 717 384 875</p>
+                    <p><i class="fas fa-map-marker-alt"></i> Nairobi, Kenya</p>
+                </div>
+                <div class="quick-contact">
+                    <a href="tel:+254717384875" class="contact-btn whatsapp">
+                        <i class="fab fa-whatsapp"></i>
+                        Call Now
+                    </a>
+                    <a href="https://wa.me/254717384875" class="contact-btn call" target="_blank">
+                        <i class="fas fa-phone"></i>
+                        WhatsApp
+                    </a>
+                </div>
             </div>
             <div class="footer-section">
                 <h4>Quick Links</h4>
@@ -1274,9 +1549,31 @@
             </div>
             <div class="footer-section">
                 <h4>Follow Us</h4>
-                <a href="#">Facebook</a>
-                <a href="#">Instagram</a>
-                <a href="#">Twitter</a>
+                <div class="social-links">
+                    <a href="#" class="social-link facebook">
+                        <i class="fab fa-facebook-f"></i>
+                        Facebook
+                    </a>
+                    <a href="#" class="social-link instagram">
+                        <i class="fab fa-instagram"></i>
+                        Instagram
+                    </a>
+                    <a href="#" class="social-link twitter">
+                        <i class="fab fa-twitter"></i>
+                        Twitter
+                    </a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4>Newsletter</h4>
+                <p>Stay updated with our latest offers and travel news!</p>
+                <form class="newsletter-form" onsubmit="event.preventDefault(); subscribeNewsletter();">
+                    <input type="email" placeholder="Enter your email" required>
+                    <button type="submit">
+                        <i class="fas fa-paper-plane"></i>
+                        Subscribe
+                    </button>
+                </form>
             </div>
         </div>
         <div class="footer-bottom">
@@ -1459,10 +1756,14 @@
             const to = document.getElementById('to').value;
             const date = document.getElementById('travelDate').value;
             const resultsContainer = document.getElementById('results');
-            resultsContainer.innerHTML = '<h2>Search Results</h2>';
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            // Show loading spinner
+            loadingSpinner.classList.remove('hidden');
             resultsContainer.classList.add('active'); // Show results section
 
             if (from === to) {
+                loadingSpinner.classList.add('hidden');
                 displayCustomMessage('Please choose different origin and destination.');
                 return;
             }
@@ -1482,6 +1783,7 @@
                 });
 
                 if (buses.length === 0) {
+                    loadingSpinner.classList.add('hidden');
                     resultsContainer.innerHTML += `<p style="text-align: center;">No available buses for the route from <strong>${from}</strong> to <strong>${to}</strong> on <strong>${date}</strong>.</p>`;
                     return;
                 }
@@ -1528,8 +1830,10 @@
                 });
 
                 attachBookNowListeners();
+                loadingSpinner.classList.add('hidden');
             } catch (error) {
                 console.error('Error fetching buses:', error.message);
+                loadingSpinner.classList.add('hidden');
                 resultsContainer.innerHTML += `<p style="color: red; text-align: center;">Error fetching buses: ${error.message}</p>`;
             }
         }
@@ -2066,6 +2370,34 @@
             const chatInput = document.getElementById('chatInput');
             chatInput.value = message;
             handleChatInput();
+        }
+
+        // Hero CTA button functions
+        function scrollToBooking() {
+            document.querySelector('.booking').scrollIntoView({ 
+                behavior: 'smooth' 
+            });
+        }
+
+        function scrollToContact() {
+            document.querySelector('#contact-us').scrollIntoView({ 
+                behavior: 'smooth' 
+            });
+        }
+
+        // Newsletter subscription function
+        function subscribeNewsletter() {
+            const emailInput = document.querySelector('.newsletter-form input');
+            const email = emailInput.value.trim();
+            
+            if (!email) {
+                displayCustomMessage('Please enter a valid email address.');
+                return;
+            }
+            
+            // Simulate newsletter subscription
+            displayCustomMessage('Thank you for subscribing to our newsletter! You\'ll receive updates about our latest offers and travel news.');
+            emailInput.value = '';
         }
 
         // Fallback response function for when AI API is not available
