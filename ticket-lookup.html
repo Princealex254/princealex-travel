@@ -160,13 +160,16 @@
 
         /* Hamburger Menu Icon */
         .menu-toggle {
-            display: none; /* Hidden by default, shown on mobile */
+            display: none;
             flex-direction: column;
             justify-content: space-around;
             width: 30px;
             height: 25px;
             cursor: pointer;
-            z-index: 10001; /* Above nav links when open */
+            z-index: 10001;
+            background: none;
+            border: none;
+            padding: 0;
         }
 
         .menu-toggle .bar {
@@ -175,6 +178,7 @@
             background-color: white;
             border-radius: 5px;
             transition: all 0.3s ease;
+            transform-origin: center;
         }
 
         /* Animation for hamburger to close icon */
@@ -188,28 +192,30 @@
             transform: translateY(-11px) rotate(-45deg);
         }
 
-        /* Mobile Navigation Overlay */
+        /* Mobile Navigation */
         @media (max-width: 768px) {
-            .nav-links { /* Target the .nav-links directly for mobile styles */
-                flex-direction: column;
-                position: absolute; /* Position relative to .navbar-container */
-                top: 100%; /* Place it directly below the navbar */
+            .menu-toggle {
+                display: flex;
+            }
+
+            .nav-links {
+                position: absolute;
+                top: 100%;
                 left: 0;
-                width: 100%; /* Take full width of the container */
-                background-color: var(--primary-color);
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                overflow: hidden; /* Crucial for max-height transition */
-                max-height: 0; /* Initially collapsed */
-                transition: max-height 0.3s ease-in-out; /* Smooth transition for height */
-                z-index: 9999; /* Ensure it's above other content */
-                display: flex; /* Ensure it's always flex on mobile for transitions to work */
+                width: 100%;
+                background: var(--gradient-primary);
+                box-shadow: var(--shadow-lg);
+                flex-direction: column;
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease-in-out;
+                z-index: 9999;
+                border-radius: 0 0 1rem 1rem;
             }
 
-            .nav-links.open { /* This class will be toggled by JS */
-                max-height: 500px; /* Expand to show content (adjust as needed, ensure it's larger than actual content height) */
+            .nav-links.open {
+                max-height: 500px;
             }
-
-            /* REMOVED: .navbar .nav-links:not(.open) { display: none; } - This was the problematic rule! */
 
             .nav-links a {
                 padding: 15px 20px;
@@ -217,18 +223,10 @@
                 text-align: left;
                 width: 100%;
                 font-size: 1.1em;
+                display: block;
             }
             .nav-links a:last-child {
                 border-bottom: none;
-            }
-
-            .menu-toggle {
-                display: flex; /* Show hamburger icon */
-            }
-            /* Reset desktop styles for nav-links on mobile */
-            .navbar .nav-links { /* This rule is for desktop, but if it was setting display:flex, it would override */
-                /* Ensure no conflicting display properties here for mobile */
-                gap: 0; /* Remove gap for stacked links */
             }
         }
 
@@ -377,48 +375,174 @@
 
         .footer {
             background: var(--gradient-primary);
-            color: var(--text-light);
-            padding: 2rem 0;
+            color: var(--white);
+            padding: 3rem 2rem 1rem;
             text-align: center;
             margin-top: auto;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
         }
         .footer-content {
             max-width: 1200px;
             margin: auto;
-            padding: 0 1.5rem;
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            text-align: left;
         }
         .footer-section {
-            margin: 1rem 1.5rem;
+            flex: 1;
+            min-width: 200px;
         }
         .footer-section h4 {
-            color: var(--accent-light);
+            color: var(--accent-color);
             margin-bottom: 1rem;
             font-size: 1.1rem;
-            font-weight: 700;
+            font-weight: 600;
         }
-        .footer-section p, .footer-section a {
-            color: var(--text-light);
-            text-decoration: none;
+        .footer-section a,
+        .footer-section p {
             display: block;
-            margin-bottom: 0.5rem;
-            transition: var(--transition);
-            opacity: 0.9;
+            color: var(--white);
+            margin: 0.5rem 0;
+            text-decoration: none;
+            transition: color 0.3s ease;
         }
         .footer-section a:hover {
-            color: var(--accent-light);
-            opacity: 1;
+            color: var(--accent-color);
+            transform: translateX(4px);
         }
         .footer-bottom {
             margin-top: 2rem;
             padding-top: 1.5rem;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            font-size: 0.8rem;
+            text-align: center;
+            font-size: 0.9rem;
             opacity: 0.8;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .contact-info p {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .contact-info i {
+            color: var(--accent-color);
+            width: 16px;
+        }
+
+        .quick-contact {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .contact-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .contact-btn.whatsapp {
+            background: #25D366;
+            color: white;
+        }
+
+        .contact-btn.whatsapp:hover {
+            background: #1ea952;
+            transform: translateY(-2px);
+        }
+
+        .contact-btn.call {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .contact-btn.call:hover {
+            background: #001c44;
+            transform: translateY(-2px);
+        }
+
+        .social-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .social-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            color: var(--text-light);
+        }
+
+        .social-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .social-link.facebook:hover {
+            color: #1877F2;
+        }
+
+        .social-link.instagram:hover {
+            color: #E4405F;
+        }
+
+        .social-link.twitter:hover {
+            color: #1DA1F2;
+        }
+
+        .newsletter-form {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .newsletter-form input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--white);
+            font-size: 0.9rem;
+        }
+
+        .newsletter-form input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .newsletter-form button {
+            padding: 0.75rem 1rem;
+            background: var(--accent-color);
+            color: var(--white);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .newsletter-form button:hover {
+            background: #d4b800;
+            transform: translateY(-2px);
         }
 
         /* Responsive adjustments */
@@ -466,14 +590,23 @@
             .form-group input[type="text"] {
                 width: calc(100% - 1.5rem);
             }
+            .footer {
+                padding: 2rem 1rem 1rem;
+            }
             .footer-content {
-                flex-direction: column;
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
                 text-align: center;
             }
-            .footer-section a,
-            .footer-section p {
-                display: inline-block;
-                margin: 0 5px;
+            .footer-section h4 {
+                text-align: center;
+            }
+            .quick-contact {
+                justify-content: center;
+            }
+            .newsletter-form {
+                flex-direction: column;
+                gap: 0.75rem;
             }
 
             /* Adjust button layout for mobile */
@@ -495,11 +628,11 @@
                 <img src="mylogo.png" alt="Prince Alex Logo" />
             </div>
             <!-- Hamburger Menu Icon -->
-            <div class="menu-toggle" id="mobile-menu">
+            <button class="menu-toggle" id="mobile-menu" aria-label="Toggle mobile menu">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
-            </div>
+            </button>
             <nav class="nav-links" id="main-nav">
                 <a href="index.html">Home</a>
                 <a href="about-us.html">About Us</a>
@@ -583,6 +716,14 @@
                         mobileMenuToggle.classList.remove('open');
                         mainNav.classList.remove('open');
                     });
+                });
+
+                // Close mobile menu when clicking outside
+                document.addEventListener('click', function(event) {
+                    if (!mobileMenuToggle.contains(event.target) && !mainNav.contains(event.target)) {
+                        mobileMenuToggle.classList.remove('open');
+                        mainNav.classList.remove('open');
+                    }
                 });
             }
 
@@ -1027,15 +1168,42 @@
             }
 
         });
+
+        // Newsletter subscription function
+        function subscribeNewsletter() {
+            const emailInput = document.querySelector('.newsletter-form input');
+            const email = emailInput.value.trim();
+            
+            if (!email) {
+                alert('Please enter a valid email address.');
+                return;
+            }
+            
+            // Simulate newsletter subscription
+            alert('Thank you for subscribing to our newsletter! You\'ll receive updates about our latest offers and travel news.');
+            emailInput.value = '';
+        }
     </script>
 
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-section" id="contact-us">
                 <h4>Contact Us</h4>
-                <p>Email: senerwaalex@gmail.com</p>
-                <p>Phone: +254 717 384 875</p>
-                <p>Location: Nairobi, Kenya</p>
+                <div class="contact-info">
+                    <p><i class="fas fa-envelope"></i> senerwaalex@gmail.com</p>
+                    <p><i class="fas fa-phone"></i> +254 717 384 875</p>
+                    <p><i class="fas fa-map-marker-alt"></i> Nairobi, Kenya</p>
+                </div>
+                <div class="quick-contact">
+                    <a href="tel:+254717384875" class="contact-btn whatsapp">
+                        <i class="fab fa-whatsapp"></i>
+                        Call Now
+                    </a>
+                    <a href="https://wa.me/254717384875" class="contact-btn call" target="_blank">
+                        <i class="fas fa-phone"></i>
+                        WhatsApp
+                    </a>
+                </div>
             </div>
             <div class="footer-section">
                 <h4>Quick Links</h4>
@@ -1046,9 +1214,31 @@
             </div>
             <div class="footer-section">
                 <h4>Follow Us</h4>
-                <a href="#">Facebook</a>
-                <a href="#">Instagram</a>
-                <a href="#">Twitter</a>
+                <div class="social-links">
+                    <a href="#" class="social-link facebook">
+                        <i class="fab fa-facebook-f"></i>
+                        Facebook
+                    </a>
+                    <a href="#" class="social-link instagram">
+                        <i class="fab fa-instagram"></i>
+                        Instagram
+                    </a>
+                    <a href="#" class="social-link twitter">
+                        <i class="fab fa-twitter"></i>
+                        Twitter
+                    </a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4>Newsletter</h4>
+                <p>Stay updated with our latest offers and travel news!</p>
+                <form class="newsletter-form" onsubmit="event.preventDefault(); subscribeNewsletter();">
+                    <input type="email" placeholder="Enter your email" required>
+                    <button type="submit">
+                        <i class="fas fa-paper-plane"></i>
+                        Subscribe
+                    </button>
+                </form>
             </div>
         </div>
         <div class="footer-bottom">
