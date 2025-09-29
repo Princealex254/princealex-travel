@@ -1247,25 +1247,6 @@
     </footer>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const menuToggle = document.getElementById('mobile-menu');
-    const navLinks = document.getElementById('main-nav');
-
-    if (menuToggle && navLinks) {
-      menuToggle.addEventListener('click', function () {
-        this.classList.toggle('open');
-        navLinks.classList.toggle('open');
-      });
-
-      // Close menu when a link is clicked (for mobile)
-      navLinks.querySelectorAll('a').forEach(link => {
-        link.addEventListener('click', () => {
-          menuToggle.classList.remove('open');
-          navLinks.classList.remove('open');
-        });
-      });
-    }
-  });
 
 
   // --- Update Authentication Links ---
