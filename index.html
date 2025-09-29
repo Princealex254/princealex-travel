@@ -793,6 +793,8 @@
             justify-content: center;
             padding: 3rem;
             text-align: center;
+            margin: 2rem auto;
+            max-width: 1200px;
         }
 
         .spinner {
@@ -1610,11 +1612,12 @@
         </div>
     </section>
 
+    <div id="loadingSpinner" class="loading-spinner hidden">
+        <div class="spinner"></div>
+        <p>Searching for buses...</p>
+    </div>
+    
     <section class="results-section" id="results">
-        <div id="loadingSpinner" class="loading-spinner hidden">
-            <div class="spinner"></div>
-            <p>Searching for buses...</p>
-        </div>
     </section>
     <section class="gallery">
         <div class="gallery-container">
@@ -1875,6 +1878,19 @@
             }
         }
 
+        // Function to clear any existing custom messages
+        function clearCustomMessages() {
+            // Only remove elements that are actually custom message modals
+            const existingModals = document.querySelectorAll('div[style*="position: fixed"][style*="z-index: 10002"]');
+            existingModals.forEach(modal => {
+                // Double check it's a custom message modal by looking for specific content
+                if (modal.querySelector('div[style*="background: white"]') || 
+                    modal.querySelector('div[style*="background-color: white"]')) {
+                    modal.remove();
+                }
+            });
+        }
+
         // Custom message display function (replaces alert and confirm)
         function displayCustomMessage(message, type = 'alert') {
             const modal = document.createElement('div');
@@ -1896,15 +1912,39 @@
         // --- Front-end Booking System Functions ---
 
         async function searchResults() {
+            console.log('Search function called');
+            
+            // Small delay to ensure DOM is ready
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
             const from = document.getElementById('from').value;
             const to = document.getElementById('to').value;
             const date = document.getElementById('travelDate').value;
             const resultsContainer = document.getElementById('results');
             const loadingSpinner = document.getElementById('loadingSpinner');
             
-            // Show loading spinner
+            console.log('Search values:', { from, to, date });
+            console.log('Elements found:', { resultsContainer, loadingSpinner });
+            
+            // Check if required elements exist
+            if (!resultsContainer) {
+                console.error('Results container not found!');
+                return;
+            }
+            if (!loadingSpinner) {
+                console.error('Loading spinner not found!');
+                return;
+            }
+            
+            // Reset everything for fresh search
+            resultsContainer.innerHTML = '';
+            
+            // Close any existing popups
+            closePopup();
+            
+            // Show loading spinner and results section
             loadingSpinner.classList.remove('hidden');
-            resultsContainer.classList.add('active'); // Show results section
+            resultsContainer.classList.add('active');
 
             if (from === to) {
                 loadingSpinner.classList.add('hidden');
@@ -1920,15 +1960,25 @@
                             where("travelDate", "==", date));
             
             try {
+                console.log('Starting Firebase query...');
                 const querySnapshot = await getDocs(q);
+                console.log('Query completed, processing results...');
                 const buses = [];
                 querySnapshot.forEach((doc) => {
                     buses.push({ id: doc.id, ...doc.data() });
                 });
+                console.log('Found buses:', buses.length);
 
                 if (buses.length === 0) {
                     loadingSpinner.classList.add('hidden');
-                    resultsContainer.innerHTML += `<p style="text-align: center;">No available buses for the route from <strong>${from}</strong> to <strong>${to}</strong> on <strong>${date}</strong>.</p>`;
+                    resultsContainer.innerHTML = `<p style="text-align: center;">No available buses for the route from <strong>${from}</strong> to <strong>${to}</strong> on <strong>${date}</strong>.</p>`;
+                    
+                    // Show popup notification for no buses found
+                    showAutoPopup(
+                        '🚌 No Buses Found',
+                        `Sorry, there are no buses available from ${from} to ${to} on ${date}. Please try a different date or route.`,
+                        'warning'
+                    );
                     return;
                 }
 
@@ -1976,10 +2026,25 @@
 
                 attachBookNowListeners();
                 loadingSpinner.classList.add('hidden');
+                
+                // Show popup notification for buses found
+                showAutoPopup(
+                    '🎉 Buses Found!',
+                    `Great! We found ${buses.length} bus${buses.length === 1 ? '' : 'es'} available from ${from} to ${to} on ${date}. Choose your preferred option below.`,
+                    'success'
+                );
             } catch (error) {
-                console.error('Error fetching buses:', error.message);
+                console.error('Error fetching buses:', error);
+                console.error('Error details:', error.message, error.code);
                 loadingSpinner.classList.add('hidden');
-                resultsContainer.innerHTML += `<p style="color: red; text-align: center;">Error fetching buses: ${error.message}</p>`;
+                resultsContainer.innerHTML = `<p style="color: red; text-align: center;">Error fetching buses: ${error.message}</p>`;
+                
+                // Show popup notification for error
+                showAutoPopup(
+                    '❌ Search Error',
+                    'Sorry, there was an error searching for buses. Please try again or contact support if the problem persists.',
+                    'error'
+                );
             }
         }
 
@@ -2595,6 +2660,40 @@
                 closePopup();
             }
         });
+
+        // Function to show auto-dismiss popup (disappears after 3 seconds)
+        function showAutoPopup(title, message, type = 'info') {
+            const overlay = document.getElementById('popupOverlay');
+            const icon = document.getElementById('popupIcon');
+            const titleEl = document.getElementById('popupTitle');
+            const messageEl = document.getElementById('popupMessage');
+            const buttonsEl = document.getElementById('popupButtons');
+
+            // Set icon based on type
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+            icon.textContent = icons[type] || icons.info;
+            icon.className = `popup-icon ${type}`;
+
+            // Set content
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            // Hide buttons for auto-dismiss popup
+            buttonsEl.innerHTML = '';
+
+            // Show popup
+            overlay.classList.add('show');
+
+            // Auto-dismiss after 3 seconds
+            setTimeout(() => {
+                overlay.classList.remove('show');
+            }, 3000);
+        }
 
         // Fallback response function for when AI API is not available
         function generateFallbackResponse(message, additionalContext) {
