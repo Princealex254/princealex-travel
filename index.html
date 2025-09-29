@@ -186,21 +186,16 @@
 
         /* Hamburger Menu Icon */
         .menu-toggle {
-            display: none; /* Hidden by default, shown on mobile */
+            display: none;
             flex-direction: column;
             justify-content: space-around;
             width: 30px;
             height: 25px;
             cursor: pointer;
-            z-index: 10002; /* Above everything including backdrop */
-            padding: 5px;
-            border-radius: 8px;
-            transition: background-color 0.3s ease;
-            position: relative; /* Ensure proper stacking context */
-        }
-        
-        .menu-toggle:hover {
-            background-color: rgba(255,255,255,0.15);
+            z-index: 10001;
+            background: none;
+            border: none;
+            padding: 0;
         }
 
         .menu-toggle .bar {
@@ -208,7 +203,8 @@
             height: 3px;
             background-color: white;
             border-radius: 5px;
-            transition: transform 0.4s ease, opacity 0.4s ease;
+            transition: all 0.3s ease;
+            transform-origin: center;
         }
 
         /* Animation for hamburger to close icon */
@@ -1059,9 +1055,7 @@
             }
             /* Mobile nav styles are handled in the earlier media query */
             .menu-toggle {
-                display: flex !important;
-                z-index: 10002 !important;
-                position: relative !important;
+                display: flex;
             }
             
             /* Hero Section Mobile */
@@ -1400,11 +1394,11 @@
                 <img src="mylogo.png" alt="Prince Alex Logo" />
             </div>
             <!-- Hamburger Menu Icon -->
-            <div class="menu-toggle" id="mobile-menu" onclick="toggleMobileMenu()">
+            <button class="menu-toggle" id="mobile-menu" aria-label="Toggle mobile menu">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
-            </div>
+            </button>
             <nav class="nav-links" id="main-nav">
                 <a href="#hero">Home</a>
                 <a href="about-us.html">About Us</a>
@@ -1703,58 +1697,23 @@
 
             // Mobile Menu Toggle Functionality
             if (mobileMenuToggle && mainNav) {
-                console.log('Mobile menu elements found:', mobileMenuToggle, mainNav);
-                
-                // Remove any existing event listeners to prevent conflicts
-                mobileMenuToggle.removeEventListener('click', toggleMobileMenu);
-                
-                mobileMenuToggle.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Mobile menu clicked');
-                    // Toggle the open class on nav-links
+                mobileMenuToggle.addEventListener('click', function () {
+                    this.classList.toggle('open');
                     mainNav.classList.toggle('open');
-                    mobileMenuToggle.classList.toggle('open');
-
-                    // Toggle the menu-open class on body for backdrop
-                    document.body.classList.toggle('menu-open');
                 });
 
-                // Close menu when clicking on nav links
-                mainNav.addEventListener('click', (e) => {
-                    if (e.target.tagName === 'A') {
-                        console.log('Nav link clicked:', e.target.href);
-                        
-                        // Close the mobile menu
-                        mainNav.classList.remove('open');
+                mainNav.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', () => {
                         mobileMenuToggle.classList.remove('open');
-                        document.body.classList.remove('menu-open');
-                        
-                        // Handle smooth scrolling for anchor links
-                        if (e.target.getAttribute('href').startsWith('#')) {
-                            e.preventDefault();
-                            const targetId = e.target.getAttribute('href').substring(1);
-                            const targetElement = document.getElementById(targetId);
-                            if (targetElement) {
-                                setTimeout(() => {
-                                    targetElement.scrollIntoView({ 
-                                        behavior: 'smooth',
-                                        block: 'start'
-                                    });
-                                }, 300); // Wait for menu to close
-                            }
-                        }
-                    }
+                        mainNav.classList.remove('open');
+                    });
                 });
 
-                // Close menu when clicking on backdrop
-                document.addEventListener('click', (e) => {
-                    if (document.body.classList.contains('menu-open') &&
-                        !mainNav.contains(e.target) &&
-                        !mobileMenuToggle.contains(e.target)) {
-                        mainNav.classList.remove('open');
+                // Close mobile menu when clicking outside
+                document.addEventListener('click', function(event) {
+                    if (!mobileMenuToggle.contains(event.target) && !mainNav.contains(event.target)) {
                         mobileMenuToggle.classList.remove('open');
-                        document.body.classList.remove('menu-open');
+                        mainNav.classList.remove('open');
                     }
                 });
             }
@@ -2704,40 +2663,6 @@
                 });
             }
             
-            // Mobile Menu Toggle Functionality
-            const menuToggle = document.getElementById('mobile-menu');
-            const navLinks = document.getElementById('main-nav');
-            
-            if (menuToggle && navLinks) {
-                menuToggle.addEventListener('click', () => {
-                    // Toggle the open class on nav-links
-                    navLinks.classList.toggle('open');
-                    menuToggle.classList.toggle('open');
-                    
-                    // Toggle the menu-open class on body for backdrop
-                    document.body.classList.toggle('menu-open');
-                });
-                
-                // Close menu when clicking on nav links
-                navLinks.addEventListener('click', (e) => {
-                    if (e.target.tagName === 'A') {
-                        navLinks.classList.remove('open');
-                        menuToggle.classList.remove('open');
-                        document.body.classList.remove('menu-open');
-                    }
-                });
-                
-                // Close menu when clicking on backdrop
-                document.addEventListener('click', (e) => {
-                    if (document.body.classList.contains('menu-open') && 
-                        !navLinks.contains(e.target) && 
-                        !menuToggle.contains(e.target)) {
-                        navLinks.classList.remove('open');
-                        menuToggle.classList.remove('open');
-                        document.body.classList.remove('menu-open');
-                    }
-                });
-            }
         });
     </script>
 
