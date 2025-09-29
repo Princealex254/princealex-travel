@@ -905,6 +905,136 @@
             transform: translateY(-2px);
         }
 
+        /* Custom Popup Modal */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .popup-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .popup-modal {
+            background: var(--white);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow-xl);
+            transform: scale(0.8) translateY(20px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .popup-overlay.show .popup-modal {
+            transform: scale(1) translateY(0);
+        }
+
+        .popup-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .popup-icon.success {
+            color: #10b981;
+        }
+
+        .popup-icon.error {
+            color: #ef4444;
+        }
+
+        .popup-icon.warning {
+            color: #f59e0b;
+        }
+
+        .popup-icon.info {
+            color: #3b82f6;
+        }
+
+        .popup-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        .popup-message {
+            font-size: 1rem;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .popup-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .popup-button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .popup-button.primary {
+            background: var(--primary-color);
+            color: var(--white);
+        }
+
+        .popup-button.primary:hover {
+            background: #001c44;
+            transform: translateY(-2px);
+        }
+
+        .popup-button.secondary {
+            background: #f1f5f9;
+            color: var(--text-dark);
+            border: 1px solid #e2e8f0;
+        }
+
+        .popup-button.secondary:hover {
+            background: #e2e8f0;
+            transform: translateY(-2px);
+        }
+
+        .popup-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .popup-close:hover {
+            color: var(--text-dark);
+        }
+
         /* Modern Mobile Responsiveness */
         @media (max-width: 768px) {
             .navbar-container {
@@ -1205,14 +1335,76 @@
             const email = emailInput.value.trim();
             
             if (!email) {
-                alert('Please enter a valid email address.');
+                showPopup('Email Required', 'Please enter your email address to subscribe to our newsletter.', 'warning');
                 return;
             }
             
             // Simulate newsletter subscription
-            alert('Thank you for subscribing to our newsletter! You\'ll receive updates about our latest offers and travel news.');
+            showPopup(
+                '🎉 Welcome to Our Newsletter!',
+                'Thank you for subscribing! You\'ll now receive updates about our latest offers, travel news, and special promotions directly to your inbox.',
+                'success'
+            );
             emailInput.value = '';
         }
+
+        // Custom Popup Functions
+        function showPopup(title, message, type = 'info', buttons = null) {
+            const overlay = document.getElementById('popupOverlay');
+            const icon = document.getElementById('popupIcon');
+            const titleEl = document.getElementById('popupTitle');
+            const messageEl = document.getElementById('popupMessage');
+            const buttonsEl = document.getElementById('popupButtons');
+
+            // Set icon based on type
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+            icon.textContent = icons[type] || icons.info;
+            icon.className = `popup-icon ${type}`;
+
+            // Set content
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            // Set buttons
+            if (buttons) {
+                buttonsEl.innerHTML = buttons;
+            } else {
+                buttonsEl.innerHTML = '<button class="popup-button primary" onclick="closePopup()">Got it!</button>';
+            }
+
+            // Show popup
+            overlay.classList.add('show');
+        }
+
+        function closePopup() {
+            const overlay = document.getElementById('popupOverlay');
+            overlay.classList.remove('show');
+        }
+
+        // Close popup when clicking outside
+        document.getElementById('popupOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePopup();
+            }
+        });
     </script>
+
+    <!-- Custom Popup Modal -->
+    <div id="popupOverlay" class="popup-overlay">
+        <div class="popup-modal">
+            <button class="popup-close" onclick="closePopup()">&times;</button>
+            <div class="popup-icon" id="popupIcon"></div>
+            <h3 class="popup-title" id="popupTitle"></h3>
+            <p class="popup-message" id="popupMessage"></p>
+            <div class="popup-buttons" id="popupButtons">
+                <button class="popup-button primary" onclick="closePopup()">Got it!</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
