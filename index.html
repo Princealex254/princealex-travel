@@ -103,10 +103,27 @@
         }
         body {
             font-family: 'Segoe UI', sans-serif;
-            background-color: var(--light-bg);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
             color: var(--text-dark);
             scroll-behavior: smooth;
+            position: relative;
             /* Use: Sets global font, background, and text color. */
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
         }
         .navbar {
             background: var(--gradient-primary);
@@ -281,7 +298,7 @@
 
 
         .hero {
-            background: var(--gradient-primary);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: var(--white);
             padding: 6rem 2rem;
             text-align: center;
@@ -290,6 +307,7 @@
             min-height: 100vh;
             display: flex;
             align-items: center;
+            backdrop-filter: blur(10px);
             /* Modern hero section with enhanced styling */
         }
         .hero::before {
@@ -392,10 +410,15 @@
         }
         .hero h1 {
             font-size: clamp(2.5rem, 5vw, 3.5rem);
-            font-weight: 700;
+            font-weight: 800;
             margin-bottom: 1.5rem;
             line-height: 1.2;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            letter-spacing: -0.02em;
             /* Enhanced main heading */
         }
         .hero h2 {
@@ -413,10 +436,15 @@
             /* Enhanced paragraph text */
         }
         .booking {
-            background: var(--white);
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
             padding: 4rem 2rem;
             text-align: center;
             position: relative;
+            backdrop-filter: blur(10px);
+            border-radius: 0 0 40px 40px;
+            box-shadow: 
+                0 -20px 25px -5px rgba(0, 0, 0, 0.1),
+                0 -10px 10px -5px rgba(0, 0, 0, 0.04);
             /* Modern booking section */
         }
         .booking-container {
@@ -425,11 +453,22 @@
             /* Centers the content within the booking section */
         }
         .booking h2 {
-            margin-bottom: 2rem;
-            color: var(--primary-color);
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             font-size: 2.5rem;
-            font-weight: 700;
+            font-weight: 800;
+            letter-spacing: -0.02em;
             /* Enhanced booking heading */
+        }
+        
+        .booking .subtitle {
+            color: #64748b;
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+            font-weight: 500;
         }
         .booking-form {
             display: grid;
@@ -437,11 +476,28 @@
             gap: 1.5rem;
             max-width: 800px;
             margin: 0 auto;
-            padding: 2rem;
-            background: var(--light-bg);
-            border-radius: 20px;
-            box-shadow: var(--shadow-lg);
+            padding: 2.5rem;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 24px;
+            box-shadow: 
+                0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                0 10px 10px -5px rgba(0, 0, 0, 0.04),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
             /* Modern grid-based form layout */
+        }
+        
+        .booking-form::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            border-radius: 24px 24px 0 0;
         }
         .form-group {
             display: flex;
@@ -458,49 +514,103 @@
         }
         .booking-form select,
         .booking-form input[type="date"] {
-            padding: 1rem;
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
-            font-size: 1rem;
-            background: var(--white);
-            transition: all 0.3s ease;
+            padding: 1rem 1.5rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            background: #ffffff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            position: relative;
             /* Modern form inputs */
         }
         .booking-form select:focus,
         .booking-form input[type="date"]:focus {
             outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: #667eea;
+            box-shadow: 
+                0 0 0 4px rgba(102, 126, 234, 0.1),
+                0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
             /* Focus states for form inputs */
         }
+        .booking-form select:hover,
+        .booking-form input[type="date"]:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
         .booking-form button[type="submit"] {
-            background: var(--gradient-accent);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: var(--white);
             border: none;
-            padding: 1rem 2rem;
+            padding: 1.25rem 3rem;
             font-size: 1.1rem;
-            border-radius: 12px;
+            border-radius: 16px;
             cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             grid-column: 1 / -1;
-            margin-top: 1rem;
+            margin-top: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: 
+                0 10px 15px -3px rgba(102, 126, 234, 0.4),
+                0 4px 6px -2px rgba(102, 126, 234, 0.05);
+            position: relative;
+            overflow: hidden;
             /* Modern submit button */
         }
-        .booking-form button:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-            /* Enhanced hover effect */
+        
+        .booking-form button[type="submit"]::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
         }
+        
+        .booking-form button:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 
+                0 20px 25px -5px rgba(102, 126, 234, 0.4),
+                0 10px 10px -5px rgba(102, 126, 234, 0.04);
+        }
+        
+        .booking-form button:hover::before {
+            left: 100%;
+        }
+        
         .booking-form button:active {
-            transform: translateY(0);
+            transform: translateY(-2px) scale(1.01);
         }
         .results-section {
             max-width: 1200px;
             margin: 3rem auto;
             padding: 2rem;
             display: none; /* Initially hidden, controlled by JS */
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 24px;
+            box-shadow: 
+                0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
             /* Modern results section */
+        }
+        
+        .results-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #10b981 0%, #059669 50%, #047857 100%);
+            border-radius: 24px 24px 0 0;
         }
         .results-section.active {
             display: block;
@@ -519,10 +629,14 @@
         }
         .results-section h2 {
             margin-bottom: 2rem;
-            color: var(--primary-color);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             text-align: center;
             font-size: 2rem;
-            font-weight: 700;
+            font-weight: 800;
+            letter-spacing: -0.02em;
             /* Enhanced results heading */
         }
         .result-card {
@@ -1567,7 +1681,8 @@
 
     <section class="booking">
         <div class="booking-container">
-            <h2>Book Your Ticket</h2>
+            <h2>🚌 Book Your Ticket</h2>
+            <p class="subtitle">Find and book your perfect bus journey with ease</p>
             <form class="booking-form" onsubmit="event.preventDefault(); searchResults();">
                 <div class="form-group">
                     <label for="from">From</label>
