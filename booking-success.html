@@ -47,6 +47,20 @@
             updateAuthLinks(); // Update navigation links based on auth state
         });
 
+        // --- START: Added from ticket-lookup.html for consistency ---
+        // Global variable to hold the fetched booking data
+        let currentBookingData = null;
+        // Maximum allowed size for Base64 PDF content in bytes (approx 800KB for safety, Firestore limit is 1MB)
+        const MAX_PDF_BASE64_SIZE_BYTES = 800 * 1024; // 800KB
+
+        // Helper function for email validation
+        function isValidEmail(email) {
+            const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            return re.test(String(email).toLowerCase());
+        }
+
+        // --- END: Added from ticket-lookup.html for consistency ---
+
         // Helper function for custom alerts (since alert() is disabled)
         function showCustomAlert(message, type = 'info', callback = null) {
             const modal = document.createElement('div');
@@ -67,9 +81,6 @@
             window.alertCallback = callback; // Store callback globally
         }
 
-        // Global variable to hold the fetched booking data
-        let currentBookingData = null;
-
         document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const bookingRef = urlParams.get('bookingRef');
@@ -79,6 +90,7 @@
                 document.getElementById('bookingDetails').innerHTML = `<p class="error-message">No booking reference provided. Please go back to the home page and try again.</p>`;
                 document.getElementById('qrCodeSection').classList.add('hidden');
                 document.getElementById('downloadTicketBtn').classList.add('hidden');
+                document.getElementById('sendEmailBtn').classList.add('hidden'); // Hide new button
                 return;
             }
 
@@ -92,6 +104,7 @@
                     document.getElementById('bookingDetails').innerHTML = `<p class="error-message">Booking with reference "${bookingRef}" not found. It might have been cancelled or never existed.</p>`;
                     document.getElementById('qrCodeSection').classList.add('hidden');
                     document.getElementById('downloadTicketBtn').classList.add('hidden');
+                    document.getElementById('sendEmailBtn').classList.add('hidden'); // Hide new button
                     showCustomAlert(`Booking "${bookingRef}" not found.`, 'error');
                     return;
                 }
@@ -102,20 +115,13 @@
                 console.log("Fetched Booking Data:", currentBookingData);
 
                 // Populate details on the page
-                document.getElementById('referenceDisplay').textContent = currentBookingData.booking_ref || 'N/A';
-                document.getElementById('passengerNameDisplay').textContent = currentBookingData.passenger_name || 'N/A';
-                document.getElementById('passengerEmailDisplay').textContent = currentBookingData.passenger_email || 'N/A';
-                document.getElementById('passengerPhoneDisplay').textContent = currentBookingData.passenger_phone || 'N/A'; // Assuming you store phone
-                document.getElementById('busRouteDisplay').textContent = currentBookingData.bus_route || 'N/A';
-                document.getElementById('busNameDisplay').textContent = currentBookingData.bus_name || 'N/A';
-                document.getElementById('travelDateDisplay').textContent = currentBookingData.travel_date || 'N/A';
-                document.getElementById('departureTimeDisplay').textContent = currentBookingData.bus_time || 'N/A';
-                document.getElementById('seatNumberDisplay').textContent = currentBookingData.seat_number || 'N/A';
-                document.getElementById('totalPriceDisplay').textContent = `KES ${Number(currentBookingData.price || 0).toLocaleString()}`;
-                
-                const bookingDate = currentBookingData.booking_date ? new Date(currentBookingData.booking_date).toLocaleDateString() : 'N/A';
-                document.getElementById('bookingDateDisplay').textContent = bookingDate;
-
+                document.getElementById('passengerName').textContent = currentBookingData.passenger_name || 'N/A';
+                document.getElementById('busRoute').textContent = currentBookingData.bus_route || 'N/A';
+                document.getElementById('travelDate').textContent = currentBookingData.travel_date || 'N/A';
+                document.getElementById('seatNumber').textContent = currentBookingData.seat_number || 'N/A';
+                document.getElementById('status').textContent = (currentBookingData.status || 'N/A').toUpperCase();
+                document.getElementById('bookingRef').textContent = currentBookingData.booking_ref || 'N/A';
+                document.getElementById('price').textContent = `KES ${Number(currentBookingData.price || 0).toLocaleString()}`;
 
                 const paymentStatusElement = document.getElementById('paymentStatusDisplay');
                 const status = (currentBookingData.status || 'pending').toLowerCase();
@@ -125,6 +131,7 @@
                     document.getElementById('paymentSection').classList.add('hidden');
                     document.getElementById('qrCodeSection').classList.remove('hidden');
                     document.getElementById('downloadTicketBtn').classList.remove('hidden');
+                    document.getElementById('sendEmailBtn').classList.remove('hidden'); // Show new button
                     generateQRCode(currentBookingData.booking_ref); // Generate QR code for paid bookings
                 } else {
                     paymentStatusElement.classList.add('status-pending');
@@ -132,6 +139,7 @@
                     document.getElementById('amountToPay').textContent = `Amount to Pay: KES ${Number(currentBookingData.price || 0).toLocaleString()}`;
                     document.getElementById('qrCodeSection').classList.add('hidden');
                     document.getElementById('downloadTicketBtn').classList.add('hidden');
+                    document.getElementById('sendEmailBtn').classList.add('hidden'); // Hide new button
                 }
 
                 document.getElementById('downloadTicketBtn').addEventListener('click', () => {
@@ -142,6 +150,14 @@
                     }
                 });
 
+                // Add event listener for the new email button
+                document.getElementById('sendEmailBtn').addEventListener('click', () => {
+                    if (currentBookingData) {
+                        sendTicketToEmail(currentBookingData); // Pass the data to the function
+                    } else {
+                        showCustomAlert("Booking data not available to send email.", 'error');
+                    }
+                });
                 // --- START: Added Confirmation Email Message ---
                 const confirmationEmailMessage = document.createElement('p');
                 confirmationEmailMessage.classList.add('email-confirmation-message');
@@ -160,10 +176,121 @@
                 document.getElementById('bookingDetails').innerHTML = `<p class="error-message">Error loading booking details. Please try again later.</p>`;
                 document.getElementById('qrCodeSection').classList.add('hidden');
                 document.getElementById('downloadTicketBtn').classList.add('hidden');
+                document.getElementById('sendEmailBtn').classList.add('hidden'); // Hide new button
                 showCustomAlert("Error loading booking details. Please try again later.", 'error');
             }
         });
 
+        // Add logout event listener (moved here for correct initialization)
+        document.addEventListener('DOMContentLoaded', () => {
+            const logoutLinkElem = document.getElementById('logoutLink');
+            if (logoutLinkElem) {
+                logoutLinkElem.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await logout();
+                });
+            }
+        });
+
+
+        // --- START: New function to send email (from ticket-lookup.html) ---
+        async function sendTicketToEmail(booking) {
+            if (!booking) {
+                showCustomAlert("No ticket details available to send.", 'error');
+                return;
+            }
+
+            if (booking.status !== 'paid') {
+                showCustomAlert('Ticket can only be sent after payment is confirmed.', 'warning');
+                return;
+            }
+
+            const passengerEmail = booking.passenger_email;
+            const bookingId = booking.booking_ref;
+            const passengerName = booking.passenger_name || 'Valued Customer';
+
+            if (!passengerEmail || !isValidEmail(passengerEmail)) {
+                showCustomAlert("Invalid or missing passenger email address.", 'error');
+                return;
+            }
+
+            showCustomAlert("Preparing and sending your ticket...", 'info');
+
+            try {
+                const pdfDoc = await generateTicketPDF(booking, true); // Generate PDF content
+                const pdfDataUri = pdfDoc.output("datauristring");
+                const pdfBase64 = pdfDataUri.split(",")[1];
+
+                const pdfBase64SizeBytes = new TextEncoder().encode(pdfBase64).length;
+                if (pdfBase64SizeBytes > MAX_PDF_BASE64_SIZE_BYTES) {
+                    showCustomAlert(`The ticket PDF is too large (${(pdfBase64SizeBytes / 1024).toFixed(2)} KB) for email. Please download it instead.`, 'error');
+                    return;
+                }
+
+                const emailHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Your E-Ticket from Prince Alex Travel</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f7; }
+        .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .header { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 40px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; } .header p { margin: 5px 0 0; font-size: 16px; opacity: 0.9; }
+        .content { padding: 30px; } .content h2 { color: #1e3a8a; margin-top: 0; font-size: 22px; }
+        .ticket-info { background: #f8fafc; padding: 25px; border-radius: 8px; margin: 25px 0; border: 1px solid #e2e8f0; }
+        .detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+        .detail-row:last-child { border-bottom: none; } .detail-label { font-weight: 600; color: #475569; }
+        .detail-value { color: #1f2937; text-align: right; } .detail-value strong { color: #1e3a8a; }
+        .footer { text-align: center; padding: 20px; color: #64748b; font-size: 13px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; }
+        .attachment-notice { background: #dcfce7; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0; color: #14532d; }
+        .reminders { background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0; color: #78350f; }
+        .reminders ul { padding-left: 20px; margin: 0; }
+        .status-paid { background: #10b981; color: white; padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"><h1>🎫 Your E-Ticket is Ready!</h1><p>Prince Alex Travel - Digital Ticket Delivery</p></div>
+        <div class="content">
+            <h2>Hello ${passengerName}!</h2>
+            <p>Thank you for choosing <strong>Prince Alex Travel Services</strong>. Your e-ticket is ready and attached to this email.</p>
+            <div class="ticket-info">
+                <h3 style="margin-top: 0; margin-bottom: 15px; color: #1e3a8a; text-align: center; font-size: 20px;">Ticket Information</h3>
+                <div class="detail-row"><span class="detail-label">Booking Reference</span><span class="detail-value"><strong>${bookingId}</strong></span></div>
+                <div class="detail-row"><span class="detail-label">Route</span><span class="detail-value">${booking.bus_route}</span></div>
+                <div class="detail-row"><span class="detail-label">Seat Number</span><span class="detail-value"><strong>${booking.seat_number}</strong></span></div>
+                <div class="detail-row"><span class="detail-label">Travel Date</span><span class="detail-value">${booking.travel_date}</span></div>
+                <div class="detail-row"><span class="detail-label">Departure Time</span><span class="detail-value">${booking.bus_time}</span></div>
+                <div class="detail-row"><span class="detail-label">Price</span><span class="detail-value"><strong>Ksh ${booking.price.toLocaleString()}</strong></span></div>
+                <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="status-paid">PAID</span></span></div>
+            </div>
+            <div class="attachment-notice"><h4 style="margin-top: 0;">📎 Ticket Attached</h4><p style="margin-bottom: 0;">Your e-ticket PDF is attached. You can download it and present it at the bus terminal.</p></div>
+            <div class="reminders"><h4 style="margin-top: 0;">📱 Important Reminders</h4><ul><li>Arrive at the terminal 15 minutes before departure.</li><li>Present your e-ticket (digital or printed) to the driver.</li><li>Keep your booking reference handy.</li></ul></div>
+            <p><strong>Need Help?</strong> If you have any questions, please don't hesitate to contact us:</p><p><strong>📧 Email:</strong> senerwaalex@gmail.com<br><strong>📞 Phone:</strong> +254 717 384 875</p>
+        </div>
+        <div class="footer"><p>&copy; ${new Date().getFullYear()} Prince Alex Digital. All rights reserved.<br>Nairobi, Kenya | Prince Alex Travel Services</p></div>
+    </div>
+</body></html>`;
+
+                const emailDocPayload = {
+                    to: passengerEmail,
+                    message: {
+                        subject: "Your E-Ticket - Prince Alex Travel 🎫",
+                        text: `Hello ${passengerName},\n\nYour Prince Alex Travel ticket for booking reference ${bookingId} is attached.\n\nThank you for choosing Prince Alex Travel.`,
+                        html: emailHtml,
+                        attachments: [{ filename: `Ticket_${bookingId}.pdf`, content: pdfBase64, encoding: "base64" }]
+                    }
+                };
+
+                await addDoc(collection(db, "mail"), emailDocPayload);
+                showCustomAlert("Ticket sent to your email successfully!", 'success');
+
+            } catch (error) {
+                console.error("Error sending ticket to email:", error);
+                showCustomAlert("Failed to send ticket. Please try again or download it directly.", 'error');
+            }
+        }
+        // --- END: New function to send email ---
 
         // --- Update Authentication Links ---
         function updateAuthLinks() {
@@ -221,149 +348,151 @@
         }
 
         // Ticket PDF Generation function (copied from admin.html/index.html with slight adjustments for standalone use)
-        function generateTicketPDF(booking) {
+        async function generateTicketPDF(booking, forEmail = false) { 
+            // This is the modern PDF generation logic from ticket-lookup.html
+            // It replaces the older version that was in booking-success.html
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+            const newDoc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' });
 
-            // Define colors
-            const primaryColor = '#002d6b';
-            const accentColor = '#c69214';
-            const darkTextColor = '#1a1a1a';
+            const modernPrimaryColor = '#1e3a8a';
+            const modernAccentColor = '#f59e0b';
+            const modernDarkTextColor = '#1f2937';
+            const modernLightTextColor = '#6b7280';
+            const whiteColor = '#ffffff';
+            const lightBgColor = '#f8fafc';
 
-            let yPos = 20;
+            const status = (booking.status ?? "pending").toUpperCase();
+            const statusColor = status === 'PAID' ? '#10b981' : '#f59e0b';
 
-            // Header with Logo and QR Code
-            const logoPlaceholder = "https://placehold.co/100x40/002d6b/ffffff?text=LOGO";
-            doc.addImage(logoPlaceholder, 'PNG', 15, yPos, 40, 40);
+            newDoc.setFillColor(whiteColor);
+            newDoc.setDrawColor(modernPrimaryColor);
+            newDoc.setLineWidth(0.5);
+            newDoc.roundedRect(5, 5, 200, 138, 5, 5, 'FD');
 
-            doc.setFontSize(24);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Prince Alex Travel Services", 60, yPos + 15);
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "normal");
-            doc.text("E-Ticket & Booking Confirmation", 60, yPos + 25);
+            newDoc.setFillColor(modernPrimaryColor);
+            newDoc.roundedRect(5, 5, 200, 30, 5, 5, 'F');
 
-            const qrCodeData = booking.booking_ref;
+            newDoc.setFillColor(whiteColor);
+            newDoc.circle(20, 20, 8, 'F');
+            newDoc.setTextColor(modernPrimaryColor);
+            newDoc.setFontSize(10);
+            newDoc.setFont("helvetica", "bold");
+            newDoc.text("PA", 18, 22);
+
+            newDoc.setTextColor(whiteColor);
+            newDoc.setFontSize(22);
+            newDoc.setFont("helvetica", "bold");
+            newDoc.text("Prince Alex Travel", 35, 18);
+            newDoc.setFontSize(12);
+            newDoc.setFont("helvetica", "normal");
+            newDoc.text("BOARDING PASS", 35, 26);
+
+            const statusBadgeWidth = 35;
+            const statusBadgeX = 205 - statusBadgeWidth - 10;
+            newDoc.setFillColor(statusColor);
+            newDoc.roundedRect(statusBadgeX, 15, statusBadgeWidth, 10, 3, 3, 'F');
+            newDoc.setFontSize(10);
+            newDoc.setFont("helvetica", "bold");
+            newDoc.setTextColor(whiteColor);
+            newDoc.text(status, statusBadgeX + (statusBadgeWidth / 2), 21.5, { align: 'center' });
+
+            const mainContentY = 40;
+            const stubX = 145;
+
+            newDoc.setLineDashPattern([2, 2], 0);
+            newDoc.setDrawColor(modernLightTextColor);
+            newDoc.line(stubX, mainContentY - 2, stubX, 130);
+            newDoc.setLineDashPattern([], 0);
+
+            let newYPos = mainContentY + 8;
+            const leftMargin = 15;
+            const leftColumnWidth = stubX - leftMargin - 5;
+
+            newDoc.setFontSize(10); newDoc.setFont("helvetica", "normal"); newDoc.setTextColor(modernLightTextColor);
+            newDoc.text("PASSENGER NAME", leftMargin, newYPos); newYPos += 8;
+            newDoc.setFontSize(18); newDoc.setFont("helvetica", "bold"); newDoc.setTextColor(modernDarkTextColor);
+            newDoc.text(booking.passenger_name ?? "-", leftMargin, newYPos, { maxWidth: leftColumnWidth }); newYPos += 12;
+
+            const [origin, destination] = (booking.bus_route ?? '- to -').split(' to ');
+            newDoc.setFontSize(10); newDoc.setFont("helvetica", "normal"); newDoc.setTextColor(modernLightTextColor);
+            newDoc.text("FROM", leftMargin, newYPos); newDoc.text("TO", leftMargin + 60, newYPos); newYPos += 10;
+            newDoc.setFontSize(24); newDoc.setFont("helvetica", "bold"); newDoc.setTextColor(modernPrimaryColor);
+            newDoc.text(origin.trim(), leftMargin, newYPos, { maxWidth: 40 });
+            newDoc.text("→", leftMargin + 45, newYPos);
+            newDoc.text(destination.trim(), leftMargin + 60, newYPos, { maxWidth: 65 }); newYPos += 12;
+
+            const detailY = newYPos;
+            const detailItems = [
+                { label: "TRAVEL DATE", value: booking.travel_date ?? "-" },
+                { label: "DEPARTURE", value: booking.bus_time ?? "-" },
+                { label: "SEAT", value: booking.seat_number ?? "-" }
+            ];
+            detailItems.forEach((item, index) => {
+                const xPos = leftMargin + (index * 45);
+                newDoc.setFontSize(10); newDoc.setFont("helvetica", "normal"); newDoc.setTextColor(modernLightTextColor);
+                newDoc.text(item.label, xPos, detailY);
+                newDoc.setFontSize(16); newDoc.setFont("helvetica", "bold"); newDoc.setTextColor(modernDarkTextColor);
+                newDoc.text(item.value, xPos, detailY + 8, { maxWidth: 40 });
+            });
+            newYPos += 20;
+
+            newDoc.setFillColor(lightBgColor);
+            newDoc.roundedRect(leftMargin - 5, newYPos, leftColumnWidth + 5, 20, 3, 3, 'F');
+            newDoc.setFontSize(8); newDoc.setFont("helvetica", "bold"); newDoc.setTextColor(modernPrimaryColor);
+            newDoc.text("IMPORTANT REMINDERS:", leftMargin, newYPos + 6);
+            newDoc.setFontSize(8); newDoc.setFont("helvetica", "normal"); newDoc.setTextColor(modernDarkTextColor);
+            newDoc.text("• Arrive at the terminal 15 minutes before departure.", leftMargin, newYPos + 11);
+            newDoc.text("• Present this ticket (digital or printed) to the driver.", leftMargin, newYPos + 16);
+
+            newYPos = mainContentY + 8;
+            const rightMargin = stubX + 8;
+            const rightColumnWidth = 205 - rightMargin - 5;
+
+            newDoc.setFontSize(10); newDoc.setFont("helvetica", "normal"); newDoc.setTextColor(modernLightTextColor);
+            newDoc.text("BOOKING REFERENCE", rightMargin, newYPos); newYPos += 8;
+            newDoc.setFontSize(16); newDoc.setFont("helvetica", "bold"); newDoc.setTextColor(modernAccentColor);
+            newDoc.text(booking.booking_ref ?? booking.id, rightMargin, newYPos, { maxWidth: rightColumnWidth }); newYPos += 12;
+
+            const qrCodeData = booking.booking_ref ?? booking.id;
             const qrCodeContainer = document.createElement('div');
-            qrCodeContainer.style.display = 'none';
-            document.body.appendChild(qrCodeContainer);
-
+            qrCodeContainer.style.display = 'none'; document.body.appendChild(qrCodeContainer);
             let qrCodeImgData = '';
             try {
-                new QRCode(qrCodeContainer, {
-                    text: qrCodeData,
-                    width: 80,
-                    height: 80,
-                    colorDark : primaryColor,
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-                const canvasElement = qrCodeContainer.querySelector('canvas');
-                if (canvasElement) {
-                    qrCodeImgData = canvasElement.toDataURL("image/png");
-                }
-            } catch (qrError) {
-                console.error("Error generating QR code for PDF:", qrError);
-            } finally {
-                if (qrCodeContainer.parentNode) {
-                    document.body.removeChild(qrCodeContainer);
-                }
-            }
+                new QRCode(qrCodeContainer, { text: qrCodeData, width: 128, height: 128, colorDark: modernDarkTextColor, colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
+                await new Promise(resolve => setTimeout(resolve, 50));
+                const canvas = qrCodeContainer.querySelector('canvas');
+                if (canvas) qrCodeImgData = canvas.toDataURL('image/png');
+            } catch (e) { console.error("QR Code generation failed", e); } finally { document.body.removeChild(qrCodeContainer); }
 
-            if (qrCodeImgData) {
-                 doc.addImage(qrCodeImgData, 'PNG', 160, yPos, 40, 40);
+            if (qrCodeImgData) { newDoc.addImage(qrCodeImgData, 'PNG', rightMargin + 3, newYPos, 40, 40); }
+            newYPos += 45;
+
+            newDoc.setFontSize(9); newDoc.setFont("helvetica", "normal"); newDoc.setTextColor(modernLightTextColor);
+            newDoc.text("BUS NAME", rightMargin, newYPos); newYPos += 5;
+            newDoc.setFontSize(11); newDoc.setFont("helvetica", "bold"); newDoc.setTextColor(modernDarkTextColor);
+            newDoc.text(booking.bus_name ?? "-", rightMargin, newYPos, { maxWidth: rightColumnWidth }); newYPos += 8;
+
+            newDoc.setFontSize(9); newDoc.setFont("helvetica", "normal"); newDoc.setTextColor(modernLightTextColor);
+            newDoc.text("PRICE PAID", rightMargin, newYPos); newYPos += 5;
+            newDoc.setFontSize(11); newDoc.setFont("helvetica", "bold"); newDoc.setTextColor(modernDarkTextColor);
+            newDoc.text(`KES ${Number(booking.price ?? 0).toLocaleString()}`, rightMargin, newYPos);
+
+            const footerY = 132;
+            newDoc.setDrawColor(modernPrimaryColor); newDoc.setLineWidth(0.2); newDoc.line(10, footerY, 200, footerY);
+            const footerTextY = footerY + 5;
+            newDoc.setFontSize(7); newDoc.setFont("helvetica", "normal"); newDoc.setTextColor(modernLightTextColor);
+            newDoc.text("© 2025 Prince Alex Travel Services", 10, footerTextY);
+            newDoc.text("This is an official e-ticket. Terms and conditions apply.", 10, footerTextY + 4);
+            const rightAlignX = 205 - 10;
+            newDoc.text("senerwaalex@gmail.com", rightAlignX, footerTextY, { align: 'right' });
+            newDoc.text("+254 717 384 875", rightAlignX, footerTextY + 4, { align: 'right' });
+
+            if (forEmail) {
+                return newDoc; // Return the doc object for email attachment
             } else {
-                console.warn("QR Code image data not generated for PDF, skipping addition.");
+                newDoc.save(`PrinceAlex_Ticket_${booking.booking_ref ?? booking.id}.pdf`);
+                console.log("PDF download initiated successfully.");
             }
-
-            yPos += 55;
-
-            // Main ticket body container line
-            doc.setDrawColor(primaryColor);
-            doc.setLineWidth(1.5);
-            doc.line(10, yPos, 200, yPos);
-            yPos += 10;
-
-            // Booking Reference
-            doc.setFontSize(18);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(accentColor);
-            doc.text(`Booking Reference: ${booking.booking_ref ?? booking.id}`, 20, yPos);
-            yPos += 15;
-
-            // Passenger Details Section
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Passenger Details:", 20, yPos);
-            yPos += 8;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text(`Name: ${booking.passenger_name ?? "-"}`, 20, yPos); yPos += 7;
-            doc.text(`ID Number: ${booking.passenger_id ?? "-"}`, 20, yPos); yPos += 7;
-            doc.text(`Gender: ${booking.passenger_gender ?? "-"}`, 20, yPos); yPos += 7;
-            doc.text(`Phone: ${booking.passenger_phone ?? "-"}`, 20, yPos); yPos += 7;
-            doc.text(`Email: ${booking.passenger_email || 'N/A'}`, 20, yPos); yPos += 12;
-
-            // Journey Details Section
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Journey Details:", 20, yPos);
-            yPos += 8;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text(`Bus Name: ${booking.bus_name ?? "-"}`, 20, yPos); yPos += 7;
-            doc.text(`Route: ${booking.bus_route ?? "-"}`, 20, yPos); yPos += 7;
-            doc.text(`Travel Date: ${booking.travel_date ?? "-"}`, 20, yPos); yPos += 7;
-            doc.text(`Departure Time: ${booking.bus_time ?? "-"}`, 20, yPos); yPos += 7;
-            doc.text(`Bus ID: ${booking.bus_id ?? "-"}`, 20, yPos); yPos += 7;
-            doc.text(`Seat Number: ${booking.seat_number ?? "-"}`, 20, yPos); yPos += 12;
-
-            // Payment Summary Section
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor);
-            doc.text("Payment Summary:", 20, yPos);
-            yPos += 8;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text(`Amount: Ksh ${Number(booking.price ?? 0).toFixed(2)}`, 20, yPos); yPos += 7;
-            doc.text(`Payment Status: ${(booking.status ?? "pending").toUpperCase()}`, 20, yPos); yPos += 12;
-            doc.text(`Booking Date: ${new Date(booking.booking_date).toLocaleDateString()}`, 20, yPos); yPos += 12;
-
-            // Special Note for PENDING Status
-            if ((booking.status ?? "pending").toUpperCase() === 'PENDING') {
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(200, 0, 0); // Red color for warning
-                doc.text("NOTE: This ticket is PENDING PAYMENT. Please complete payment to validate.", 20, yPos);
-                yPos += 5;
-                doc.text("Contact support for assistance: +254 717 384 875", 20, yPos);
-                doc.setTextColor(darkTextColor); // Reset color
-                yPos += 15;
-            }
-
-            // Footer
-            yPos = doc.internal.pageSize.height - 25;
-            doc.setDrawColor(primaryColor);
-            doc.setLineWidth(0.5);
-            doc.line(10, yPos, 200, yPos);
-            yPos += 5;
-
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(darkTextColor);
-            doc.text("Prince Alex Travel Services | Email: senerwaalex@gmail.com | Phone: +254 717 384 875", doc.internal.pageSize.width / 2, yPos, { align: "center" });
-            yPos += 5;
-            doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
-
-            doc.save(`PrinceAlex_Ticket_${booking.booking_ref ?? booking.id}.pdf`);
-            console.log("PDF download initiated successfully.");
         }
     </script>
     <style>
@@ -595,6 +724,40 @@
             transform: translateY(-1px);
             box-shadow: var(--shadow-sm);
         }
+        
+        /* --- START: Styles copied from ticket-lookup.html for consistency --- */
+        .ticket-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+        .ticket-summary-grid div {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--primary-light);
+        }
+        .ticket-summary-grid label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+        }
+        .ticket-summary-grid span {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+        .summary-footer {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 1.5rem;
+        }
+        /* --- END: Styles copied from ticket-lookup.html --- */
 
         .detail-item strong {
             color: var(--text-dark);
@@ -681,6 +844,27 @@
             align-items: center;
             gap: 0.5rem;
             box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Style for the new Send Email button */
+        .send-email-button {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: var(--white);
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 
+                0 10px 15px -3px rgba(245, 158, 11, 0.4),
+                0 4px 6px -2px rgba(245, 158, 11, 0.05);
             position: relative;
             overflow: hidden;
         }
@@ -1149,6 +1333,23 @@
             border: 1px solid #a7f3d0;
             max-width: 600px;
         }
+
+        /* Enhanced styling for the confirmation message */
+        .email-confirmation-message {
+            font-size: 1.1rem;
+            color: var(--success);
+            margin: 1.5rem auto;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            background: #dcfce7; /* Lighter green background */
+            border-radius: var(--border-radius);
+            border-left: 5px solid var(--success);
+            max-width: 80%;
+        }
     </style>
 </head>
 <body>
@@ -1180,44 +1381,21 @@
         <h1>Booking Confirmation</h1>
         <p class="success-message">Your booking has been successfully placed!</p>
 
-        <div id="bookingDetails" class="detail-group">
-            <div class="detail-item">
-                <strong>Booking Reference:</strong> <span id="referenceDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Passenger Name:</strong> <span id="passengerNameDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Passenger Email:</strong> <span id="passengerEmailDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Passenger Phone:</strong> <span id="passengerPhoneDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Bus Name:</strong> <span id="busNameDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Bus Route:</strong> <span id="busRouteDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Travel Date:</strong> <span id="travelDateDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Departure Time:</strong> <span id="departureTimeDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Seat Number:</strong> <span id="seatNumberDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Total Price:</strong> <span id="totalPriceDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Booking Date:</strong> <span id="bookingDateDisplay"></span>
-            </div>
-            <div class="detail-item">
-                <strong>Payment Status:</strong> <span id="paymentStatusDisplay" class="status-badge"></span>
-            </div>
+        <!-- New Ticket Summary Grid Layout -->
+        <div id="bookingDetails" class="ticket-summary-grid">
+            <div><label>Passenger</label><span id="passengerName"></span></div>
+            <div><label>Route</label><span id="busRoute"></span></div>
+            <div><label>Travel Date</label><span id="travelDate"></span></div>
+            <div><label>Seat</label><span id="seatNumber"></span></div>
+            <div><label>Price</label><span id="price"></span></div>
+            <div><label>Booking Ref</label><span id="bookingRef"></span></div>
+            <div><label>Status</label><span id="status" class="status-badge"></span></div>
         </div>
+        <p class="summary-footer" style="text-align: center;">
+            Full ticket details are available on the downloaded PDF.
+            <br>
+            <span id="paymentStatusDisplay" class="status-badge" style="display:none;"></span> <!-- Keep for logic, but hide -->
+        </p>
 
         <div id="paymentSection" class="hidden">
             <h3>Payment Required</h3>
@@ -1235,6 +1413,7 @@
 
         <div class="button-group">
             <button id="downloadTicketBtn" class="hidden"><i class="fas fa-download"></i> Download Ticket (PDF)</button>
+            <button id="sendEmailBtn" class="send-email-button hidden"><i class="fas fa-envelope"></i> Send Ticket to Email</button>
             <button onclick="window.location.href='index.html'"><i class="fas fa-home"></i> Back to Home</button>
         </div>
     </div>
@@ -1327,6 +1506,14 @@
                     }
                 });
             }
+
+            // Close popup when clicking outside (Moved here to ensure element exists)
+            const popupOverlay = document.getElementById('popupOverlay');
+            if (popupOverlay) {
+                popupOverlay.addEventListener('click', function(e) {
+                    if (e.target === this) { closePopup(); }
+                });
+            }
         });
 
         // Newsletter subscription function
@@ -1386,12 +1573,6 @@
             overlay.classList.remove('show');
         }
 
-        // Close popup when clicking outside
-        document.getElementById('popupOverlay').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closePopup();
-            }
-        });
     </script>
 
     <!-- Custom Popup Modal -->
