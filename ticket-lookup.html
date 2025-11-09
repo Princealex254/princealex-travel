@@ -85,8 +85,7 @@
         }
         body {
             font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            background-attachment: fixed;
+            background-color: var(--light-bg);
             color: var(--text-dark);
             display: flex;
             flex-direction: column;
@@ -100,11 +99,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;
-            background: 
-                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            height: 100%;            
             pointer-events: none;
             z-index: -1;
         }
@@ -266,13 +261,8 @@
         }
         
         .lookup-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: var(--gradient-primary); /* Use theme gradient */
             border-radius: 24px 24px 0 0;
         }
         
@@ -284,10 +274,8 @@
         }
         
         .lookup-container h2 {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--primary-color); /* Use solid primary color */
+            background: none; /* Remove gradient background */
             margin-bottom: 0.5rem;
             font-size: 3rem;
             font-weight: 800;
@@ -330,11 +318,10 @@
         }
         
         .form-group input[type="text"]:focus {
-            border-color: #667eea;
+            border-color: var(--primary-color); /* Use theme color */
             outline: none;
-            box-shadow: 
-                0 0 0 4px rgba(102, 126, 234, 0.1),
-                0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.1), /* Use theme color with opacity */
+                        0 4px 6px -1px rgba(0, 0, 0, 0.1);
             transform: translateY(-2px);
         }
         
@@ -348,7 +335,7 @@
             font-weight: 500;
         }
         .lookup-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--gradient-primary); /* Use theme gradient */
             color: var(--white);
             padding: 1rem 3rem;
             border: none;
@@ -356,10 +343,9 @@
             cursor: pointer;
             font-size: 1.1rem;
             font-weight: 700;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 
-                0 10px 15px -3px rgba(102, 126, 234, 0.4),
-                0 4px 6px -2px rgba(102, 126, 234, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.4), /* Use theme color */
+                        0 4px 6px -2px rgba(30, 58, 138, 0.05);
             position: relative;
             overflow: hidden;
             text-transform: uppercase;
@@ -380,9 +366,8 @@
         
         .lookup-button:hover {
             transform: translateY(-4px) scale(1.02);
-            box-shadow: 
-                0 20px 25px -5px rgba(102, 126, 234, 0.4),
-                0 10px 10px -5px rgba(102, 126, 234, 0.04);
+            box-shadow: 0 20px 25px -5px rgba(30, 58, 138, 0.4), /* Use theme color */
+                        0 10px 10px -5px rgba(30, 58, 138, 0.04);
         }
         
         .lookup-button:hover::before {
@@ -485,6 +470,37 @@
             box-shadow: 
                 0 32px 64px -12px rgba(0, 0, 0, 0.25),
                 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+        .ticket-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+        .ticket-summary-grid div {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--primary-light);
+        }
+        .ticket-summary-grid label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+        }
+        .ticket-summary-grid span {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+        .summary-footer {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 1.5rem;
         }
         .ticket-details p {
             margin-bottom: 1rem;
@@ -972,21 +988,20 @@
         </button>
         <p id="message" class="message"></p>
 
-        <div id="ticketDetailsSection" class="ticket-details">
-            <h3>Ticket Details</h3>
-            <p><strong>Booking Reference:</strong> <span id="refId"></span></p>
-            <p><strong>Passenger Name:</strong> <span id="passengerName"></span></p>
-            <p><strong>Phone Number:</strong> <span id="passengerPhone"></span></p>
-            <p><strong>Email:</strong> <span id="passengerEmail"></span></p>
-            <p><strong>Bus Name:</strong> <span id="busName"></span></p>
-            <p><strong>Bus Route:</strong> <span id="busRoute"></span></p>
-            <p><strong>Travel Date:</strong> <span id="travelDate"></span></p>
-            <p><strong>Departure Time:</strong> <span id="busTime"></span></p>
-            <p><strong>Bus ID:</strong> <span id="busId"></span></p>
-            <p><strong>Seat Number:</strong> <span id="seatNumber"></span></p>
-            <p><strong>Price:</strong> Ksh <span id="price"></span></p>
-            <p><strong>Status:</strong> <span id="status"></span></p>
-            <p><strong>Booking Date:</strong> <span id="bookingDate"></span></p>
+        <div id="ticketDetailsSection" class="ticket-details" style="text-align:center;">
+            <h3>Ticket Summary</h3>
+            <div class="ticket-summary-grid">
+                <div><label>Passenger</label><span id="passengerName"></span></div>
+                <div><label>Route</label><span id="busRoute"></span></div>
+                <div><label>Travel Date</label><span id="travelDate"></span></div>
+                <div><label>Seat</label><span id="seatNumber"></span></div>
+                <div><label>Status</label><span id="status"></span></div>
+            </div>
+            <p class="summary-footer">Full details are available on the downloaded PDF ticket.</p>
+
+            <!-- Hidden fields for PDF generation -->
+            <input type="hidden" id="passengerEmail">
+            <input type="hidden" id="bookingRef">
             
             <div class="button-group-ticket"> <!-- New container for ticket action buttons -->
                 <button id="downloadTicketBtn" class="download-button"><i class="fas fa-download"></i> Download Ticket (PDF)</button>
@@ -1078,20 +1093,16 @@
                         fetchedBookingData = { id: docSnap.id, ...data }; // Store the document ID along with data
 
                         // Populate the UI with fetched data
-                        document.getElementById('refId').textContent = data.booking_ref;
                         document.getElementById('passengerName').textContent = data.passenger_name;
-                        document.getElementById('passengerPhone').textContent = data.passenger_phone;
-                        document.getElementById('passengerEmail').textContent = data.passenger_email || 'N/A';
-                        document.getElementById('busName').textContent = data.bus_name || 'N/A';
                         document.getElementById('busRoute').textContent = data.bus_route;
                         document.getElementById('travelDate').textContent = data.travel_date;
-                        document.getElementById('busTime').textContent = data.bus_time;
-                        document.getElementById('busId').textContent = data.bus_id;
                         document.getElementById('seatNumber').textContent = data.seat_number;
-                        document.getElementById('price').textContent = data.price.toFixed(2);
                         document.getElementById('status').textContent = data.status ? data.status.toUpperCase() : 'N/A';
-                        document.getElementById('bookingDate').textContent = new Date(data.booking_date).toLocaleDateString();
 
+                        // Populate hidden fields needed for PDF/email actions
+                        document.getElementById('passengerEmail').value = data.passenger_email || '';
+                        document.getElementById('bookingRef').value = data.booking_ref || '';
+                        
                         ticketDetailsSection.style.display = 'block'; // Show the details section
                         messageElem.textContent = '✅ Ticket found successfully!';
                         messageElem.className = 'message success';
@@ -1111,154 +1122,225 @@
             }
 
             // Function to generate PDF (for both download and email)
-            async function generatePdfContent(booking) {
+            async function generatePdfContent(booking) { // Changed to async to support image loading
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' });
 
-                // Define colors (matching CSS variables, directly from the CSS in the HTML)
-                const primaryColor = '#002d6b';
-                const accentColor = '#c69214';
-                const darkTextColor = '#1a1a1a';
-                // const secondaryTextColor = '#555'; // Not directly used in PDF, kept for reference
+                // Define modern color scheme
+                const primaryColor = '#1e3a8a'; // Modern deep blue
+                const accentColor = '#f59e0b'; // Modern amber/gold
+                const darkTextColor = '#1f2937'; // Dark gray
+                const lightTextColor = '#6b7280'; // Light gray
+                const whiteColor = '#ffffff';
+                const lightBgColor = '#f8fafc';
 
-                let yPos = 20; // Initial Y position for content
+                const status = (booking.status ?? "pending").toUpperCase();
+                const statusColor = status === 'PAID' ? '#10b981' : '#f59e0b';
 
-                // --- 1. Header with Logo and QR Code ---
-                // Add Logo: Using a very small, transparent Base64 PNG to reduce PDF size and ensure compatibility.
-                const tinyTransparentPngBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-                doc.addImage(tinyTransparentPngBase64, 'PNG', 15, yPos, 40, 40); // x, y, width, height
+                // --- 1. MAIN TICKET BODY (as a rounded rectangle) ---
+                doc.setFillColor(whiteColor);
+                doc.setDrawColor(primaryColor);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(5, 5, 200, 138, 5, 5, 'FD'); // Main ticket container
 
+                // --- 2. HEADER SECTION ---
+                doc.setFillColor(primaryColor);
+                doc.roundedRect(5, 5, 200, 30, 5, 5, 'F');
 
-                // Title
+                // Company logo placeholder
+                doc.setFillColor(whiteColor);
+                doc.circle(20, 20, 8, 'F');
+                doc.setTextColor(primaryColor);
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "bold");
+                doc.text("PA", 18, 22);
+
+                // Company name & "Boarding Pass"
+                doc.setTextColor(whiteColor);
+                doc.setFontSize(22);
+                doc.setFont("helvetica", "bold");
+                doc.text("Prince Alex Travel", 35, 18);
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                doc.text("BOARDING PASS", 35, 26);
+
+                // Status Badge in Header (Moved to the top)
+                const statusBadgeWidth = 35;
+                const statusBadgeX = 205 - statusBadgeWidth - 10; // Positioned on the right
+                doc.setFillColor(statusColor);
+                doc.roundedRect(statusBadgeX, 15, statusBadgeWidth, 10, 3, 3, 'F');
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(whiteColor);
+                doc.text(status, statusBadgeX + (statusBadgeWidth / 2), 21.5, { align: 'center' });
+
+                // --- 3. MAIN CONTENT AREA (Boarding Pass Layout) ---
+                const mainContentY = 40;
+                const stubX = 145; // X position for the right-side "stub"
+
+                // Dashed line for "tear-off" effect
+                doc.setLineDashPattern([2, 2], 0);
+                doc.setDrawColor(lightTextColor);
+                doc.line(stubX, mainContentY - 2, stubX, 130);
+                doc.setLineDashPattern([], 0);
+
+                // --- LEFT SIDE (MAIN DETAILS) ---
+                let yPos = mainContentY + 8;
+                const leftMargin = 15;
+                const leftColumnWidth = stubX - leftMargin - 5; // Max width for text on the left
+
+                // Passenger Name
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(lightTextColor);
+                doc.text("PASSENGER NAME", leftMargin, yPos);
+                yPos += 8;
+                doc.setFontSize(18);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(darkTextColor);
+                doc.text(booking.passenger_name ?? "-", leftMargin, yPos, { maxWidth: leftColumnWidth });
+                yPos += 12; // Reduced space
+
+                // Route (From -> To)
+                const [origin, destination] = (booking.bus_route ?? '- to -').split(' to ');
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(lightTextColor);
+                doc.text("FROM", leftMargin, yPos);
+                doc.text("TO", leftMargin + 60, yPos);
+                yPos += 10;
                 doc.setFontSize(24);
                 doc.setFont("helvetica", "bold");
                 doc.setTextColor(primaryColor);
-                doc.text("Prince Alex Travel Services", 60, yPos + 15);
-                doc.setFontSize(14);
-                doc.setFont("helvetica", "normal");
-                doc.text("E-Ticket & Booking Confirmation", 60, yPos + 25);
+                doc.text(origin.trim(), leftMargin, yPos, { maxWidth: 40 });
+                doc.text("→", leftMargin + 45, yPos);
+                doc.text(destination.trim(), leftMargin + 60, yPos, { maxWidth: 65 });
+                yPos += 12; // Reduced space
 
-                // Generate QR Code
-                const qrCodeData = booking.booking_ref; // Data to encode in QR code
-                // Create a temporary div to render QR code into
+                // Date, Time, Seat in a row
+                const detailY = yPos;
+                const detailItems = [
+                    { label: "TRAVEL DATE", value: booking.travel_date ?? "-" },
+                    { label: "DEPARTURE", value: booking.bus_time ?? "-" },
+                    { label: "SEAT", value: booking.seat_number ?? "-" }
+                ];
+                detailItems.forEach((item, index) => {
+                    const xPos = leftMargin + (index * 45);
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "normal");
+                    doc.setTextColor(lightTextColor);
+                    doc.text(item.label, xPos, detailY);
+                    doc.setFontSize(16);
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(darkTextColor);
+                    doc.text(item.value, xPos, detailY + 8, { maxWidth: 40 });
+                });
+                yPos += 20; // Reduced space
+
+                // Important Notice
+                doc.setFillColor(lightBgColor);
+                doc.roundedRect(leftMargin - 5, yPos, leftColumnWidth + 5, 20, 3, 3, 'F');
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(primaryColor);
+                doc.text("IMPORTANT REMINDERS:", leftMargin, yPos + 6);
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(darkTextColor);
+                doc.text("• Arrive at the terminal 15 minutes before departure.", leftMargin, yPos + 11);
+                doc.text("• Present this ticket (digital or printed) to the driver.", leftMargin, yPos + 16);
+
+                
+                // --- RIGHT SIDE (STUB) ---
+                yPos = mainContentY + 8;
+                const rightMargin = stubX + 8;
+                const rightColumnWidth = 205 - rightMargin - 5;
+
+                // Booking Reference
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(lightTextColor);
+                doc.text("BOOKING REFERENCE", rightMargin, yPos);
+                yPos += 8;
+                doc.setFontSize(16);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(accentColor);
+                doc.text(booking.booking_ref ?? booking.id, rightMargin, yPos, { maxWidth: rightColumnWidth });
+                yPos += 12;
+
+                // QR Code
+                const qrCodeData = booking.booking_ref ?? booking.id;
                 const qrCodeContainer = document.createElement('div');
-                qrCodeContainer.style.display = 'none'; // Hide it
+                qrCodeContainer.style.display = 'none';
                 document.body.appendChild(qrCodeContainer);
 
                 let qrCodeImgData = '';
                 try {
                     new QRCode(qrCodeContainer, {
                         text: qrCodeData,
-                        width: 80,
-                        height: 80,
-                        colorDark : primaryColor, // Use company color for QR code
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.H
+                        width: 128,
+                        height: 128,
+                        colorDark: darkTextColor,
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
                     });
-
-                    // Wait a tiny bit for QR code to render to canvas/img
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                    qrCodeImgData = qrCodeContainer.querySelector('canvas').toDataURL("image/png");
-
-                } catch (qrError) {
-                    console.error("Error generating QR code:", qrError);
+                    await new Promise(resolve => setTimeout(resolve, 50)); // Wait for QR code to render
+                    const canvas = qrCodeContainer.querySelector('canvas');
+                    if (canvas) qrCodeImgData = canvas.toDataURL('image/png');
+                } catch (e) {
+                    console.error("QR Code generation failed", e);
                 } finally {
-                    // Clean up the temporary div
-                    if (qrCodeContainer.parentNode) {
-                        document.body.removeChild(qrCodeContainer);
-                    }
+                    document.body.removeChild(qrCodeContainer);
                 }
 
                 if (qrCodeImgData) {
-                     doc.addImage(qrCodeImgData, 'PNG', 160, yPos, 40, 40); // x, y, width, height
-                } else {
-                    console.warn("QR Code image data not generated, skipping addition to PDF.");
+                    doc.addImage(qrCodeImgData, 'PNG', rightMargin + 3, yPos, 40, 40);
                 }
+                yPos += 45; // Reduced space after QR code to move content up
 
-
-                yPos += 55; // Move Y position down after header content
-
-                // --- Drawing the main ticket body container ---
-                doc.setDrawColor(primaryColor);
-                doc.setLineWidth(1.5);
-                doc.line(10, yPos, 200, yPos); // Horizontal line below header
-
-                yPos += 10; // Space after line
-
-                // --- 2. Booking Reference (Prominent) ---
-                doc.setFontSize(18);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(accentColor);
-                doc.text(`Booking Reference: ${booking.booking_ref}`, 20, yPos);
-                yPos += 15;
-
-                // --- 3. Passenger Details Section ---
-                doc.setFontSize(14);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(primaryColor);
-                doc.text("Passenger Details:", 20, yPos);
-                yPos += 8;
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(darkTextColor);
-                doc.text(`Name: ${booking.passenger_name}`, 20, yPos); yPos += 7;
-                doc.text(`Phone: ${booking.passenger_phone}`, 20, yPos); yPos += 7;
-                doc.text(`Email: ${booking.passenger_email || 'N/A'}`, 20, yPos); yPos += 12;
-
-                // --- 4. Journey Details Section ---
-                doc.setFontSize(14);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(primaryColor);
-                doc.text("Journey Details:", 20, yPos);
-                yPos += 8;
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(darkTextColor);
-                doc.text(`Bus Name: ${booking.bus_name || 'N/A'}`, 20, yPos); yPos += 7;
-                doc.text(`Route: ${booking.bus_route}`, 20, yPos); yPos += 7;
-                doc.text(`Travel Date: ${booking.travel_date}`, 20, yPos); yPos += 7;
-                doc.text(`Departure Time: ${booking.bus_time}`, 20, yPos); yPos += 7;
-                doc.text(`Bus ID: ${booking.bus_id}`, 20, yPos); yPos += 7;
-                doc.text(`Seat Number: ${booking.seat_number}`, 20, yPos); yPos += 12;
-
-                // --- 5. Payment Summary Section ---
-                doc.setFontSize(14);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(primaryColor);
-                doc.text("Payment Summary:", 20, yPos);
-                yPos += 8;
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(darkTextColor);
-                doc.text(`Amount: Ksh ${booking.price.toFixed(2)}`, 20, yPos); yPos += 7;
-                doc.text(`Payment Status: ${booking.status.toUpperCase()}`, 20, yPos); yPos += 12;
-                doc.text(`Booking Date: ${new Date(booking.booking_date).toLocaleDateString()}`, 20, yPos); yPos += 12;
-
-                // --- 6. Special Note for PENDING Status ---
-                if (booking.status.toUpperCase() === 'PENDING') {
-                    doc.setFontSize(10);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(200, 0, 0); // Red color for warning
-                    doc.text("NOTE: This ticket is PENDING PAYMENT. Please complete payment to validate.", 20, yPos);
-                    yPos += 5;
-                    doc.text("Contact support for assistance: +254 717 384 875", 20, yPos);
-                    doc.setTextColor(darkTextColor); // Reset color
-                    yPos += 15;
-                }
-
-                // --- 7. Footer ---
-                yPos = doc.internal.pageSize.height - 25; // Position footer from bottom
-                doc.setDrawColor(primaryColor);
-                doc.setLineWidth(0.5);
-                doc.line(10, yPos, 200, yPos); // Horizontal line above footer
-                yPos += 5;
-
+                // Bus Name
                 doc.setFontSize(9);
                 doc.setFont("helvetica", "normal");
-                doc.setTextColor(darkTextColor);
-                doc.text("Prince Alex Travel Services | Email: senerwaalex@gmail.com | Phone: +254 717 384 875", doc.internal.pageSize.width / 2, yPos, { align: "center" });
+                doc.setTextColor(lightTextColor);
+                doc.text("BUS NAME", rightMargin, yPos);
                 yPos += 5;
-                doc.text("© 2025 Prince Alex Digital. All rights reserved.", doc.internal.pageSize.width / 2, yPos, { align: "center" });
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(darkTextColor);
+                doc.text(booking.bus_name ?? "-", rightMargin, yPos, { maxWidth: rightColumnWidth });
+                yPos += 8; // Reduced space
+
+                // Price
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(lightTextColor);
+                doc.text("PRICE PAID", rightMargin, yPos);
+                yPos += 5;
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(darkTextColor);
+                doc.text(`KES ${Number(booking.price ?? 0).toLocaleString()}`, rightMargin, yPos);
+                yPos += 8; // Reduced space
+
+                // --- 4. FOOTER ---
+                const footerY = 132;
+                doc.setDrawColor(primaryColor);
+                doc.setLineWidth(0.2);
+                doc.line(10, footerY, 200, footerY);
+                
+                const footerTextY = footerY + 5;
+                doc.setFontSize(7);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(lightTextColor);
+
+                // Left-aligned text
+                doc.text("© 2025 Prince Alex Travel Services", 10, footerTextY);
+                doc.text("This is an official e-ticket. Terms and conditions apply.", 10, footerTextY + 4);
+
+                // Right-aligned text
+                const rightAlignX = 205 - 10; // Right edge of ticket minus margin
+                doc.text("senerwaalex@gmail.com", rightAlignX, footerTextY, { align: 'right' });
+                doc.text("+254 717 384 875", rightAlignX, footerTextY + 4, { align: 'right' });
 
                 return doc;
             }
