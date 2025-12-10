@@ -93,6 +93,8 @@
             --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
             --gradient-accent: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%);
+            --border-radius: 8px; /* Standard border radius */
+            --border-radius-lg: 16px; /* Larger border radius */
         }
         * {
             margin: 0;
@@ -912,7 +914,7 @@
 
         .popup-modal {
             background: var(--white);
-            border-radius: var(--border-radius-lg);
+            border-radius: var(--border-radius-lg); /* Use the defined large radius */
             padding: 2rem;
             max-width: 400px;
             width: 90%;
@@ -920,8 +922,10 @@
             box-shadow: var(--shadow-xl);
             transform: scale(0.8) translateY(20px);
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
+            position: relative; /* Keep for close button positioning */
+            /* Add max-height and overflow to handle long content on small screens */
+            max-height: 90vh; /* Limit height to 90% of the viewport height */
+            overflow-y: auto; /* Make the modal scrollable if content overflows */
         }
 
         .popup-overlay.show .popup-modal {
