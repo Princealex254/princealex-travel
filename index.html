@@ -58,7 +58,6 @@
                 if (userProfileSnap.exists()) {
                     window.currentUserProfile = userProfileSnap.data();
                 } else {
-                    console.log("No user profile found in Firestore for:", user.uid);
                     window.currentUserProfile = {
                         fullName: user.email, // Fallback if no profile
                         email: user.email
@@ -1961,7 +1960,6 @@
         // Global variables for navbar links (already declared in the module script, but re-declared for clarity in this script block)
         const myProfileLink = document.getElementById('myProfileLink');
         const loginRegisterLink = document.getElementById('loginRegisterLink');
-        const logoutLink = document.getElementById('logoutLink');
         const mobileMenuToggle = document.getElementById('mobile-menu');
         const mainNav = document.getElementById('main-nav');
 
@@ -1972,7 +1970,6 @@
                 event.stopPropagation();
             }
             if (mainNav && mobileMenuToggle) {
-                console.log('Fallback toggle function called');
                 mainNav.classList.toggle('open');
                 mobileMenuToggle.classList.toggle('open');
                 document.body.classList.toggle('menu-open');
@@ -2016,11 +2013,14 @@
                 }
             });
 
-            // Attach logout handler to the logout link in navbar
-            logoutLink.addEventListener('click', async (e) => {
-                e.preventDefault(); // Prevent default link behavior
-                await logout(); // Use await for async logout
-            });
+            // Attach logout handler to the logout link in navbar, ensuring the element exists
+            const logoutLink = document.getElementById('logoutLink');
+            if (logoutLink) {
+                logoutLink.addEventListener('click', async (e) => {
+                    e.preventDefault(); // Prevent default link behavior
+                    await logout(); // Use await for async logout
+                });
+            }
 
             // Mobile Menu Toggle Functionality
             if (mobileMenuToggle && mainNav) {
@@ -2042,6 +2042,14 @@
                         mobileMenuToggle.classList.remove('open');
                         mainNav.classList.remove('open');
                     }
+                });
+            }
+
+            // Move this event listener here to ensure the element exists before it's accessed
+            const popupOverlay = document.getElementById('popupOverlay');
+            if (popupOverlay) {
+                popupOverlay.addEventListener('click', function(e) {
+                    if (e.target === this) { closePopup(); }
                 });
             }
         });
@@ -2106,8 +2114,6 @@
         // --- Front-end Booking System Functions ---
 
         async function searchResults() {
-            console.log('Search function called');
-            
             // Small delay to ensure DOM is ready
             await new Promise(resolve => setTimeout(resolve, 10));
             
@@ -2116,9 +2122,6 @@
             const date = document.getElementById('travelDate').value;
             const resultsContainer = document.getElementById('results');
             const loadingSpinner = document.getElementById('loadingSpinner');
-            
-            console.log('Search values:', { from, to, date });
-            console.log('Elements found:', { resultsContainer, loadingSpinner });
             
             // Check if required elements exist
             if (!resultsContainer) {
@@ -2154,14 +2157,11 @@
                             where("travelDate", "==", date));
             
             try {
-                console.log('Starting Firebase query...');
                 const querySnapshot = await getDocs(q);
-                console.log('Query completed, processing results...');
                 const buses = [];
                 querySnapshot.forEach((doc) => {
                     buses.push({ id: doc.id, ...doc.data() });
                 });
-                console.log('Found buses:', buses.length);
 
                 if (buses.length === 0) {
                     loadingSpinner.classList.add('hidden');
@@ -2254,7 +2254,6 @@
 
         // MODIFIED: handleBookNowClick function
         async function handleBookNowClick(event) {
-            console.log("handleBookNowClick called. Current user:", window.currentUser);
             // Store selected bus details temporarily
             currentBusId = event.target.dataset.busId;
             currentBusRoute = event.target.dataset.busRoute;
@@ -2272,8 +2271,6 @@
 
             // Check if user is logged in using Firebase currentUser
             if (window.currentUser) {
-                console.log("User is logged in. Proceeding to seat selection directly with empty form.");
-
                 // Populate new header
                 const headerInfo = document.getElementById('modalHeaderInfo');
                 headerInfo.innerHTML = `
@@ -2294,7 +2291,6 @@
                 document.getElementById("seatModal").style.display = "flex";
 
             } else {
-                console.log("User is NOT logged in. Showing login choice modal.");
                 // If not logged in, show the login choice modal
                 showLoginChoiceModal();
             }
@@ -2302,19 +2298,16 @@
 
         // New function: Show the login/guest choice modal
         function showLoginChoiceModal() {
-            console.log("showLoginChoiceModal called. Displaying login choice modal.");
             document.getElementById("loginChoiceModal").style.display = "flex";
         }
 
         // New function: Close the login/guest choice modal
         function closeLoginChoiceModal() {
-            console.log("closeLoginChoiceModal called. Hiding login choice modal.");
             document.getElementById("loginChoiceModal").style.display = "none";
         }
 
         // New function: Handle "Proceed as Guest"
         async function proceedAsGuest() {
-            console.log("proceedAsGuest called.");
             closeLoginChoiceModal(); // Close the choice modal
             // Now, open the seat selection modal as before
             const headerInfo = document.getElementById('modalHeaderInfo');
@@ -2336,7 +2329,6 @@
 
         // New function: Handle "Login / Sign Up"
         function redirectToLogin() {
-            console.log("redirectToLogin called.");
             closeLoginChoiceModal(); // Close the choice modal
             displayCustomMessage("Please log in or sign up. You will need to search for your bus again after logging in.");
             window.location.href = 'login-register.html'; // Redirect to login page
@@ -3083,13 +3075,6 @@
             overlay.classList.remove('show');
         }
 
-        // Close popup when clicking outside
-        document.getElementById('popupOverlay').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closePopup();
-            }
-        });
-
         // Function to show auto-dismiss popup (disappears after 3 seconds)
         function showAutoPopup(title, message, type = 'info') {
             const overlay = document.getElementById('popupOverlay');
@@ -3097,6 +3082,13 @@
             const titleEl = document.getElementById('popupTitle');
             const messageEl = document.getElementById('popupMessage');
             const buttonsEl = document.getElementById('popupButtons');
+
+            // Move this inside the DOMContentLoaded listener to ensure the element exists
+            document.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('popupOverlay').addEventListener('click', function(e) {
+                    if (e.target === this) { closePopup(); }
+                });
+            });
 
             // Set icon based on type
             const icons = {
@@ -3287,7 +3279,6 @@
                     }
 
                     const result = await response.json();
-                    console.log("Gemini API raw result:", result); // Log the full result for debugging
 
                     // Remove typing indicator
                     typingIndicator.remove();
