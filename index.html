@@ -286,7 +286,6 @@
             text-align: center;
             position: relative;
             overflow: hidden;
-            min-height: 100vh;
             display: flex;
             align-items: center;
             /* Modern hero section with enhanced styling */
@@ -1344,6 +1343,16 @@
             .hero p {
                 font-size: 1rem;
             }
+            .hero::after {
+                /* On mobile, make buses smaller and position them in the corners to prevent overlap */
+            background-size: 90%, 90%; /* Make images slightly larger */
+            /* Position both images in the center, slightly offset from each other */
+            background-position: 45% center, 55% center;
+            opacity: 0.08; /* Further reduce opacity to ensure text is readable */
+            bottom: auto; /* Remove bottom positioning */
+            height: 100%; /* Ensure it covers the full hero height */
+            }
+
             
             /* Booking Form Mobile */
             .booking {
@@ -1356,6 +1365,7 @@
                 grid-template-columns: 1fr;
                 padding: 1.5rem;
                 gap: 1rem;
+                margin: 0 auto; /* Center the form on mobile */
             }
             
             /* Results Section Mobile */
