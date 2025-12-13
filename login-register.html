@@ -22,7 +22,8 @@
             doc, 
             setDoc,
             addDoc,
-            collection
+            collection,
+            serverTimestamp
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
@@ -56,6 +57,7 @@
         window.collection = collection;
         window.GoogleAuthProvider = GoogleAuthProvider;
         window.signInWithPopup = signInWithPopup;
+        window.serverTimestamp = serverTimestamp;
 
         // Initial Auth State Check
         onAuthStateChanged(auth, (user) => {
@@ -1090,18 +1092,22 @@
 
         // --- User Registration ---
         async function register() {
+            const registerButton = document.querySelector('#registerForm button[onclick="register()"]');
+            registerButton.disabled = true;
+
             const email = document.getElementById('registerEmail').value.trim();
             const password = document.getElementById('registerPassword').value.trim();
 
             try {
                 // Create user account
                 const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+                // On success, the user is shown a popup and stays on the page, so we re-enable the button.
                 const user = userCredential.user;
 
                 // Initialize user profile
                 await setDoc(doc(firebaseDb, "users", user.uid), {
                     passenger_email: email,
-                    createdAt: new Date().toISOString()
+                    createdAt: serverTimestamp()
                 });
 
                 console.log("✅ User profile initialized:", user.uid);
@@ -1138,16 +1144,22 @@
                 }
 
                 showPopup('Oops! Registration Failed', friendlyMessage, 'error');
+            } finally {
+                registerButton.disabled = false;
             }
         }
 
         // --- User Login ---
         async function login() {
+            const loginButton = document.querySelector('#loginForm button[onclick="login()"]');
+            loginButton.disabled = true;
+
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
 
             if (!validateEmail(email)) {
                 showPopup('Invalid Email', 'Please enter a valid email address to continue.', 'warning');
+                loginButton.disabled = false;
                 return;
             }
 
@@ -1183,11 +1195,16 @@
                 }
 
                 showPopup('Login Failed', friendlyMessage, 'error');
+                // Re-enable button on failure
+                loginButton.disabled = false;
             }
         }
 
         // --- Google Sign-In ---
         async function googleSignIn() {
+            const googleButtons = document.querySelectorAll('button[onclick="googleSignIn()"]');
+            googleButtons.forEach(btn => btn.disabled = true);
+
             try {
                 const provider = new GoogleAuthProvider();
                 const result = await signInWithPopup(firebaseAuth, provider);
@@ -1201,7 +1218,7 @@
                     name: user.displayName || "",
                     photo: user.photoURL || "",
                     provider: "google",
-                    createdAt: new Date().toISOString()
+                    createdAt: serverTimestamp()
                 }, { merge: true });
 
                 showPopup(
@@ -1218,6 +1235,15 @@
             } catch (error) {
                 console.error("Google Sign-In Error:", error);
 
+                if (error.code === "auth/account-exists-with-different-credential") {
+                    showPopup(
+                        "Account Exists",
+                        "This email is already registered. Please login using email and password.",
+                        "error"
+                    );
+                    return;
+                }
+
                 let message = "Google sign-in failed. Please try again.";
                 if (error.code === "auth/popup-closed-by-user") {
                     message = "Sign-in popup was closed before completing.";
@@ -1226,15 +1252,22 @@
                 }
 
                 showPopup('Google Sign-In Failed', message, 'error');
+                // Re-enable buttons on failure
+                googleButtons.forEach(btn => btn.disabled = false);
             }
         }
 
         // --- Password Reset ---
         async function resetPassword() {
+            const resetButton = document.querySelector('#resetForm button');
+            resetButton.disabled = true;
+
             const email = document.getElementById('resetEmail').value.trim();
 
             if (!validateEmail(email)) {
                 showPopup('Invalid Email', 'Please enter a valid email address to continue.', 'warning');
+                // Re-enable button on validation failure
+                resetButton.disabled = false;
                 return;
             }
 
@@ -1258,6 +1291,8 @@
                 }
 
                 showPopup('Reset Failed', friendlyMessage, 'error');
+            } finally {
+                resetButton.disabled = false;
             }
         }
 
