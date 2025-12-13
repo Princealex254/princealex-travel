@@ -13,7 +13,9 @@
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
             sendPasswordResetEmail,
-            onAuthStateChanged 
+            onAuthStateChanged,
+            GoogleAuthProvider,
+            signInWithPopup
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
@@ -52,6 +54,8 @@
         window.doc = doc;
         window.addDoc = addDoc;
         window.collection = collection;
+        window.GoogleAuthProvider = GoogleAuthProvider;
+        window.signInWithPopup = signInWithPopup;
 
         // Initial Auth State Check
         onAuthStateChanged(auth, (user) => {
@@ -865,6 +869,11 @@
                 <input type="password" id="loginPassword" placeholder="Your Password" required>
             </div>
             <p id="loginMessage" class="message hidden"></p>
+            <button onclick="googleSignIn()" style="background:#fff;color:#333;border:2px solid #e2e8f0;">
+                <i class="fab fa-google"></i> Continue with Google
+            </button>
+            
+            <div style="margin:1rem 0;color:#64748b;font-weight:600;">OR</div>
             <button onclick="login()">Login</button>
             <a href="#" class="forgot-password" onclick="showForm('reset'); return false;">Forgot Password?</a>
         </div>
@@ -889,6 +898,11 @@
                 <p id="passwordMatchStatus" class="password-strength hidden"></p>
             </div>
             <p id="registerMessage" class="message hidden"></p>
+            <button onclick="googleSignIn()" style="background:#fff;color:#333;border:2px solid #e2e8f0;">
+                <i class="fab fa-google"></i> Sign up with Google
+            </button>
+            
+            <div style="margin:1rem 0;color:#64748b;font-weight:600;">OR</div>
             <button onclick="register()">Create Account</button>
         </div>
 
@@ -1169,6 +1183,49 @@
                 }
 
                 showPopup('Login Failed', friendlyMessage, 'error');
+            }
+        }
+
+        // --- Google Sign-In ---
+        async function googleSignIn() {
+            try {
+                const provider = new GoogleAuthProvider();
+                const result = await signInWithPopup(firebaseAuth, provider);
+                const user = result.user;
+
+                // Create user doc if first time
+                const userRef = doc(firebaseDb, "users", user.uid);
+
+                await setDoc(userRef, {
+                    passenger_email: user.email,
+                    name: user.displayName || "",
+                    photo: user.photoURL || "",
+                    provider: "google",
+                    createdAt: new Date().toISOString()
+                }, { merge: true });
+
+                showPopup(
+                    '🎉 Welcome!',
+                    'Google authentication successful. You are being redirected to your profile.',
+                    'success',
+                    '<button class="popup-button primary" onclick="closePopup(); window.location.href=\'profile.html\';">Go to Profile</button>'
+                );
+
+                setTimeout(() => {
+                    window.location.href = 'profile.html';
+                }, 1500);
+
+            } catch (error) {
+                console.error("Google Sign-In Error:", error);
+
+                let message = "Google sign-in failed. Please try again.";
+                if (error.code === "auth/popup-closed-by-user") {
+                    message = "Sign-in popup was closed before completing.";
+                } else if (error.code === "auth/cancelled-popup-request") {
+                    message = "Only one sign-in popup is allowed at a time.";
+                }
+
+                showPopup('Google Sign-In Failed', message, 'error');
             }
         }
 
