@@ -13,12 +13,14 @@
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
             sendPasswordResetEmail,
+            signOut,
             onAuthStateChanged,
             GoogleAuthProvider,
             signInWithPopup
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
+            getDoc,
             doc, 
             setDoc,
             addDoc,
@@ -50,10 +52,12 @@
         window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
         window.signInWithEmailAndPassword = signInWithEmailAndPassword;
         window.sendPasswordResetEmail = sendPasswordResetEmail;
+        window.signOut = signOut;
         window.onAuthStateChanged = onAuthStateChanged;
         window.setDoc = setDoc;
         window.doc = doc;
         window.addDoc = addDoc;
+        window.getDoc = getDoc;
         window.collection = collection;
         window.GoogleAuthProvider = GoogleAuthProvider;
         window.signInWithPopup = signInWithPopup;
@@ -871,7 +875,7 @@
                 <input type="password" id="loginPassword" placeholder="Your Password" required>
             </div>
             <p id="loginMessage" class="message hidden"></p>
-            <button onclick="googleSignIn()" style="background:#fff;color:#333;border:2px solid #e2e8f0;">
+            <button onclick="googleLoginOnly()" style="background:#fff;color:#333;border:2px solid #e2e8f0;">
                 <i class="fab fa-google"></i> Continue with Google
             </button>
             
@@ -900,7 +904,7 @@
                 <p id="passwordMatchStatus" class="password-strength hidden"></p>
             </div>
             <p id="registerMessage" class="message hidden"></p>
-            <button onclick="googleSignIn()" style="background:#fff;color:#333;border:2px solid #e2e8f0;">
+            <button onclick="googleSignupOnly()" style="background:#fff;color:#333;border:2px solid #e2e8f0;">
                 <i class="fab fa-google"></i> Sign up with Google
             </button>
             
@@ -1008,6 +1012,18 @@
             // Clear messages when switching tabs
             document.querySelectorAll('.message').forEach(msg => msg.classList.add('hidden'));
         }
+
+        // --- Helper functions for popup buttons ---
+        function switchToRegister() {
+            closePopup();
+            showForm('register');
+        }
+
+        function switchToLogin() {
+            closePopup();
+            showForm('login');
+        }
+
 
         // --- Welcome Email Service (using same Firebase mail collection as index.html) ---
         async function sendWelcomeEmail(userEmail) {
@@ -1200,60 +1216,81 @@
             }
         }
 
-        // --- Google Sign-In ---
-        async function googleSignIn() {
-            const googleButtons = document.querySelectorAll('button[onclick="googleSignIn()"]');
-            googleButtons.forEach(btn => btn.disabled = true);
-
+        // --- Google Login (BLOCK New Users) ---
+        async function googleLoginOnly() {
             try {
                 const provider = new GoogleAuthProvider();
                 const result = await signInWithPopup(firebaseAuth, provider);
                 const user = result.user;
 
-                // Create user doc if first time
                 const userRef = doc(firebaseDb, "users", user.uid);
+                const userSnap = await getDoc(userRef);
 
-                await setDoc(userRef, {
-                    passenger_email: user.email,
-                    name: user.displayName || "",
-                    photo: user.photoURL || "",
-                    provider: "google",
-                    createdAt: serverTimestamp()
-                }, { merge: true });
+                // ❌ User does NOT exist → Block login
+                if (!userSnap.exists()) {
+                    await signOut(firebaseAuth);
 
-                showPopup(
-                    '🎉 Welcome!',
-                    'Google authentication successful. You are being redirected to your profile.',
-                    'success',
-                    '<button class="popup-button primary" onclick="closePopup(); window.location.href=\'profile.html\';">Go to Profile</button>'
-                );
-
-                setTimeout(() => {
-                    window.location.href = 'profile.html';
-                }, 1500);
-
-            } catch (error) {
-                console.error("Google Sign-In Error:", error);
-
-                if (error.code === "auth/account-exists-with-different-credential") {
                     showPopup(
-                        "Account Exists",
-                        "This email is already registered. Please login using email and password.",
-                        "error"
+                        "Account Not Found",
+                        "No account exists with this Google email. Please sign up first.",
+                        "error",
+                        `<button class="popup-button primary" onclick="switchToRegister()">Sign Up</button>`
                     );
                     return;
                 }
 
-                let message = "Google sign-in failed. Please try again.";
-                if (error.code === "auth/popup-closed-by-user") {
-                    message = "Sign-in popup was closed before completing.";
-                } else if (error.code === "auth/cancelled-popup-request") {
-                    message = "Only one sign-in popup is allowed at a time.";
+                // ✅ User exists → allow login
+                window.location.href = "profile.html";
+
+            } catch (error) {
+                console.error(error);
+
+                if (error.code !== "auth/popup-closed-by-user") {
+                    showPopup("Login Failed", error.message, "error");
+                }
+            }
+        }
+
+        // --- Google Sign-Up (ALLOW Only New Users) ---
+        async function googleSignupOnly() {
+            try {
+                const provider = new GoogleAuthProvider();
+                const result = await signInWithPopup(firebaseAuth, provider);
+                const user = result.user;
+
+                const userRef = doc(firebaseDb, "users", user.uid);
+                const userSnap = await getDoc(userRef);
+
+                // ❌ Already exists → prevent duplicate signup
+                if (userSnap.exists()) {
+                    // Sign out the user because they are on the signup page
+                    await signOut(firebaseAuth);
+                    showPopup(
+                        "Account Exists",
+                        "An account with this Google email already exists. Please log in instead.",
+                        "info",
+                        `<button class="popup-button primary" onclick="switchToLogin()">Login</button>`
+                    );
+                    return;
                 }
 
-                showPopup('Google Sign-In Failed', message, 'error');
-                // Re-enable buttons on failure
-                googleButtons.forEach(btn => btn.disabled = false);
+                // ✅ New user → create account
+                await setDoc(userRef, {
+                    passenger_email: user.email, // Using passenger_email for consistency
+                    name: user.displayName || "",
+                    photo: user.photoURL || "",
+                    provider: "google",
+                    createdAt: serverTimestamp()
+                });
+
+                // Send welcome email
+                await sendWelcomeEmail(user.email);
+
+                window.location.href = "profile.html";
+
+            } catch (error) {
+                console.error(error);
+                showPopup("Signup Failed", error.message, "error");
             }
         }
 
