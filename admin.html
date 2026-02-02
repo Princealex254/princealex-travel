@@ -89,6 +89,7 @@ function getFriendlyErrorMessage(error) {
     if (code === 'auth/invalid-email') return "Please enter a valid email address.";
     if (code === 'auth/user-not-found') return "No account found with this email.";
     if (code === 'auth/wrong-password') return "Incorrect password. Please try again.";
+    if (code === 'auth/invalid-credential') return "Incorrect email or password.";
     if (code === 'auth/network-request-failed') return "Network error. Please check your internet connection.";
     if (code === 'auth/too-many-requests') return "Too many attempts. Please try again later.";
     if (code === 'permission-denied') return "You don't have permission to perform this action.";
@@ -117,6 +118,10 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+// Loading Spinner Helpers
+function showLoading() { $("#loadingOverlay").style.display = "flex"; }
+function hideLoading() { $("#loadingOverlay").style.display = "none"; }
+
 /** =======================
  * Auth Guard
  * ======================= */
@@ -127,8 +132,10 @@ onAuthStateChanged(auth, async (user) => {
     $("#adminApp").classList.add("hidden");
     $("#loginContainer").classList.remove("hidden");
     $("#loginEmail").focus();
+    hideLoading();
     return;
   }
+  showLoading();
   // Check admins collection
   const q = query(collection(db, "admins"), where("email", "==", user.email));
   const querySnapshot = await getDocs(q);
@@ -159,27 +166,33 @@ onAuthStateChanged(auth, async (user) => {
     $("#publicNavbar").classList.remove("hidden"); // Show public navbar
     showCustomAlert("Access denied. This account is not an admin.", "error");
   }
+  hideLoading();
 });
 
 $("#loginForm").addEventListener("submit", async (e)=>{
   e.preventDefault();
   const email = $("#loginEmail").value.trim();
   const pass = $("#loginPassword").value;
+  showLoading();
   try {
     await signInWithEmailAndPassword(auth, email, pass);
-    showCustomAlert("Welcome back! Login successful.", "success");
+    showToast("Welcome back! Login successful.", "success");
   } catch (err) {
-    showCustomAlert(getFriendlyErrorMessage(err), "error");
+    showToast(getFriendlyErrorMessage(err), "error");
+    hideLoading();
   }
 });
 $("#sidebarLogoutBtn").addEventListener("click", async ()=>{
   showCustomConfirm("Are you sure you want to log out?", "confirm", async (result) => {
     if (result) {
+      showLoading();
       try {
         await signOut(auth);
         showCustomAlert("You have been logged out safely.", "info");
       } catch (err) {
         showCustomAlert("Logout failed: " + getFriendlyErrorMessage(err), "error");
+      } finally {
+        hideLoading();
       }
     }
   });
@@ -198,6 +211,33 @@ $$(".tab-btn").forEach(btn=>{
     $(`#${target}`).classList.remove("hidden");
     if(title) $("#pageTitle").textContent = title;
   });
+});
+
+// Mobile Menu Logic
+const mobileMenuBtn = $("#mobileMenuBtn");
+const sidebar = $(".sidebar");
+const overlay = $("#sidebarOverlay");
+
+if(mobileMenuBtn){
+    mobileMenuBtn.addEventListener("click", () => {
+        sidebar.classList.add("open");
+        overlay.classList.add("show");
+    });
+}
+if(overlay){
+    overlay.addEventListener("click", () => {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("show");
+    });
+}
+// Close sidebar when clicking a menu item on mobile
+$$(".sidebar-menu button").forEach(btn => {
+    btn.addEventListener("click", () => {
+        if (window.innerWidth <= 900) {
+            sidebar.classList.remove("open");
+            overlay.classList.remove("show");
+        }
+    });
 });
 
 /** =======================
@@ -307,6 +347,7 @@ $("#addBusForm").addEventListener("submit", async (e)=>{
       return;
   }
 
+  showLoading();
   try {
     await addDoc(busesCol, data);
     e.target.reset();
@@ -315,6 +356,8 @@ $("#addBusForm").addEventListener("submit", async (e)=>{
     populateRouteDropdowns(); // Refresh dropdowns after adding a new bus
   } catch (err) {
     showCustomAlert("Failed to add bus: " + getFriendlyErrorMessage(err), "error");
+  } finally {
+    hideLoading();
   }
 });
 $("#busTableBody").addEventListener("click", async (e)=>{
@@ -324,12 +367,15 @@ $("#busTableBody").addEventListener("click", async (e)=>{
   if (btn.dataset.action === "del") {
     showCustomConfirm("Delete this bus? This action cannot be undone.", "delete", async (result) => {
         if (result) {
+            showLoading();
             try {
               await deleteDoc(doc(db, "buses", id));
               showCustomAlert("Bus deleted successfully.", "success");
               populateRouteDropdowns(); // Refresh dropdowns after deleting a bus
             } catch (err) {
               showCustomAlert("Delete failed: " + getFriendlyErrorMessage(err), "error");
+            } finally {
+              hideLoading();
             }
         }
     });
@@ -369,6 +415,7 @@ $("#editBusForm").addEventListener("submit", async (e)=>{
       return;
   }
 
+  showLoading();
   try {
     await updateDoc(doc(db, "buses", id), updatedData);
     $("#editBusModal").classList.add("hidden");
@@ -376,6 +423,8 @@ $("#editBusForm").addEventListener("submit", async (e)=>{
     populateRouteDropdowns(); // Refresh dropdowns after updating a bus
   } catch (err) {
     showCustomAlert("Update failed: " + getFriendlyErrorMessage(err), "error");
+  } finally {
+    hideLoading();
   }
 });
 $("#editBusCancel").addEventListener("click", ()=>$("#editBusModal").classList.add("hidden"));
@@ -483,6 +532,7 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
   if (btn.dataset.action === "del") {
     showCustomConfirm("Delete this booking? This action cannot be undone.", "delete", async (result) => {
         if (result) {
+            showLoading();
             try {
                 await deleteDoc(doc(db, "bookings", id));
                 // Assuming busId and seatNumber are stored in booking for decrementing available_seats
@@ -500,10 +550,13 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
                 showCustomAlert("Booking deleted successfully.", "success");
             } catch (err) {
                 showCustomAlert("Delete failed: " + getFriendlyErrorMessage(err), "error");
+            } finally {
+                hideLoading();
             }
         }
     });
   } else if (btn.dataset.action === "markpaid") {
+    showLoading();
     try {
       await updateDoc(doc(db, "bookings", id), { status: "paid", paidAt: serverTimestamp() });
       showCustomAlert("Marked as PAID.", "success");
@@ -699,6 +752,8 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
       }
     } catch (err) {
       showCustomAlert("Failed to mark paid or send email: " + getFriendlyErrorMessage(err), "error");
+    } finally {
+      hideLoading();
     }
   } else if (btn.dataset.action === "ticket") {
     // This will download the PDF for the admin directly
@@ -1033,6 +1088,7 @@ $("#adminBookingSearch").addEventListener("submit", async (e)=>{
   
   selectedDate = date;
 
+  showLoading();
   // Find buses for route and date
   const q1 = query(busesCol, where("origin","==",origin), where("destination","==",destination), where("travelDate", "==", date)); // Changed fields in query
   const qs = await getDocs(q1);
@@ -1043,6 +1099,7 @@ $("#adminBookingSearch").addEventListener("submit", async (e)=>{
   if (qs.empty) {
       list.innerHTML = '<p style="text-align:center; margin-top:20px;">No buses found for this route and date.</p>';
       updateBookingStep(1);
+      hideLoading();
       return;
   }
 
@@ -1080,6 +1137,7 @@ $("#adminBookingSearch").addEventListener("submit", async (e)=>{
     list.appendChild(card);
   });
   updateBookingStep(2);
+  hideLoading();
 });
 
 $("#abResults").addEventListener("click", async (e)=>{
@@ -1279,6 +1337,7 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
   // Generate unique booking reference
   const booking_ref = 'PA-' + Date.now().toString().slice(-6) + '-' + String(selectedSeatNumber).padStart(2, '0'); // Pad seat number for consistent ref format
 
+  showLoading();
   try {
     // Re-check if seat is still available (race condition check)
     const existingBookingsQ = query(
@@ -1533,6 +1592,8 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
     loadBookings(); // Reload bookings table
   } catch (err) {
     showCustomAlert("Booking failed: " + getFriendlyErrorMessage(err), "error");
+  } finally {
+    hideLoading();
   }
 });
 
@@ -1551,6 +1612,8 @@ $("#btnSearchManifest").addEventListener("click", async () => {
     const code = $("#manifestBusCode").value.trim();
     if(!code) return showCustomAlert("Please enter a Bus Code", "warn");
 
+    showLoading();
+    try {
     // Find Bus
     const qBus = query(collection(db, "buses"), where("busCode", "==", code));
     const busSnap = await getDocs(qBus);
@@ -1567,6 +1630,9 @@ $("#btnSearchManifest").addEventListener("click", async () => {
     bookSnap.forEach(b => currentManifestBookings.push(b.data()));
 
     renderManifestUI();
+    } finally {
+        hideLoading();
+    }
 });
 
 function renderManifestUI() {
@@ -1743,24 +1809,26 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
 .admin-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; }
 .admin-topbar h1 { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
 
-@media (max-width: 900px) { 
-    .sidebar { width: 70px; } 
-    .sidebar-header h2, .sidebar-menu button span:last-child, .sidebar-footer div { display: none; } 
-    .admin-main { margin-left: 70px; } 
-    .sidebar-menu button { padding: 1rem; justify-content: center; } 
-    .sidebar-header { justify-content: center; padding: 1rem; } 
-}
+/* Mobile Menu & Overlay */
+#mobileMenuBtn { display: none; }
+.sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2999; display: none; opacity: 0; transition: opacity 0.3s; backdrop-filter: blur(2px); }
+.sidebar-overlay.show { display: block; opacity: 1; }
 
-@media (max-width: 600px) { 
-    .sidebar { width: 100%; height: auto; top: auto; bottom: 0; flex-direction: row; overflow-y: hidden; padding: 0; }
-    .sidebar-header, .sidebar-footer { display: none; }
-    .sidebar-menu { display: flex; flex-direction: row; width: 100%; justify-content: space-around; padding: 0; }
-    .sidebar-menu li { flex: 1; margin: 0; }
-    .sidebar-menu button { flex-direction: column; padding: 0.5rem; gap: 4px; font-size: 0.7rem; border-left: none; border-top: 3px solid transparent; border-radius: 0; height: 100%; justify-content: center; }
-    .sidebar-menu button:hover { padding-left: 0.5rem; background: rgba(255,255,255,0.1); }
-    .sidebar-menu button.active { border-left-color: transparent; border-top-color: var(--accent-color); background: rgba(255,255,255,0.1); }
-    .sidebar-menu button span:last-child { display: block; font-size: 0.6rem; }
-    .admin-main { margin-left: 0; padding-bottom: 80px; }
+@media (max-width: 900px) {
+    #mobileMenuBtn { display: block; }
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 3000; width: 260px; box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
+    .sidebar.open { transform: translateX(0); }
+    .admin-main { margin-left: 0; padding: 1rem; }
+    
+    /* Stack header rows on mobile */
+    .header-row { flex-direction: column !important; align-items: stretch !important; gap: 1rem !important; }
+    .header-row > div { width: 100%; }
+    .header-row input { width: 100% !important; }
+    .header-row button { width: 100%; }
+    
+    /* Optimize Forms for Mobile */
+    #addBusForm > div:nth-of-type(1), #editBusForm > div:nth-of-type(1) { grid-column: 1 / -1; }
+    #addBusForm > div:nth-of-type(8), #editBusForm > div:nth-of-type(8) { grid-column: 1 / -1 !important; }
 }
 
 /* Modern Seat Modal */
@@ -1807,22 +1875,87 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
 .toast.success{border-left-color:var(--success)}
 .toast.info{border-left-color:var(--primary-color)}
 
+/* Loading Spinner */
+.loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 15px; backdrop-filter: blur(2px); }
+.spinner { border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
 /* Modern Login */
-.login-card{max-width:450px;margin:3rem auto;background:var(--white);border-radius:var(--border-radius-lg);box-shadow:var(--shadow-lg);padding:2rem;border:1px solid rgba(0,0,0,0.05)}
-.login-title{text-align:center;margin-bottom:1.5rem;font-size:1.5rem;font-weight:700;color:var(--text-dark)}
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0f172a 100%);
+    padding: 1rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 2000;
+}
+.login-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    width: 100%;
+    max-width: 420px;
+    padding: 2.5rem;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: slideUp 0.5s ease-out;
+}
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.login-header { text-align: center; margin-bottom: 2rem; }
+.login-logo { height: 60px; margin-bottom: 1rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+.login-title { font-size: 1.75rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.5rem; letter-spacing: -0.025em; }
+.login-subtitle { color: var(--text-light); font-size: 0.95rem; }
+.login-form { display: flex; flex-direction: column; gap: 1.5rem; }
+.input-group label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; color: var(--text-dark); }
+.input-wrapper { position: relative; }
+.input-wrapper i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; transition: var(--transition); }
+.input-wrapper input {
+    width: 100%;
+    padding: 0.85rem 1rem 0.85rem 2.75rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 1rem;
+    transition: var(--transition);
+    background: #f8fafc;
+}
+.input-wrapper input:focus {
+    border-color: var(--primary-color);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.1);
+}
+.login-btn {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1rem;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: var(--gradient-primary);
+    border-radius: 12px;
+}
+.login-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3); }
 
 /* Modern Responsive Design */
 @media (max-width: 768px){
   .container{padding:0 1rem}
-  .grid-3{grid-template-columns:1fr}
+  .grid-3{grid-template-columns:repeat(2, 1fr)}
   .grid-2{grid-template-columns:1fr}
   .nav-links{gap:1rem;flex-wrap:wrap}
   .header-row{flex-direction:column;align-items:flex-start;gap:1rem}
   .tabbar{flex-wrap:wrap}
+  .tab-btn{flex: 1; text-align: center; justify-content: center;}
   .table{font-size:0.8rem}
   .table th,.table td{padding:0.75rem 0.5rem}
-  .modal .box{padding:1.5rem;margin:1rem}
+  .modal .box{padding:1rem;margin:0.5rem;width:95%;max-height:92vh}
   #seatGrid{padding:1rem;gap:0.75rem}
   .seat-container{width:60px;height:60px}
   .seat-container .seat-icon{font-size:2em}
@@ -1856,28 +1989,38 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
     </div>
   </header>
 
-  <main class="container" id="loginContainer">
+  <main class="login-container" id="loginContainer">
     <!-- Login -->
-    <section id="loginCard" class="card login-card">
-      <h2 class="login-title">Admin Login</h2>
-      <form id="loginForm" class="grid" style="gap:14px">
-        <div>
-          <label>Email</label>
-          <input id="loginEmail" type="email" placeholder="admin@example.com" required>
+    <section id="loginCard" class="login-card">
+      <div class="login-header">
+        <img src="mylogo.png" alt="Prince Alex Logo" class="login-logo">
+        <h2 class="login-title">Welcome Back</h2>
+        <p class="login-subtitle">Sign in to manage your fleet</p>
+      </div>
+      <form id="loginForm" class="login-form">
+        <div class="input-group">
+          <label for="loginEmail">Email Address</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-envelope"></i>
+            <input id="loginEmail" type="email" placeholder="admin@example.com" required>
+          </div>
         </div>
-        <div>
-          <label>Password</label>
-          <input id="loginPassword" type="password" placeholder="********" required>
+        <div class="input-group">
+          <label for="loginPassword">Password</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-lock"></i>
+            <input id="loginPassword" type="password" placeholder="••••••••" required>
+          </div>
         </div>
-        <button class="btn" type="submit">Login</button>
-        <p style="font-size:12px;opacity:.8">
-    </form>
+        <button class="btn login-btn" type="submit">Sign In <i class="fa-solid fa-arrow-right"></i></button>
+      </form>
     </section>
   </main>
 
     <!-- Admin App -->
     <section id="adminApp" class="hidden">
       <div class="admin-layout">
+        <div id="sidebarOverlay" class="sidebar-overlay"></div>
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -1900,7 +2043,10 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
         <!-- Main Content -->
         <main class="admin-main">
             <div class="admin-topbar">
-                <h1 id="pageTitle">Dashboard</h1>
+                <div style="display:flex; align-items:center; gap:10px">
+                    <button id="mobileMenuBtn" class="btn" style="background:transparent; color:var(--text-dark); padding:0.5rem; font-size:1.2rem;"><i class="fa-solid fa-bars"></i></button>
+                    <h1 id="pageTitle" style="margin:0">Dashboard</h1>
+                </div>
             </div>
 
             <!-- Dashboard Tab -->
@@ -2175,6 +2321,12 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
         <button class="btn" id="seatCancel">Close</button>
       </div>
     </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <div style="font-weight:bold; color:var(--primary-color);">Processing...</div>
   </div>
 </body>
 </html>
