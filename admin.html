@@ -8,6 +8,7 @@
 <!-- Icons & PDF -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode.js/1.0.0/qrcode.min.js"></script> <!-- Added QRCode.js for PDF -->
 
 <!-- Firebase SDKs -->
@@ -18,7 +19,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { 
-  getFirestore, collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, onSnapshot, getDoc, increment, serverTimestamp 
+  getFirestore, collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, onSnapshot, getDoc, increment, serverTimestamp, limit, orderBy 
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -79,6 +80,42 @@ function showCustomConfirm(message, type = 'confirm', callback = null) {
     window.confirmCallback = callback; // Store callback globally for button access
 }
 
+// Helper: Friendly Error Messages
+function getFriendlyErrorMessage(error) {
+    console.error(error); 
+    const code = error.code;
+    const message = error.message;
+    
+    if (code === 'auth/invalid-email') return "Please enter a valid email address.";
+    if (code === 'auth/user-not-found') return "No account found with this email.";
+    if (code === 'auth/wrong-password') return "Incorrect password. Please try again.";
+    if (code === 'auth/network-request-failed') return "Network error. Please check your internet connection.";
+    if (code === 'auth/too-many-requests') return "Too many attempts. Please try again later.";
+    if (code === 'permission-denied') return "You don't have permission to perform this action.";
+    if (code === 'unavailable') return "Service currently unavailable. Please try again later.";
+    
+    return message.replace('Firebase: ', '') || "An unexpected error occurred.";
+}
+
+// Toast Notification
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<span>${type === 'success' ? '✅' : 'ℹ️'}</span> ${message}`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
 
 /** =======================
  * Auth Guard
@@ -93,13 +130,23 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
   // Check admins collection
-  const adminRef = doc(db, "admins", user.uid);
-  const snap = await getDoc(adminRef);
-  if (snap.exists() && snap.data().isAdmin === true) {
+  const q = query(collection(db, "admins"), where("email", "==", user.email));
+  const querySnapshot = await getDocs(q);
+  let isAuthorized = false;
+  querySnapshot.forEach((doc) => {
+    const role = doc.data().role;
+    if (role === 'admin' || role === 'super_admin') {
+      isAuthorized = true;
+    }
+  });
+
+  if (isAuthorized) {
     currentAdmin = user;
     $("#adminEmailBadge").textContent = user.email ?? "Admin";
+    $("#adminEmailDisplay").textContent = user.email ?? "Admin";
     $("#loginCard").classList.add("hidden");
     $("#adminApp").classList.remove("hidden");
+    $("#publicNavbar").classList.add("hidden"); // Hide public navbar
     // load data
     attachRealtimeBuses();
     attachRealtimeBookings();
@@ -109,6 +156,7 @@ onAuthStateChanged(auth, async (user) => {
     currentAdmin = null;
     $("#adminApp").classList.add("hidden");
     $("#loginCard").classList.remove("hidden");
+    $("#publicNavbar").classList.remove("hidden"); // Show public navbar
     showCustomAlert("Access denied. This account is not an admin.", "error");
   }
 });
@@ -119,20 +167,19 @@ $("#loginForm").addEventListener("submit", async (e)=>{
   const pass = $("#loginPassword").value;
   try {
     await signInWithEmailAndPassword(auth, email, pass);
-    showCustomAlert("Login successful!", "success");
+    showCustomAlert("Welcome back! Login successful.", "success");
   } catch (err) {
-    console.error(err);
-    showCustomAlert(err.message || "Login failed", "error");
+    showCustomAlert(getFriendlyErrorMessage(err), "error");
   }
 });
-$("#logoutBtn").addEventListener("click", async ()=>{
+$("#sidebarLogoutBtn").addEventListener("click", async ()=>{
   showCustomConfirm("Are you sure you want to log out?", "confirm", async (result) => {
     if (result) {
       try {
         await signOut(auth);
-        showCustomAlert("Logged out.", "info");
+        showCustomAlert("You have been logged out safely.", "info");
       } catch (err) {
-        showCustomAlert("Logout failed: " + err.message, "error");
+        showCustomAlert("Logout failed: " + getFriendlyErrorMessage(err), "error");
       }
     }
   });
@@ -144,10 +191,12 @@ $("#logoutBtn").addEventListener("click", async ()=>{
 $$(".tab-btn").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     const target = btn.dataset.tab;
+    const title = btn.dataset.title;
     $$(".tab-btn").forEach(b=>b.classList.remove("active"));
     $$(".tab-panel").forEach(p=>p.classList.add("hidden"));
     btn.classList.add("active");
     $(`#${target}`).classList.remove("hidden");
+    if(title) $("#pageTitle").textContent = title;
   });
 });
 
@@ -155,39 +204,93 @@ $$(".tab-btn").forEach(btn=>{
  * Manage Buses
  * ======================= */
 const busesCol = collection(db, "buses");
-let busesUnsub = null;
+let busesUnsub = null, busCache = [];
 
 function attachRealtimeBuses() {
   if (busesUnsub) busesUnsub();
-  busesUnsub = onSnapshot(busesCol, (snap)=>{
-    const list = $("#busTableBody");
-    list.innerHTML = "";
+  const q = query(busesCol, orderBy("createdAt", "desc"), limit(50));
+  busesUnsub = onSnapshot(q, (snap)=>{
+    let totalBuses = 0;
+    let seatsToday = 0;
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+
+    busCache = [];
     snap.forEach(docSnap=>{
+      totalBuses++;
       const d = docSnap.data();
-      const tr = document.createElement("tr");
-      // Display fields consistent with index.html's implied structure
-      tr.innerHTML = `
-        <td>${d.busName ?? "-"}</td>
-        <td>${d.origin ?? "-"}</td> <!-- Changed from d.from to d.origin -->
-        <td>${d.destination ?? "-"}</td> <!-- Changed from d.to to d.destination -->
-        <td>${d.travelDate ?? "-"}</td>
-        <td>${d.departureTime ?? "-"}</td>
-        <td>${d.price ? "KES "+Number(d.price).toLocaleString() : "-"}</td>
-        <td>${d.totalSeats ?? "-"}</td>
-        <td>${d.available_seats ?? "-"}</td>
-        <td class="nowrap">
-          <button class="btn sm" data-action="edit" data-id="${docSnap.id}"><i class="fa-solid fa-pen-to-square"></i></button>
-          <button class="btn sm danger" data-action="del" data-id="${docSnap.id}"><i class="fa-solid fa-trash"></i></button>
-        </td>
-      `;
-      list.appendChild(tr);
+      if (d.travelDate === todayStr) {
+          seatsToday += Number(d.available_seats ?? 0);
+      }
+      busCache.push({ id: docSnap.id, ...d });
     });
+
+    // Update Stats
+    const statTotalBuses = $("#statTotalBuses");
+    if(statTotalBuses) statTotalBuses.textContent = totalBuses;
+    const statSeatsAvailable = $("#statSeatsAvailable");
+    if(statSeatsAvailable) statSeatsAvailable.textContent = seatsToday;
+    
+    renderBusTable(busCache);
   });
 }
+
+function renderBusTable(buses) {
+    const list = $("#busTableBody");
+    list.innerHTML = "";
+    buses.forEach(d => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>
+                <div style="font-weight:bold;">${d.busName ?? "-"}</div>
+                <span class="badge warn" style="font-size:0.7em;">${d.busCode ?? "-"}</span>
+            </td>
+            <td>
+                <div>${d.origin ?? "-"}</div>
+                <div style="font-size:0.8em; color:var(--text-light);">to ${d.destination ?? "-"}</div>
+            </td>
+            <td>
+                <div>${d.travelDate ?? "-"}</div>
+                <div style="font-size:0.8em; color:var(--text-light);">${d.departureTime ?? "-"}</div>
+            </td>
+            <td>
+                <span style="font-weight:bold; color:${(d.available_seats > 0) ? 'var(--success)' : 'var(--error)'}">${d.available_seats ?? 0}</span> 
+                <span style="color:var(--text-light);">/ ${d.totalSeats ?? 0}</span>
+            </td>
+            <td>${d.price ? "KES "+Number(d.price).toLocaleString() : "-"}</td>
+            <td class="nowrap">
+                <button class="btn sm" data-action="edit" data-id="${d.id}"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button class="btn sm danger" data-action="del" data-id="${d.id}"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        `;
+        list.appendChild(tr);
+    });
+}
+
+$("#busSearch").addEventListener("input", (e) => {
+    const term = e.target.value.toLowerCase();
+    const filtered = busCache.filter(b => 
+        (b.busName || "").toLowerCase().includes(term) ||
+        (b.busCode || "").toLowerCase().includes(term) ||
+        (b.origin || "").toLowerCase().includes(term) ||
+        (b.destination || "").toLowerCase().includes(term)
+    );
+    renderBusTable(filtered);
+});
+
+$("#openAddBusModalBtn").addEventListener("click", () => {
+    $("#addBusModal").classList.remove("hidden");
+});
+$("#addBusCancel").addEventListener("click", () => {
+    $("#addBusModal").classList.add("hidden");
+});
+
 $("#addBusForm").addEventListener("submit", async (e)=>{
   e.preventDefault();
+  const busCode = 'BUS-' + Date.now().toString().slice(-6);
   const data = {
     busName: $("#busCompany").value.trim(),
+    busCode: busCode,
     origin: $("#busFrom").value.trim(), // Mapped to origin
     destination: $("#busTo").value.trim(),     // Mapped to destination
     travelDate: $("#busTravelDate").value, // New field for consistency
@@ -207,11 +310,11 @@ $("#addBusForm").addEventListener("submit", async (e)=>{
   try {
     await addDoc(busesCol, data);
     e.target.reset();
-    showCustomAlert("Bus added.", "success");
+    $("#addBusModal").classList.add("hidden");
+    showCustomAlert("New bus added successfully! 🚌", "success");
     populateRouteDropdowns(); // Refresh dropdowns after adding a new bus
   } catch (err) {
-    console.error(err);
-    showCustomAlert("Failed to add bus: " + err.message, "error");
+    showCustomAlert("Failed to add bus: " + getFriendlyErrorMessage(err), "error");
   }
 });
 $("#busTableBody").addEventListener("click", async (e)=>{
@@ -223,10 +326,10 @@ $("#busTableBody").addEventListener("click", async (e)=>{
         if (result) {
             try {
               await deleteDoc(doc(db, "buses", id));
-              showCustomAlert("Bus deleted.", "success");
+              showCustomAlert("Bus deleted successfully.", "success");
               populateRouteDropdowns(); // Refresh dropdowns after deleting a bus
             } catch (err) {
-              showCustomAlert("Delete failed: " + err.message, "error");
+              showCustomAlert("Delete failed: " + getFriendlyErrorMessage(err), "error");
             }
         }
     });
@@ -269,10 +372,10 @@ $("#editBusForm").addEventListener("submit", async (e)=>{
   try {
     await updateDoc(doc(db, "buses", id), updatedData);
     $("#editBusModal").classList.add("hidden");
-    showCustomAlert("Bus updated.", "success");
+    showCustomAlert("Bus details updated successfully!", "success");
     populateRouteDropdowns(); // Refresh dropdowns after updating a bus
   } catch (err) {
-    showCustomAlert("Update failed: " + err.message, "error");
+    showCustomAlert("Update failed: " + getFriendlyErrorMessage(err), "error");
   }
 });
 $("#editBusCancel").addEventListener("click", ()=>$("#editBusModal").classList.add("hidden"));
@@ -285,11 +388,39 @@ let bookingsUnsub = null, bookingCache = [];
 
 function attachRealtimeBookings() {
   if (bookingsUnsub) bookingsUnsub();
-  bookingsUnsub = onSnapshot(bookingsCol, (snap)=>{
+  const q = query(bookingsCol, orderBy("createdAt", "desc"), limit(50));
+  bookingsUnsub = onSnapshot(q, (snap)=>{
+    let bookingsToday = 0;
+    let paidCount = 0;
+    let pendingCount = 0;
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+
     bookingCache = [];
     snap.forEach(docSnap=>{
-      bookingCache.push({ id: docSnap.id, ...docSnap.data() });
+      const d = docSnap.data();
+      bookingCache.push({ id: docSnap.id, ...d });
+
+      // Stats Calculation
+      let created = null;
+      if (d.createdAt && d.createdAt.toDate) created = d.createdAt.toDate();
+      else if (d.booking_date) created = new Date(d.booking_date);
+      
+      if (created) {
+          const createdStr = created.getFullYear() + '-' + String(created.getMonth()+1).padStart(2,'0') + '-' + String(created.getDate()).padStart(2,'0');
+          if (createdStr === todayStr) bookingsToday++;
+      }
+
+      if ((d.status||"").toLowerCase() === 'paid') paidCount++;
+      else pendingCount++;
     });
+    
+    // Update Stats UI
+    const statTodayBookings = $("#statTodayBookings");
+    if(statTodayBookings) statTodayBookings.textContent = bookingsToday;
+    const statPaidPending = $("#statPaidPending");
+    if(statPaidPending) statPaidPending.textContent = `${paidCount} / ${pendingCount}`;
+
     renderBookingTable(bookingCache);
   });
 }
@@ -300,19 +431,33 @@ function renderBookingTable(items) {
   for (const b of items) {
     const paid = (b.status || "").toLowerCase() === "paid"; // Use 'status' field
     const tr = document.createElement("tr");
+    tr.className = paid ? "row-paid" : "row-pending";
     tr.innerHTML = `
-      <td>${b.booking_ref ?? b.reference ?? b.ref ?? "-"}</td>
-      <td>${b.passenger_name ?? "-"}</td>
-      <td>${b.passenger_email ?? "-"}</td>
-      <td>${b.bus_route ?? "-"}</td> <!-- Using bus_route -->
-      <td>${b.travel_date ?? "-"}</td> <!-- Using travel_date -->
-      <td>${b.seat_number ?? "-"}</td> <!-- Using seat_number -->
-      <td>${b.price ? "KES "+Number(b.price).toLocaleString() : "-"}</td>
-      <td><span class="badge ${paid?"success":"warn"}">${paid ? "PAID" : "PENDING"}</span></td>
+      <td>
+        <div style="font-weight:bold;">${b.passenger_name ?? "-"}</div>
+        <div style="font-size:0.85em; color:var(--text-light);"><i class="fa-regular fa-envelope"></i> ${b.passenger_email ?? "-"}</div>
+        <div style="font-size:0.85em; color:var(--text-light);"><i class="fa-solid fa-phone"></i> ${b.passenger_phone ?? "-"}</div>
+      </td>
+      <td>
+        <div style="font-weight:600;">${b.bus_route ?? "-"}</div>
+        <div style="font-size:0.85em; color:var(--text-light); margin-top:2px;">
+            <i class="fa-regular fa-calendar"></i> ${b.travel_date ?? "-"} 
+            ${b.bus_time ? '<span style="margin-left:5px;"><i class="fa-regular fa-clock"></i> '+b.bus_time+'</span>' : ""}
+        </div>
+        <span class="badge warn" style="font-size:0.65em; margin-top:4px; display:inline-block;">${b.bus_code ?? "-"}</span>
+      </td>
+      <td style="text-align:center;">
+        <div style="font-weight:bold; font-size:1.2em; color:var(--primary-color);">${b.seat_number ?? "-"}</div>
+      </td>
+      <td>
+        <div style="font-weight:bold;">${b.price ? "KES "+Number(b.price).toLocaleString() : "-"}</div>
+        <div style="margin-top:4px;"><span class="badge ${paid?"success":"warn"}" style="font-size:0.7em; padding:0.3em 0.6em;">${paid ? "PAID" : "PENDING"}</span></div>
+        <div style="font-size:0.75em; color:var(--text-light); margin-top:4px; font-family:monospace;">Ref: ${b.booking_ref ?? b.reference ?? b.ref ?? "-"}</div>
+      </td>
       <td class="nowrap">
-        ${paid ? "" : `<button class="btn sm success" data-action="markpaid" data-id="${b.id}"><i class="fa-solid fa-check"></i> Paid</button>`}
-        <button class="btn sm" data-action="ticket" data-id="${b.id}"><i class="fa-solid fa-ticket"></i></button>
-        <button class="btn sm danger" data-action="del" data-id="${b.id}"><i class="fa-solid fa-trash"></i></button>
+        ${paid ? "" : `<button class="btn sm success" data-action="markpaid" data-id="${b.id}" title="Mark Paid"><i class="fa-solid fa-check"></i></button>`}
+        <button class="btn sm" data-action="ticket" data-id="${b.id}" title="Download Ticket"><i class="fa-solid fa-ticket"></i></button>
+        <button class="btn sm danger" data-action="del" data-id="${b.id}" title="Delete"><i class="fa-solid fa-trash"></i></button>
       </td>
     `;
     body.appendChild(tr);
@@ -343,14 +488,18 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
                 // Assuming busId and seatNumber are stored in booking for decrementing available_seats
                 if (item.bus_id && item.seat_number) {
                     const busDocRef = doc(db, "buses", item.bus_id);
-                    await updateDoc(busDocRef, {
-                        available_seats: increment(1)
-                    });
-                    console.log(`Available seat incremented for bus ${item.bus_id}`);
+                    try {
+                        await updateDoc(busDocRef, {
+                            available_seats: increment(1)
+                        });
+                        console.log(`Available seat incremented for bus ${item.bus_id}`);
+                    } catch (busErr) {
+                        console.warn("Could not update bus seats (bus might be deleted):", busErr);
+                    }
                 }
-                showCustomAlert("Booking deleted.", "success");
+                showCustomAlert("Booking deleted successfully.", "success");
             } catch (err) {
-                showCustomAlert("Delete failed: " + err.message, "error");
+                showCustomAlert("Delete failed: " + getFriendlyErrorMessage(err), "error");
             }
         }
     });
@@ -545,12 +694,11 @@ $("#bookingTableBody").addEventListener("click", async (e)=>{
                 },
                 createdAt: serverTimestamp()
             });
-            showCustomAlert("Marked as PAID. Confirmation email with ticket sent!", "success");
+            showCustomAlert("Marked as PAID. Confirmation email with ticket sent! 📧", "success");
         }
       }
     } catch (err) {
-      console.error("Error marking paid or sending email:", err);
-      showCustomAlert("Failed to mark paid or send email: " + err.message, "error");
+      showCustomAlert("Failed to mark paid or send email: " + getFriendlyErrorMessage(err), "error");
     }
   } else if (btn.dataset.action === "ticket") {
     // This will download the PDF for the admin directly
@@ -800,6 +948,7 @@ function generateTicketPDF(booking) {
  * Make Booking (Admin)
  * ======================= */
 let selectedBusId = null;
+let selectedBusCode = null;
 let selectedDate = null;
 let selectedDepartureTime = null; // Store departure time
 let selectedBusPrice = null; // Store bus price
@@ -813,6 +962,17 @@ let busResultsCache = new Map(); // Cache to hold bus data from search results
 // Maximum allowed size for Base64 PDF content in bytes (approx 800KB for safety, Firestore limit is 1MB)
 const MAX_PDF_BASE64_SIZE_BYTES = 800 * 1024; // 800KB
 const TOTAL_SEATS_DEFAULT = 32; // Default number of seats if not specified
+
+function updateBookingStep(step) {
+    for(let i=1; i<=4; i++) {
+        const el = document.getElementById(`step${i}`);
+        if(el) {
+            el.classList.remove('active', 'completed');
+            if(i < step) el.classList.add('completed');
+            if(i === step) el.classList.add('active');
+        }
+    }
+}
 
 // Initially disable the confirm booking button
 document.addEventListener('DOMContentLoaded', () => {
@@ -856,7 +1016,7 @@ async function populateRouteDropdowns() {
 
     } catch (error) {
         console.error("Error populating route dropdowns:", error);
-        showCustomAlert("Error loading bus routes. Please try again.", "error");
+        showCustomAlert("Could not load bus routes. Please check your connection.", "error");
     }
 }
 
@@ -882,6 +1042,7 @@ $("#adminBookingSearch").addEventListener("submit", async (e)=>{
 
   if (qs.empty) {
       list.innerHTML = '<p style="text-align:center; margin-top:20px;">No buses found for this route and date.</p>';
+      updateBookingStep(1);
       return;
   }
 
@@ -896,6 +1057,7 @@ $("#adminBookingSearch").addEventListener("submit", async (e)=>{
         price: d.price ?? 0,
         route: `${d.origin} to ${d.destination}`,
         name: d.busName ?? 'Bus',
+        code: d.busCode ?? "-",
         availableSeats: d.available_seats ?? d.totalSeats ?? 0
     });
 
@@ -903,7 +1065,7 @@ $("#adminBookingSearch").addEventListener("submit", async (e)=>{
     card.className="result-card";
     card.innerHTML = `
       <div class="result-details">
-        <h4>${d.busName ?? "Bus"}</h4>
+        <h4>${d.busName ?? "Bus"} <span class="badge warn" style="font-size:0.7em">${d.busCode ?? "-"}</span></h4>
         <p><strong>Route:</strong> ${d.origin} → ${d.destination}</p> <!-- Changed from d.from to d.origin and d.to to d.destination -->
         <p><strong>Travel Date:</strong> ${d.travelDate}</p>
         <p><strong>Depart:</strong> ${d.departureTime ?? "-"}</p>
@@ -917,6 +1079,7 @@ $("#adminBookingSearch").addEventListener("submit", async (e)=>{
     `;
     list.appendChild(card);
   });
+  updateBookingStep(2);
 });
 
 $("#abResults").addEventListener("click", async (e)=>{
@@ -930,6 +1093,7 @@ $("#abResults").addEventListener("click", async (e)=>{
   }
 
   selectedBusId = busId;
+  selectedBusCode = busData.code;
   selectedTotalSeats = Number(busData.totalSeats || 0);
   selectedDepartureTime = busData.departureTime;
   selectedBusPrice = Number(busData.price);
@@ -949,6 +1113,7 @@ $("#abResults").addEventListener("click", async (e)=>{
       return;
   }
 
+  updateBookingStep(3);
   await openSeatSelectionModal(selectedBusId, selectedDate, selectedTotalSeats, availableSeats);
 });
 
@@ -1034,7 +1199,8 @@ async function openSeatSelectionModal(busId, travelDate, totalSeats, currentAvai
                   selectedSeatNumber = parseInt(this.dataset.seat);
                   $("#selectedSeatNumberAdmin").value = `S${selectedSeatNumber}`; // Update hidden input
                   $("#displayedSeatNumber").value = `S${selectedSeatNumber}`; // Update visible input
-                  showCustomAlert(`Seat S${selectedSeatNumber} selected.`, "info", null);
+                  showToast(`Seat S${selectedSeatNumber} selected`, "success");
+                  updateBookingStep(4);
                   
                   // Close seat modal
                   $("#seatModal").classList.add("hidden"); 
@@ -1069,6 +1235,7 @@ $("#seatCancel").addEventListener("click", ()=>{
     $("#selectedSeatNumberAdmin").value = ''; // Clear hidden selected seat input
     $("#displayedSeatNumber").value = ''; // Clear displayed seat input
     selectedBusId = null;
+    selectedBusCode = null;
     selectedDate = null;
     selectedDepartureTime = null;
     selectedBusPrice = null;
@@ -1078,6 +1245,7 @@ $("#seatCancel").addEventListener("click", ()=>{
     selectedSeatNumber = null;
     $("#adminConfirmBooking button[type='submit']").disabled = true; // Re-disable confirm button
     $("#passengerDetailsCard").classList.add("hidden"); // Hide passenger details card
+    updateBookingStep(2); // Return to bus selection
 });
 
 $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
@@ -1140,6 +1308,7 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
         passenger_phone: passenger_phone,
         passenger_email: passenger_email,
         bus_id: selectedBusId,
+        bus_code: selectedBusCode, // Add bus code to booking
         bus_name: selectedBusName, // Add bus name to booking data
         bus_route: selectedBusRoute, // From selected bus
         bus_time: selectedDepartureTime, // From selected bus
@@ -1318,7 +1487,7 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
                     },
                     createdAt: serverTimestamp()
                 };
-                showCustomAlert("Booking created & marked PAID. Confirmation email with ticket sent!", "success");
+                showCustomAlert("Booking created & marked PAID. Confirmation email with ticket sent! 🎫", "success");
             }
             await addDoc(collection(db,"mail"), mailPayload);
             console.log("Admin-initiated booking confirmation email queued successfully in mail collection.");
@@ -1336,6 +1505,22 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
     $("#adminConfirmBooking button[type='submit']").disabled = true; // Disable button after booking
     $("#passengerDetailsCard").classList.add("hidden"); // Hide passenger details card again
     
+    // Reset all booking state variables to ensure a clean slate for the next booking
+    selectedBusId = null;
+    selectedBusCode = null;
+    selectedDate = null;
+    selectedDepartureTime = null;
+    selectedBusPrice = null;
+    selectedBusRoute = null;
+    selectedBusName = null;
+    selectedTotalSeats = null;
+    selectedSeatNumber = null;
+    
+    // Also reset the search form and clear results
+    $("#adminBookingSearch").reset();
+    $("#abResults").innerHTML = "";
+
+    updateBookingStep(1); // Reset to start
     // Automatically download PDF receipt for the admin
     const adminPdfData = { ...bookingData, status: "paid" };
     generateTicketPDF(adminPdfData); 
@@ -1347,8 +1532,7 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
     }
     loadBookings(); // Reload bookings table
   } catch (err) {
-    console.error(err);
-    showCustomAlert("Booking failed: " + err.message, "error");
+    showCustomAlert("Booking failed: " + getFriendlyErrorMessage(err), "error");
   }
 });
 
@@ -1356,6 +1540,112 @@ $("#adminConfirmBooking").addEventListener("submit", async (e)=>{
 function loadBookings() {
     attachRealtimeBookings();
 }
+
+/** =======================
+ * Bus Manifest Logic
+ * ======================= */
+let currentManifestBus = null;
+let currentManifestBookings = [];
+
+$("#btnSearchManifest").addEventListener("click", async () => {
+    const code = $("#manifestBusCode").value.trim();
+    if(!code) return showCustomAlert("Please enter a Bus Code", "warn");
+
+    // Find Bus
+    const qBus = query(collection(db, "buses"), where("busCode", "==", code));
+    const busSnap = await getDocs(qBus);
+    if(busSnap.empty) return showCustomAlert("No bus found with this code.", "error");
+
+    const busDoc = busSnap.docs[0];
+    currentManifestBus = { id: busDoc.id, ...busDoc.data() };
+
+    // Find Bookings
+    const qBookings = query(collection(db, "bookings"), where("bus_id", "==", busDoc.id));
+    const bookSnap = await getDocs(qBookings);
+    
+    currentManifestBookings = [];
+    bookSnap.forEach(b => currentManifestBookings.push(b.data()));
+
+    renderManifestUI();
+});
+
+function renderManifestUI() {
+    $("#manifestResults").classList.remove("hidden");
+    
+    // Fill Bus Details
+    $("#manBusName").textContent = `${currentManifestBus.busName} (${currentManifestBus.busCode})`;
+    $("#manBusRoute").textContent = `${currentManifestBus.origin} → ${currentManifestBus.destination}`;
+    $("#manBusDate").textContent = `${currentManifestBus.travelDate} @ ${currentManifestBus.departureTime}`;
+
+    // Stats
+    const total = Number(currentManifestBus.totalSeats || 0);
+    // Filter valid bookings (paid/pending)
+    const validBookings = currentManifestBookings.filter(b => ['paid', 'pending'].includes((b.status||'').toLowerCase()));
+    const booked = validBookings.length;
+    const avail = total - booked;
+    
+    // Revenue (sum of price of valid bookings)
+    const revenue = validBookings.reduce((sum, b) => sum + Number(b.price || 0), 0);
+
+    $("#manTotalSeats").textContent = total;
+    $("#manBookedSeats").textContent = booked;
+    $("#manAvailSeats").textContent = avail;
+    $("#manRevenue").textContent = `KES ${revenue.toLocaleString()}`;
+
+    // Table
+    const tbody = $("#manifestTableBody");
+    tbody.innerHTML = "";
+    
+    // Sort by seat number
+    validBookings.sort((a,b) => {
+        const sA = parseInt((a.seat_number||"0").replace(/\D/g,''));
+        const sB = parseInt((b.seat_number||"0").replace(/\D/g,''));
+        return sA - sB;
+    });
+
+    if (validBookings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No passengers found.</td></tr>';
+    } else {
+        validBookings.forEach(b => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${b.seat_number || '-'}</td>
+                <td>${b.passenger_name || '-'}</td>
+                <td>${b.passenger_phone || '-'}</td>
+                <td>${b.passenger_gender || '-'}</td>
+                <td>${b.booking_ref || '-'}</td>
+                <td><span class="badge ${b.status==='paid'?'success':'warn'}">${b.status}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+$("#btnDownloadManifestPDF").addEventListener("click", () => {
+    if(!currentManifestBus) return;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(18);
+    doc.text("Bus Manifest", 14, 20);
+    
+    doc.setFontSize(12);
+    doc.text(`Bus: ${currentManifestBus.busName} (${currentManifestBus.busCode})`, 14, 30);
+    doc.text(`Route: ${currentManifestBus.origin} to ${currentManifestBus.destination}`, 14, 36);
+    doc.text(`Date: ${currentManifestBus.travelDate} ${currentManifestBus.departureTime}`, 14, 42);
+
+    // Table Data
+    const headers = [["Seat", "Name", "Phone", "ID", "Gender", "Ref", "Status"]];
+    const data = currentManifestBookings
+        .filter(b => ['paid', 'pending'].includes((b.status||'').toLowerCase()))
+        .sort((a,b) => parseInt((a.seat_number||"0").replace(/\D/g,'')) - parseInt((b.seat_number||"0").replace(/\D/g,'')))
+        .map(b => [ b.seat_number, b.passenger_name, b.passenger_phone, b.passenger_id || '-', b.passenger_gender || '-', b.booking_ref, b.status ]);
+
+    doc.autoTable({ head: headers, body: data, startY: 50 });
+
+    doc.save(`Manifest_${currentManifestBus.busCode}.pdf`);
+});
 </script>
 
 <style>
@@ -1405,7 +1695,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--light-bg);color:var(--te
 .badge.success{background:var(--success);color:var(--white)}
 .badge.warn{background:var(--warning);color:var(--white)}
 .nowrap{white-space:nowrap}
-.card{background:var(--white);border-radius:var(--border-radius-lg);box-shadow:var(--shadow-md);padding:1.5rem;margin-bottom:1.5rem;border:1px solid rgba(0,0,0,0.05);transition:var(--transition)}
+.card{background:var(--white);border-radius:var(--border-radius-lg);box-shadow:var(--shadow-md);padding:1.5rem;margin-bottom:1.5rem;border:1px solid rgba(0,0,0,0.05);transition:var(--transition);overflow-x:auto}
 .card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
 
 /* Modern Buttons */
@@ -1426,16 +1716,52 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
 .grid{display:grid;gap:1rem}
 .grid-2{grid-template-columns:repeat(2,1fr)}
 .grid-3{grid-template-columns:repeat(3,1fr)}
-.table{width:100%;border-collapse:collapse;background:var(--white);border-radius:var(--border-radius);overflow:hidden;box-shadow:var(--shadow-sm)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+@media (max-width: 1024px){ .grid-4{grid-template-columns:repeat(2,1fr)} }
+@media (max-width: 600px){ .grid-4{grid-template-columns:1fr} }
+.table{width:100%;border-collapse:collapse;background:var(--white);border-radius:var(--border-radius);box-shadow:var(--shadow-sm)}
 .table th,.table td{padding:1rem;border-bottom:1px solid #f1f5f9;text-align:left;font-size:0.9rem}
-.table th{background:#f8fafc;font-weight:600;color:var(--text-dark);text-transform:uppercase;letter-spacing:0.05em;font-size:0.8rem}
-.table tbody tr:hover{background:#f8fafc}
+.table th{background:#f8fafc;font-weight:600;color:var(--text-dark);text-transform:uppercase;letter-spacing:0.05em;font-size:0.8rem;position:sticky;top:0;z-index:10;box-shadow:0 1px 2px rgba(0,0,0,0.05)}
+.table tbody tr:hover{background:#f1f5f9;cursor:pointer;transition:background-color 0.2s}
+/* Row Highlighting */
+.row-paid{background-color:#f0fdf4} .table tbody tr.row-paid:hover{background-color:#dcfce7}
+.row-pending{background-color:#fffbeb} .table tbody tr.row-pending:hover{background-color:#fef3c7}
 
-/* Modern Tabs */
-.tabbar{display:flex;gap:0.5rem;margin-bottom:1.5rem;background:#f1f5f9;padding:0.25rem;border-radius:var(--border-radius)}
-.tab-btn{background:transparent;color:var(--text-light);border:none;border-radius:calc(var(--border-radius) - 0.25rem);padding:0.75rem 1.5rem;cursor:pointer;font-weight:600;font-size:0.9rem;transition:var(--transition);position:relative}
-.tab-btn:hover{color:var(--text-dark);background:rgba(255,255,255,0.5)}
-.tab-btn.active{background:var(--white);color:var(--primary-color);box-shadow:var(--shadow-sm)}
+/* Admin Sidebar Layout */
+.admin-layout { min-height: 100vh; }
+.sidebar { width: 260px; background: var(--primary-color); color: var(--white); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; height: 100%; overflow-y: auto; z-index: 1000; box-shadow: 4px 0 10px rgba(0,0,0,0.1); }
+.sidebar-header { padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.1); }
+.sidebar-header h2 { font-size: 1.2rem; font-weight: 700; color: var(--white); margin: 0; letter-spacing: 0.5px; }
+.sidebar-menu { list-style: none; padding: 1rem 0; flex: 1; }
+.sidebar-menu li { margin-bottom: 0.25rem; }
+.sidebar-menu button { width: 100%; text-align: left; background: transparent; border: none; color: rgba(255,255,255,0.8); padding: 0.85rem 1.5rem; font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 12px; border-left: 4px solid transparent; }
+.sidebar-menu button:hover { background: rgba(255,255,255,0.05); color: var(--white); padding-left: 1.75rem; }
+.sidebar-menu button.active { background: rgba(255,255,255,0.15); color: var(--white); border-left-color: var(--accent-color); font-weight: 600; }
+.sidebar-menu button i { width: 20px; text-align: center; }
+.sidebar-footer { padding: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.1); }
+.admin-main { margin-left: 260px; padding: 2rem; background: var(--light-bg); min-height: 100vh; transition: margin-left 0.3s ease; }
+.admin-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; }
+.admin-topbar h1 { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+
+@media (max-width: 900px) { 
+    .sidebar { width: 70px; } 
+    .sidebar-header h2, .sidebar-menu button span:last-child, .sidebar-footer div { display: none; } 
+    .admin-main { margin-left: 70px; } 
+    .sidebar-menu button { padding: 1rem; justify-content: center; } 
+    .sidebar-header { justify-content: center; padding: 1rem; } 
+}
+
+@media (max-width: 600px) { 
+    .sidebar { width: 100%; height: auto; top: auto; bottom: 0; flex-direction: row; overflow-y: hidden; padding: 0; }
+    .sidebar-header, .sidebar-footer { display: none; }
+    .sidebar-menu { display: flex; flex-direction: row; width: 100%; justify-content: space-around; padding: 0; }
+    .sidebar-menu li { flex: 1; margin: 0; }
+    .sidebar-menu button { flex-direction: column; padding: 0.5rem; gap: 4px; font-size: 0.7rem; border-left: none; border-top: 3px solid transparent; border-radius: 0; height: 100%; justify-content: center; }
+    .sidebar-menu button:hover { padding-left: 0.5rem; background: rgba(255,255,255,0.1); }
+    .sidebar-menu button.active { border-left-color: transparent; border-top-color: var(--accent-color); background: rgba(255,255,255,0.1); }
+    .sidebar-menu button span:last-child { display: block; font-size: 0.6rem; }
+    .admin-main { margin-left: 0; padding-bottom: 80px; }
+}
 
 /* Modern Seat Modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
@@ -1463,6 +1789,23 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
 .confirm-buttons .confirm-yes:hover{background:#059669}
 .confirm-buttons .confirm-no{background:var(--error)}
 .confirm-buttons .confirm-no:hover{background:#dc2626}
+
+/* Step Indicator */
+.step-indicator{display:flex;justify-content:space-between;margin-bottom:2rem;position:relative;max-width:600px;margin-left:auto;margin-right:auto}
+.step-indicator::before{content:'';position:absolute;top:15px;left:0;width:100%;height:2px;background:#e2e8f0;z-index:0}
+.step{position:relative;z-index:1;background:var(--light-bg);padding:0 10px;display:flex;flex-direction:column;align-items:center;color:var(--text-light);font-weight:600;font-size:0.85rem}
+.step-circle{width:32px;height:32px;border-radius:50%;background:#e2e8f0;color:var(--text-light);display:flex;align-items:center;justify-content:center;margin-bottom:5px;font-weight:700;transition:var(--transition);border:2px solid var(--light-bg)}
+.step.active .step-circle{background:var(--primary-color);color:var(--white);box-shadow:0 0 0 3px rgba(30,58,138,0.2)}
+.step.completed .step-circle{background:var(--success);color:var(--white)}
+.step.active{color:var(--primary-color)}
+.step.completed{color:var(--success)}
+
+/* Toast Notifications */
+.toast-container{position:fixed;top:20px;right:20px;z-index:3000;pointer-events:none}
+.toast{background:var(--white);padding:12px 20px;border-radius:var(--border-radius);box-shadow:var(--shadow-lg);margin-bottom:10px;display:flex;align-items:center;gap:10px;border-left:4px solid var(--primary-color);transform:translateX(120%);transition:transform 0.3s cubic-bezier(0.68,-0.55,0.27,1.55);pointer-events:auto;font-size:0.9rem;font-weight:600}
+.toast.show{transform:translateX(0)}
+.toast.success{border-left-color:var(--success)}
+.toast.info{border-left-color:var(--primary-color)}
 
 
 /* Modern Login */
@@ -1498,7 +1841,7 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
 </head>
 <body>
   <!-- Header (match index) -->
-  <header class="navbar">
+  <header class="navbar" id="publicNavbar">
     <div class="navbar-container">
       <div class="logo">
         <img src="mylogo.png" alt="Prince Alex Logo"/>
@@ -1533,67 +1876,132 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
 
     <!-- Admin App -->
     <section id="adminApp" class="hidden">
-      <div class="header-row">
-        <h1>Admin Panel</h1>
-        <div class="tabbar">
-          <button class="tab-btn active" data-tab="tabBuses">Manage Buses</button>
-          <button class="tab-btn" data-tab="tabBookings">Manage Bookings</button>
-          <button class="tab-btn" data-tab="tabMakeBooking">Make Booking</button>
-        </div>
-      </div>
+      <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-bus-simple" style="font-size:1.5rem; color:var(--accent-color)"></i>
+                <h2>Prince Alex</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><button class="tab-btn active" data-tab="tabDashboard" data-title="Dashboard"><span><i class="fa-solid fa-chart-pie"></i></span> <span>Dashboard</span></button></li>
+                <li><button class="tab-btn" data-tab="tabBuses" data-title="Manage Buses"><span><i class="fa-solid fa-bus"></i></span> <span>Manage Buses</span></button></li>
+                <li><button class="tab-btn" data-tab="tabBookings" data-title="Manage Bookings"><span><i class="fa-solid fa-ticket"></i></span> <span>Manage Bookings</span></button></li>
+                <li><button class="tab-btn" data-tab="tabMakeBooking" data-title="Make Booking"><span><i class="fa-solid fa-plus-circle"></i></span> <span>Make Booking</span></button></li>
+                <li><button class="tab-btn" data-tab="tabManifest" data-title="Bus Manifest"><span><i class="fa-solid fa-clipboard-list"></i></span> <span>Bus Manifest</span></button></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div style="font-size:0.8rem; opacity:0.7; margin-bottom:0.5rem" id="adminEmailDisplay">Admin</div>
+                <button id="sidebarLogoutBtn" class="btn danger sm" style="width:100%">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <div class="admin-topbar">
+                <h1 id="pageTitle">Dashboard</h1>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <section id="tabDashboard" class="tab-panel">
+                <div class="grid grid-4">
+                    <div class="card" style="padding:1.5rem; text-align:center;">
+                        <div style="font-size:2rem; font-weight:bold; color:var(--primary-color)" id="statTotalBuses">0</div>
+                        <div style="font-size:0.9rem; color:var(--text-light); font-weight:600">Total Buses</div>
+                    </div>
+                    <div class="card" style="padding:1.5rem; text-align:center;">
+                        <div style="font-size:2rem; font-weight:bold; color:var(--accent-color)" id="statTodayBookings">0</div>
+                        <div style="font-size:0.9rem; color:var(--text-light); font-weight:600">Today's Bookings</div>
+                    </div>
+                    <div class="card" style="padding:1.5rem; text-align:center;">
+                        <div style="font-size:2rem; font-weight:bold; color:var(--success)" id="statPaidPending">0 / 0</div>
+                        <div style="font-size:0.9rem; color:var(--text-light); font-weight:600">Paid / Pending</div>
+                    </div>
+                    <div class="card" style="padding:1.5rem; text-align:center;">
+                        <div style="font-size:2rem; font-weight:bold; color:var(--text-dark)" id="statSeatsAvailable">0</div>
+                        <div style="font-size:0.9rem; color:var(--text-light); font-weight:600">Seats Avail. (Today)</div>
+                    </div>
+                </div>
+            </section>
 
       <!-- Manage Buses -->
-      <section id="tabBuses" class="tab-panel">
+      <section id="tabBuses" class="tab-panel hidden">
         <div class="card">
-          <h3>Add New Bus</h3>
-          <form id="addBusForm" class="grid grid-3" style="margin-top:10px">
-            <div><label>Bus Name</label><input id="busCompany" placeholder="e.g. Express Bus, Luxury Coach" required></div>
-            <div><label>From (Origin)</label><input id="busFrom" required></div>
-            <div><label>To (Destination)</label><input id="busTo" required></div>
-            <div><label>Travel Date</label><input id="busTravelDate" type="date" required></div> <!-- New Field -->
-            <div><label>Departure Time</label><input id="busTime" placeholder="e.g. 08:00 AM" required></div>
-            <div><label>Price (KES)</label><input id="busPrice" type="number" min="0" required></div>
-            <div><label>Total Seats</label><input id="busSeats" type="number" min="1" value="32" required></div>
-            <div style="grid-column: span 2;"><label>Image URL (Optional)</label><input id="busImage" type="text" placeholder="https://example.com/bus.png"></div> <!-- New Field -->
-            <div class="nowrap" style="align-self:end"><button class="btn" type="submit">Add Bus</button></div>
-          </form>
-        </div>
-        <div class="card">
-          <h3>All Buses</h3>
-          <table class="table" style="margin-top:8px">
+          <div class="header-row" style="margin-bottom: 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <h3 style="margin:0;">Fleet Management</h3>
+                <p style="color:var(--text-light); font-size:0.9rem; margin-top:4px;">View and manage all bus schedules</p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div style="position:relative;">
+                    <i class="fa-solid fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-light);"></i>
+                    <input id="busSearch" placeholder="Search buses..." style="padding-left:35px; width:250px;">
+                </div>
+                <button class="btn" id="openAddBusModalBtn"><i class="fa-solid fa-plus"></i> Add Bus</button>
+            </div>
+          </div>
+          
+          <div style="overflow-x:auto;">
+          <table class="table">
             <thead><tr>
-              <th>Bus Name</th><th>From</th><th>To</th><th>Travel Date</th><th>Departure</th><th>Price</th><th>Total Seats</th><th>Available Seats</th><th>Actions</th>
+              <th>Bus Info</th><th>Route</th><th>Schedule</th><th>Seats (Avail/Total)</th><th>Price</th><th>Actions</th>
             </tr></thead>
             <tbody id="busTableBody"></tbody>
           </table>
+          </div>
         </div>
       </section>
 
       <!-- Manage Bookings -->
       <section id="tabBookings" class="tab-panel hidden">
         <div class="card">
-          <div class="grid grid-2">
+          <div class="header-row" style="margin-bottom: 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div>
-              <h3>Bookings</h3>
-              <p style="font-size:12px;opacity:.8">Search by passenger name, email or booking reference.</p>
+              <h3 style="margin:0;">Booking Management</h3>
+              <p style="color:var(--text-light); font-size:0.9rem; margin-top:4px;">Track and manage passenger reservations</p>
             </div>
-            <div style="align-self:end">
-              <input id="bookingSearch" placeholder="Search bookings...">
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div style="position:relative;">
+                    <i class="fa-solid fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-light);"></i>
+                    <input id="bookingSearch" placeholder="Search bookings..." style="padding-left:35px; width:250px;">
+                </div>
             </div>
           </div>
+          <div style="overflow-x:auto;">
           <table class="table" style="margin-top:8px">
             <thead>
               <tr>
-                <th>Ref</th><th>Name</th><th>Email</th><th>Route</th><th>Travel Date</th><th>Seat</th><th>Price</th><th>Status</th><th>Actions</th>
+                <th>Passenger</th><th>Trip Details</th><th>Seat</th><th>Payment Info</th><th>Actions</th>
               </tr>
             </thead>
             <tbody id="bookingTableBody"></tbody>
           </table>
+          </div>
         </div>
       </section>
 
       <!-- Make Booking -->
       <section id="tabMakeBooking" class="tab-panel hidden">
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active" id="step1">
+                <div class="step-circle">1</div>
+                <span>Search</span>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-circle">2</div>
+                <span>Select Bus</span>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-circle">3</div>
+                <span>Seat</span>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-circle">4</div>
+                <span>Details</span>
+            </div>
+        </div>
+
         <div class="card">
           <h3>Find Bus</h3>
           <form id="adminBookingSearch" class="grid grid-3" style="margin-top:10px">
@@ -1642,8 +2050,99 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
           </form>
         </div>
       </section>
+
+      <!-- Bus Manifest Section -->
+      <section id="tabManifest" class="tab-panel hidden">
+        <div class="card">
+            <h3>Search Bus Manifest</h3>
+            <div class="grid grid-2">
+                <div>
+                    <label>Enter Bus Code</label>
+                    <div style="display:flex; gap:10px;">
+                        <input id="manifestBusCode" placeholder="e.g. BUS-123456">
+                        <button class="btn" id="btnSearchManifest">Search</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="manifestResults" class="hidden">
+            <!-- Stats Card -->
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h3 id="manBusName" style="margin-bottom:5px;">Bus Name</h3>
+                        <p id="manBusRoute" style="color:var(--text-light); font-size:0.9rem; margin-bottom:2px;">Route</p>
+                        <p id="manBusDate" style="color:var(--text-light); font-size:0.9rem;">Date</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <button class="btn success" id="btnDownloadManifestPDF"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+                    </div>
+                </div>
+                <div class="grid grid-4" style="margin-top:20px;">
+                    <div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:center;">
+                        <div style="font-size:0.8rem; color:#64748b;">Total Seats</div>
+                        <div style="font-size:1.2rem; font-weight:bold;" id="manTotalSeats">0</div>
+                    </div>
+                    <div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:center;">
+                        <div style="font-size:0.8rem; color:#64748b;">Booked</div>
+                        <div style="font-size:1.2rem; font-weight:bold;" id="manBookedSeats">0</div>
+                    </div>
+                    <div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:center;">
+                        <div style="font-size:0.8rem; color:#64748b;">Available</div>
+                        <div style="font-size:1.2rem; font-weight:bold;" id="manAvailSeats">0</div>
+                    </div>
+                    <div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:center;">
+                        <div style="font-size:0.8rem; color:#64748b;">Est. Revenue</div>
+                        <div style="font-size:1.2rem; font-weight:bold; color:var(--success);" id="manRevenue">KES 0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Passenger List -->
+            <div class="card">
+                <h3>Passenger List</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Seat</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Gender</th>
+                            <th>Ref</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="manifestTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+      </section>
+      </main>
+      </div>
     </section>
   </main>
+
+  <!-- Add Bus Modal -->
+  <div id="addBusModal" class="modal hidden">
+    <div class="box">
+      <h3>Add New Bus</h3>
+      <form id="addBusForm" class="grid grid-3" style="margin-top:10px">
+        <div><label>Bus Name</label><input id="busCompany" placeholder="e.g. Express Bus, Luxury Coach" required></div>
+        <div><label>From (Origin)</label><input id="busFrom" required></div>
+        <div><label>To (Destination)</label><input id="busTo" required></div>
+        <div><label>Travel Date</label><input id="busTravelDate" type="date" required></div>
+        <div><label>Departure Time</label><input id="busTime" placeholder="e.g. 08:00 AM" required></div>
+        <div><label>Price (KES)</label><input id="busPrice" type="number" min="0" required></div>
+        <div><label>Total Seats</label><input id="busSeats" type="number" min="1" value="32" required></div>
+        <div style="grid-column: span 2;"><label>Image URL (Optional)</label><input id="busImage" type="text" placeholder="https://example.com/bus.png"></div>
+        <div class="nowrap" style="grid-column:1/-1; text-align:right; display:flex; gap:8px; justify-content:flex-end">
+          <button type="button" class="btn" id="addBusCancel">Cancel</button>
+          <button class="btn" type="submit">Add Bus</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Edit Bus Modal -->
   <div id="editBusModal" class="modal hidden">
