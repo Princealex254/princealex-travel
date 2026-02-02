@@ -125,7 +125,7 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) {
     currentAdmin = null;
     $("#adminApp").classList.add("hidden");
-    $("#loginCard").classList.remove("hidden");
+    $("#loginContainer").classList.remove("hidden");
     $("#loginEmail").focus();
     return;
   }
@@ -144,7 +144,7 @@ onAuthStateChanged(auth, async (user) => {
     currentAdmin = user;
     $("#adminEmailBadge").textContent = user.email ?? "Admin";
     $("#adminEmailDisplay").textContent = user.email ?? "Admin";
-    $("#loginCard").classList.add("hidden");
+    $("#loginContainer").classList.add("hidden");
     $("#adminApp").classList.remove("hidden");
     $("#publicNavbar").classList.add("hidden"); // Hide public navbar
     // load data
@@ -155,7 +155,7 @@ onAuthStateChanged(auth, async (user) => {
     await signOut(auth);
     currentAdmin = null;
     $("#adminApp").classList.add("hidden");
-    $("#loginCard").classList.remove("hidden");
+    $("#loginContainer").classList.remove("hidden");
     $("#publicNavbar").classList.remove("hidden"); // Show public navbar
     showCustomAlert("Access denied. This account is not an admin.", "error");
   }
@@ -1856,7 +1856,7 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
     </div>
   </header>
 
-  <main class="container">
+  <main class="container" id="loginContainer">
     <!-- Login -->
     <section id="loginCard" class="card login-card">
       <h2 class="login-title">Admin Login</h2>
@@ -1873,6 +1873,7 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
         <p style="font-size:12px;opacity:.8">
     </form>
     </section>
+  </main>
 
     <!-- Admin App -->
     <section id="adminApp" class="hidden">
@@ -2121,7 +2122,6 @@ label{font-size:0.85rem;color:var(--text-dark);margin-bottom:0.5rem;display:bloc
       </main>
       </div>
     </section>
-  </main>
 
   <!-- Add Bus Modal -->
   <div id="addBusModal" class="modal hidden">
