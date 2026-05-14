@@ -3255,7 +3255,7 @@
                 const pdfBase64SizeBytes = new TextEncoder().encode(pdfBase64).length;
                 
                 // Define the HTML content for the PENDING booking email body
-                <div style="font-family: 'Segoe UI', Arial, sans-serif; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; max-width: 600px; margin: auto; color: #1e293b;">
+                const emailHtml = `<div style="font-family: 'Segoe UI', Arial, sans-serif; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; max-width: 600px; margin: auto; color: #1e293b;">
                     <div style="background: linear-gradient(135deg, #f59e0b, #fbbf24); color: white; padding: 40px 20px; text-align: center;">
                         <h1 style="margin: 0; font-size: 26px;">⏳ Booking Pending</h1>
                         <p style="margin: 5px 0 0; opacity: 0.9; font-size: 16px;">Complete payment to confirm your seat</p>
