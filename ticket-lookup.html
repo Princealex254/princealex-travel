@@ -1642,7 +1642,7 @@
                                     </div>
                                 <\/body>
                                 <\/html>`
-                            `,
+                            ,
                             attachments: [
                                 {
                                     filename: `Ticket_${bookingId}.pdf`,
@@ -1746,15 +1746,28 @@
                     const pdfBase64 = pdfDoc.output("datauristring").split(",")[1];
 
                     const emailHtml = `
-                    <div style="font-family:  5px 0 0; opacity: 0.9; font-size: 16px;">Prince Alex Travel - Safe & Secure Journey</p>
+                    <div style="font-family: 'Segoe UI', Arial, sans-serif; border: 1px solid #eee; border-radius: 16px; overflow: hidden; max-width: 600px; margin: auto; color: #1e293b;">
+                        <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 40px 20px; text-align: center;">
+                            <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">🎫 Payment Confirmed!</h1>
+                            <p style="margin: 5px 0 0; opacity: 0.9; font-size: 16px;">Prince Alex Travel - Safe & Secure Journey</p>
                         </div>
                         <div style="padding: 30px; background: #ffffff;">
                             <p style="font-size: 16px; margin-top: 0;">Hello <strong>${updatedData.passenger_name}</strong>,</p>
-                          g="-
+                            <p>Great news! Your payment has been received and your trip is now fully confirmed. We look forward to having you on board!</p>
+                            
+                            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 25px 0; border: 1px solid #e2e8f0; border-left: 5px solid #1e3a8a;">
+                                <h3 style="margin: 0 0 15px 0; color: #1e3a8a; font-size: 18px;">Travel Summary</h3>
                                 <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
                                     <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Booking Ref:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; color: #1e3a8a; border-bottom: 1px solid #f1f5f9;">${updatedData.booking_ref}</td></tr>
-                                    <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Route:</td><td style="padding: 1-
-                           <
+                                    <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Route:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${updatedData.bus_route}</td></tr>
+                                    <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Date & Time:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${updatedData.travel_date} @ ${updatedData.bus_time}</td></tr>
+                                    <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Seat Number:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; color: #f59e0b; border-bottom: 1px solid #f1f5f9;">${updatedData.seat_number}</td></tr>
+                                    <tr><td style="padding: 10px 0; color: #64748b;">Amount Paid:</td><td style="padding: 10px 0; text-align: right; font-weight: bold;">KES ${Number(updatedData.price).toLocaleString()}</td></tr>
+                                </table>
+                            </div>
+
+                            <div style="background: #fdf2f2; padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444; color: #991b1b; font-size: 13px;">
+                                <strong>Important:</strong> Please arrive at the terminal at least 15 minutes before your scheduled departure.
                             </div>
                                 
                             <p style="margin-top: 25px;">Your official E-Ticket is attached as a PDF. You can present it on your phone during boarding.</p>
@@ -1766,12 +1779,15 @@
                     </div>`;
 
                     await window.addDoc(collection(window.firebaseDb, "mail"), {
-                        to: [Da{
+                        to: [updatedData.passenger_email],
+                        message: {
                             subject: "Your Ticket is Confirmed! 🎫",
                             html: emailHtml,
                             attachments: [{
                                 filename: `Ticket_${updatedData.booking_ref}.pdf`,
-                             
+                                content: pdfBase64,
+                                encoding: "base64"
+                            }]
                         },
                         createdAt: window.serverTimestamp()
                     });
@@ -1854,10 +1870,15 @@
             overlay.classList.remove('show');
         }
 
-        // Close popup when clicking outside
-        document.getElementById('popupOverlay').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closePopup();
+        // Close popup when clicking outside (Wrapped in DOMContentLoaded to prevent null error)
+        document.addEventListener('DOMContentLoaded', () => {
+            const popupOverlay = document.getElementById('popupOverlay');
+            if (popupOverlay) {
+                popupOverlay.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closePopup();
+                    }
+                });
             }
         });
     </script>
