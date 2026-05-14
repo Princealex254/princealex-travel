@@ -6,7 +6,8 @@
     <title>Booking Successful! - Prince Alex Travel Services</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode.js/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://js.paystack.co/v1/inline.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -45,6 +46,16 @@
                 window.currentUser = null;
             }
             updateAuthLinks(); // Update navigation links based on auth state
+
+            // Robustly attach logout event listener
+            const logoutBtn = document.getElementById('logoutLink');
+            if (logoutBtn && !logoutBtn.dataset.listener) {
+                logoutBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await logout();
+                });
+                logoutBtn.dataset.listener = 'true';
+            }
         });
 
         // --- START: Added from ticket-lookup.html for consistency ---
@@ -88,7 +99,6 @@
 
             if (!bookingRef) {
                 document.getElementById('bookingDetails').innerHTML = `<p class="error-message">No booking reference provided. Please go back to the home page and try again.</p>`;
-                document.getElementById('qrCodeSection').classList.add('hidden');
                 document.getElementById('downloadTicketBtn').classList.add('hidden');
                 document.getElementById('sendEmailBtn').classList.add('hidden'); // Hide new button
                 return;
@@ -102,7 +112,6 @@
 
                 if (querySnapshot.empty) {
                     document.getElementById('bookingDetails').innerHTML = `<p class="error-message">Booking with reference "${bookingRef}" not found. It might have been cancelled or never existed.</p>`;
-                    document.getElementById('qrCodeSection').classList.add('hidden');
                     document.getElementById('downloadTicketBtn').classList.add('hidden');
                     document.getElementById('sendEmailBtn').classList.add('hidden'); // Hide new button
                     showCustomAlert(`Booking "${bookingRef}" not found.`, 'error');
@@ -124,20 +133,34 @@
                 document.getElementById('price').textContent = `KES ${Number(currentBookingData.price || 0).toLocaleString()}`;
 
                 const paymentStatusElement = document.getElementById('paymentStatusDisplay');
+                const successMsgElement = document.querySelector('.success-message');
                 const status = (currentBookingData.status || 'pending').toLowerCase();
                 paymentStatusElement.textContent = status.toUpperCase();
                 if (status === 'paid') {
                     paymentStatusElement.classList.add('status-paid');
                     document.getElementById('paymentSection').classList.add('hidden');
+                    updateSuccessStep(6);
+                    if (successMsgElement) successMsgElement.textContent = "Your booking is confirmed!";
                     document.getElementById('qrCodeSection').classList.remove('hidden');
                     document.getElementById('downloadTicketBtn').classList.remove('hidden');
                     document.getElementById('sendEmailBtn').classList.remove('hidden'); // Show new button
                     generateQRCode(currentBookingData.booking_ref); // Generate QR code for paid bookings
+                    
+                    // Show Confirmation Email Message only when paid
+                    const confirmationEmailMessage = document.createElement('p');
+                    confirmationEmailMessage.classList.add('email-confirmation-message');
+                    confirmationEmailMessage.innerHTML = `✅ Your final e-ticket has been sent to <strong>${currentBookingData.passenger_email || 'your email'}</strong>`;
+                    document.getElementById('bookingDetails').after(confirmationEmailMessage);
                 } else {
                     paymentStatusElement.classList.add('status-pending');
+                    updateSuccessStep(5);
+                    if (successMsgElement) {
+                        successMsgElement.innerHTML = `Your booking has been successfully placed!<br><span style="font-size: 0.95rem; font-weight: 500; color: var(--warning);">Please pay to confirm your ticket.</span>`;
+                    }
                     document.getElementById('paymentSection').classList.remove('hidden');
+                    const receiptRow = document.getElementById('receiptNo');
+                    if (receiptRow) receiptRow.parentElement.classList.add('hidden');
                     document.getElementById('amountToPay').textContent = `Amount to Pay: KES ${Number(currentBookingData.price || 0).toLocaleString()}`;
-                    document.getElementById('qrCodeSection').classList.add('hidden');
                     document.getElementById('downloadTicketBtn').classList.add('hidden');
                     document.getElementById('sendEmailBtn').classList.add('hidden'); // Hide new button
                 }
@@ -158,39 +181,149 @@
                         showCustomAlert("Booking data not available to send email.", 'error');
                     }
                 });
-                // --- START: Added Confirmation Email Message ---
-                const confirmationEmailMessage = document.createElement('p');
-                confirmationEmailMessage.classList.add('email-confirmation-message');
-                confirmationEmailMessage.innerHTML = `✅ A booking confirmation email has been sent to <strong>${currentBookingData.passenger_email || 'your provided email address'}</strong>`;
-                document.getElementById('bookingDetails').after(confirmationEmailMessage);
-                // --- END: Added Confirmation Email Message ---
 
-
-                // Implement payNowBtn if you have a payment gateway integration
-                // document.getElementById('payNowBtn').addEventListener('click', () => {
-                //     showCustomAlert("Payment integration not yet implemented.", 'info');
-                // });
+                // Attach the Paystack function to the button
+                const payBtn = document.getElementById('payNowBtn');
+                if (payBtn) {
+                    payBtn.addEventListener('click', payWithPaystack);
+                }
 
             } catch (error) {
                 console.error("Error fetching booking details:", error);
                 document.getElementById('bookingDetails').innerHTML = `<p class="error-message">Error loading booking details. Please try again later.</p>`;
-                document.getElementById('qrCodeSection').classList.add('hidden');
                 document.getElementById('downloadTicketBtn').classList.add('hidden');
                 document.getElementById('sendEmailBtn').classList.add('hidden'); // Hide new button
                 showCustomAlert("Error loading booking details. Please try again later.", 'error');
             }
         });
 
-        // Add logout event listener (moved here for correct initialization)
-        document.addEventListener('DOMContentLoaded', () => {
-            const logoutLinkElem = document.getElementById('logoutLink');
-            if (logoutLinkElem) {
-                logoutLinkElem.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    await logout();
-                });
+        function updateSuccessStep(step) {
+            document.querySelectorAll('.step-item').forEach(item => {
+                const s = parseInt(item.dataset.step);
+                item.classList.toggle('active', s === step);
+                item.classList.toggle('completed', s < step);
+            });
+        }
+
+        // Function to handle Paystack Payment
+        function payWithPaystack() {
+            if (!currentBookingData) {
+                showCustomAlert("Booking data missing.", 'error');
+                return;
             }
-        });
+
+            let handler = PaystackPop.setup({
+                key: 'pk_live_534321af1df8706853f3f560a599307c289c56df', 
+                email: currentBookingData.passenger_email,
+                phone: currentBookingData.passenger_phone,
+                amount: Math.round(currentBookingData.price * 100), // Ensure integer (Amount * 100)
+                currency: 'KES',
+                callback: function(response) {
+                    // This runs when payment is successful
+                    handlePaymentSuccess(response);
+                },
+                onClose: function() {
+                    showCustomAlert("Transaction cancelled.", 'warning');
+                }
+            });
+
+            handler.openIframe();
+        }
+
+        async function handlePaymentSuccess(response) {
+            showCustomAlert("Payment Successful! Reference: " + response.reference, 'success');
+
+            try {
+                // 1. Update Firestore status to 'paid'
+                const bookingRefDoc = doc(db, "bookings", currentBookingData.id);
+                await updateDoc(bookingRefDoc, {
+                    status: 'paid',
+                    paystack_ref: response.reference,
+                    receipt_number: response.reference,
+                    amount_paid: currentBookingData.price,
+                    payment_method: 'Paystack',
+                    paid_at: serverTimestamp()
+                });
+
+                // 2. Generate and Send Confirmation Email
+                const updatedData = { 
+                    ...currentBookingData, 
+                    status: 'paid', 
+                    paystack_ref: response.reference,
+                    receipt_number: response.reference 
+                };
+                
+                const pdfDoc = await generateTicketPDF(updatedData, true);
+                const pdfBase64 = pdfDoc.output("datauristring").split(",")[1];
+
+                const emailHtml = `
+                <div style="font-family: 'Segoe UI', Arial, sans-serif; border: 1px solid #eee; border-radius: 16px; overflow: hidden; max-width: 600px; margin: auto; color: #1e293b;">
+                    <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 40px 20px; text-align: center;">
+                        <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">🎫 Payment Confirmed!</h1>
+                        <p style="margin: 5px 0 0; opacity: 0.9; font-size: 16px;">Prince Alex Travel - Safe & Secure Journey</p>
+                    </div>
+                    <div style="padding: 30px; background: #ffffff;">
+                        <p style="font-size: 16px; margin-top: 0;">Hello <strong>${updatedData.passenger_name}</strong>,</p>
+                        <p>Great news! Your payment has been received and your trip is now fully confirmed. We look forward to having you on board!</p>
+                        
+                        <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 25px 0; border: 1px solid #e2e8f0; border-left: 5px solid #1e3a8a;">
+                            <h3 style="margin: 0 0 15px 0; color: #1e3a8a; font-size: 18px;">Travel Summary</h3>
+                            <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+                                <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Booking Ref:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; color: #1e3a8a; border-bottom: 1px solid #f1f5f9;">${updatedData.booking_ref}</td></tr>
+                                <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Route:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${updatedData.bus_route}</td></tr>
+                                <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Date & Time:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${updatedData.travel_date} @ ${updatedData.bus_time}</td></tr>
+                                <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Seat Number:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; color: #f59e0b; border-bottom: 1px solid #f1f5f9;">${updatedData.seat_number}</td></tr>
+                                <tr><td style="padding: 10px 0; color: #64748b;">Amount Paid:</td><td style="padding: 10px 0; text-align: right; font-weight: bold;">KES ${Number(updatedData.price).toLocaleString()}</td></tr>
+                            </table>
+                        </div>
+
+                        <div style="background: #fdf2f2; padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444; color: #991b1b; font-size: 13px;">
+                            <strong>Important:</strong> Please arrive at the terminal at least 15 minutes before your scheduled departure.
+                        </div>
+                            
+                        <p style="margin-top: 25px;">Your official E-Ticket is attached as a PDF. You can present it on your phone during boarding.</p>
+                    </div>
+                    <div style="background: #f1f5f9; padding: 25px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #eee;">
+                        © 2025 Prince Alex Travel Services | Nairobi, Kenya<br>
+                        Support: senerwaalex@gmail.com | +254 717 384 875
+                    </div>
+                </div>`;
+
+                await addDoc(collection(db, "mail"), {
+                    to: [updatedData.passenger_email],
+                    message: {
+                        subject: `Confirmed: Ticket for ${updatedData.bus_route} 🎫`,
+                        html: emailHtml,
+                        attachments: [{
+                            filename: `Ticket_${updatedData.booking_ref}.pdf`,
+                            content: pdfBase64,
+                            encoding: "base64"
+                        }]
+                    },
+                    createdAt: serverTimestamp()
+                    createdAt: serverTimestamp()
+                });
+
+                // 3. Trigger n8n Workflow (Optional additional notification)
+                try {
+                    fetch('https://your-n8n-instance.app/webhook/booking-confirmed', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            bookingRef: updatedData.booking_ref,
+                            paystackRef: response.reference,
+                            passengerEmail: updatedData.passenger_email,
+                            amount: updatedData.price
+                        })
+                    });
+                } catch(e) { console.log("n8n trigger skipped"); }
+
+                setTimeout(() => location.reload(), 1500);
+
+            } catch (error) {
+                console.error("Error updating booking:", error);
+            }
+        }
 
 
         // --- START: New function to send email (from ticket-lookup.html) ---
@@ -268,9 +401,9 @@
             <div class="reminders"><h4 style="margin-top: 0;">📱 Important Reminders</h4><ul><li>Arrive at the terminal 15 minutes before departure.</li><li>Present your e-ticket (digital or printed) to the driver.</li><li>Keep your booking reference handy.</li></ul></div>
             <p><strong>Need Help?</strong> If you have any questions, please don't hesitate to contact us:</p><p><strong>📧 Email:</strong> senerwaalex@gmail.com<br><strong>📞 Phone:</strong> +254 717 384 875</p>
         </div>
-        <div class="footer"><p>&copy; ${new Date().getFullYear()} Prince Alex Digital. All rights reserved.<br>Nairobi, Kenya | Prince Alex Travel Services</p></div>
-    </div>
-</body></html>`;
+        <div class="footer"><p>&copy; ${new Date().getFullYear()} Prince Alex Digital. All rights reserved.<br>Nairobi, Kenya | Prince Alex Travel Services<\/p><\/div>
+    <\/div>
+<\/body><\/html>`;
 
                 const emailDocPayload = {
                     to: passengerEmail,
@@ -311,39 +444,35 @@
             }
         }
 
+        // Expose functions to the global window object so they can be called 
+        // from other scripts or inline HTML event handlers (like onsubmit)
+        window.updateAuthLinks = updateAuthLinks;
+        window.logout = logout;
+
         // --- Logout Function ---
         async function logout() {
             try {
-                await window.signOutFirebase(window.firebaseAuth);
+                await signOut(auth);
                 window.location.href = 'index.html';
             } catch (error) {
                 console.error('Logout error:', error);
             }
         }
 
-        // Add logout event listener
-        document.addEventListener('DOMContentLoaded', () => {
-            const logoutLink = document.getElementById('logoutLink');
-            if (logoutLink) {
-                logoutLink.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    await logout();
-                });
-            }
-        });
-
         function generateQRCode(data) {
             const qrcodeDiv = document.getElementById('qrcode');
             qrcodeDiv.innerHTML = ''; // Clear existing QR code
-            if (data) {
-                new QRCode(qrcodeDiv, {
+            if (data && typeof window.QRCode !== 'undefined') {
+                new window.QRCode(qrcodeDiv, {
                     text: data,
                     width: 128,
                     height: 128,
                     colorDark : "#000000",
                     colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
+                    correctLevel : window.QRCode.CorrectLevel.H
                 });
+            } else if (typeof window.QRCode === 'undefined') {
+                console.error("QR Code library failed to load.");
             }
         }
 
@@ -458,7 +587,7 @@
             qrCodeContainer.style.display = 'none'; document.body.appendChild(qrCodeContainer);
             let qrCodeImgData = '';
             try {
-                new QRCode(qrCodeContainer, { text: qrCodeData, width: 128, height: 128, colorDark: modernDarkTextColor, colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
+                new window.QRCode(qrCodeContainer, { text: qrCodeData, width: 128, height: 128, colorDark: modernDarkTextColor, colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.H });
                 await new Promise(resolve => setTimeout(resolve, 50));
                 const canvas = qrCodeContainer.querySelector('canvas');
                 if (canvas) qrCodeImgData = canvas.toDataURL('image/png');
@@ -512,6 +641,7 @@
             --warning: #f59e0b;
             --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
             --gradient-accent: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%);
+            --footer-dark: #0f172a;
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
@@ -520,6 +650,26 @@
             --border-radius-lg: 16px;
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        /* Step Indicator Styles */
+        .step-progress {
+            display: flex;
+            justify-content: space-between;
+            max-width: 600px;
+            margin: 0 auto 2.5rem;
+            position: relative;
+        }
+        .step-progress::before {
+            content: '';
+            position: absolute;
+            top: 15px; left: 0; width: 100%; height: 2px;
+            background: #e2e8f0; z-index: 1;
+        }
+        .step-item { position: relative; z-index: 2; background: var(--white); padding: 0 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+        .step-num { width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; transition: var(--transition); border: 2px solid var(--white); }
+        .step-item.active { color: var(--primary-color); }
+        .step-item.active .step-num { background: var(--primary-color); color: var(--white); box-shadow: 0 0 0 4px rgba(30,58,138,0.1); }
+        .step-item.completed .step-num { background: var(--success-color); color: var(--white); }
 
         body {
             font-family: 'Inter', sans-serif;
@@ -643,11 +793,11 @@
         .main-content-container {
             flex-grow: 1;
             max-width: 1200px;
-            margin: 2rem auto;
-            padding: 2.5rem;
+            margin: 4rem auto;
+            padding: 2rem;
             background: var(--white);
             border-radius: var(--border-radius-lg);
-            box-shadow: var(--shadow-xl);
+            box-shadow: var(--shadow-lg);
             text-align: center;
             border: 1px solid rgba(0,0,0,0.05);
             transition: var(--transition);
@@ -658,14 +808,15 @@
 
         h1 {
             color: var(--text-dark);
-            font-size: 2.5rem;
+            font-size: clamp(2.2rem, 5vw, 3rem);
             margin-bottom: 1.5rem;
-            font-weight: 700;
+            font-weight: 800;
+            letter-spacing: -0.02em;
         }
 
         .success-message {
             color: var(--success);
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             margin-bottom: 2rem;
             font-weight: 600;
             display: flex;
@@ -728,9 +879,9 @@
         /* --- START: Styles copied from ticket-lookup.html for consistency --- */
         .ticket-summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1.5rem;
-            margin: 2rem 0;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
             text-align: left;
         }
         .ticket-summary-grid div {
@@ -748,7 +899,7 @@
             text-transform: uppercase;
         }
         .ticket-summary-grid span {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
             color: var(--text-dark);
         }
@@ -893,6 +1044,9 @@
             padding: 1.5rem;
             margin-top: 1.5rem;
             color: var(--warning);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         #paymentSection h3 {
@@ -901,19 +1055,46 @@
             font-weight: 700;
         }
 
-        #paymentSection button {
-            background: var(--gradient-accent);
+        /* Enhanced Paystack Button */
+        .pay-stack-btn {
+            background: linear-gradient(135deg, #011b33 0%, #002d6b 100%);
+            color: var(--white);
+            padding: 1.1rem 2.5rem;
+            border: none;
+            border-radius: var(--border-radius-lg);
+            cursor: pointer;
+            font-size: 1.15rem;
+            font-weight: 700;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 45, 107, 0.3);
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid rgba(255,255,255,0.1);
         }
-        #paymentSection button:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+        .pay-stack-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 25px -5px rgba(0, 45, 107, 0.4);
+            background: linear-gradient(135deg, #002d6b 0%, #00408c 100%);
+        }
+
+        .payment-security-notice {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         /* Modern Footer */
         .footer {
-            background: var(--gradient-primary);
+            background: var(--footer-dark);
             color: var(--white);
-            padding: 3rem 2rem 1rem;
+            padding: 5rem 2rem 2rem;
             text-align: center;
             width: 100%;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
@@ -1319,15 +1500,15 @@
         }
         
         .email-confirmation-message {
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: var(--success);
-            margin: 1.5rem auto;
+            margin: 1rem auto;
             font-weight: 600;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            padding: 1rem 1.5rem;
+            padding: 0.8rem 1rem;
             background: #d1fae5;
             border-radius: var(--border-radius);
             border: 1px solid #a7f3d0;
@@ -1379,6 +1560,16 @@
 
     <div class="main-content-container">
         <h1>Booking Confirmation</h1>
+        <!-- Final Steps Indicator -->
+        <div class="step-progress" style="margin-bottom: 3rem;">
+            <div class="step-item completed" data-step="1"><div class="step-num">1</div><span>Search</span></div>
+            <div class="step-item completed" data-step="2"><div class="step-num">2</div><span>Choose</span></div>
+            <div class="step-item completed" data-step="3"><div class="step-num">3</div><span>Seat</span></div>
+            <div class="step-item completed" data-step="4"><div class="step-num">4</div><span>Info</span></div>
+            <div class="step-item" data-step="5"><div class="step-num">5</div><span>Pay</span></div>
+            <div class="step-item" data-step="6"><div class="step-num">6</div><span>Done</span></div>
+        </div>
+
         <p class="success-message">Your booking has been successfully placed!</p>
 
         <!-- New Ticket Summary Grid Layout -->
@@ -1390,6 +1581,7 @@
             <div><label>Price</label><span id="price"></span></div>
             <div><label>Booking Ref</label><span id="bookingRef"></span></div>
             <div><label>Status</label><span id="status" class="status-badge"></span></div>
+            <div class="hidden"><label>Receipt No</label><span id="receiptNo"></span></div>
         </div>
         <p class="summary-footer" style="text-align: center;">
             Full ticket details are available on the downloaded PDF.
@@ -1398,11 +1590,11 @@
         </p>
 
         <div id="paymentSection" class="hidden">
-            <h3>Payment Required</h3>
-            <p id="amountToPay"></p>
-            <div class="button-group">
-                <button id="payNowBtn">Make Payment</button>
-            </div>
+            <p id="amountToPay" style="font-size: 1.3rem; font-weight: 700; color: var(--text-dark); margin-bottom: 1rem;"></p>
+            <button id="payNowBtn" class="pay-stack-btn">
+                <i class="fas fa-lock"></i> Secure Payment with Paystack
+            </button>
+            <span class="payment-security-notice"><i class="fas fa-shield-alt" style="color: var(--success);"></i> Verified & Secured by Paystack</span>
         </div>
 
         <div id="qrCodeSection" class="qr-code-section hidden">
