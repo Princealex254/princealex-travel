@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode.js/1.0.0/qrcode.min.js"></script>
+    <script src="https://js.paystack.co/v1/inline.js"></script>
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // Re-added 'collection', 'query', and 'where' for querying by field
-        import { getFirestore, doc, getDoc, collection, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -57,6 +57,8 @@
         window.where = where;
         window.getDocs = getDocs; // Make getDocs available globally
         window.addDoc = addDoc; // Make addDoc available globally for the mail collection
+        window.updateDoc = updateDoc;
+        window.serverTimestamp = serverTimestamp;
     </script>
     <style>
         /* Modern CSS Variables for Enhanced Design */
@@ -75,6 +77,7 @@
             --warning: #f59e0b;
             --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
             --gradient-accent: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%);
+            --footer-dark: #0f172a;
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
@@ -82,6 +85,9 @@
             --border-radius: 12px;
             --border-radius-lg: 16px;
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        *, *::before, *::after {
+            box-sizing: border-box;
         }
         body {
             font-family: 'Segoe UI', sans-serif;
@@ -244,9 +250,9 @@
 
         .lookup-container {
             flex-grow: 1;
-            max-width: 900px;
+            max-width: 1000px;
             margin: 3rem auto;
-            padding: 3rem;
+            padding: 4rem 3rem;
             background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
             border-radius: 24px;
             box-shadow: 
@@ -274,17 +280,17 @@
         }
         
         .lookup-container h2 {
-            color: var(--primary-color); /* Use solid primary color */
+            color: var(--primary-color);
             background: none; /* Remove gradient background */
             margin-bottom: 0.5rem;
-            font-size: 3rem;
-            font-weight: 800;
+            font-size: clamp(2.5rem, 6vw, 3.5rem);
+            font-weight: 900;
             letter-spacing: -0.02em;
             line-height: 1.1;
         }
         
         .lookup-container .subtitle {
-            color: #64748b;
+            color: var(--text-muted);
             font-size: 1.1rem;
             margin-bottom: 3rem;
             font-weight: 500;
@@ -411,6 +417,53 @@
             color: #7c3aed;
             background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
             border-left: 4px solid #7c3aed;
+        }
+
+        .message.warning {
+            color: #92400e;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border-left: 4px solid #f59e0b;
+        }
+
+        /* Enhanced Paystack Button for Lookup */
+        #paymentSection {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .pay-stack-btn {
+            background: linear-gradient(135deg, #011b33 0%, #002d6b 100%);
+            color: var(--white);
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 700;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        .pay-stack-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        .payment-security-notice {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         
         @keyframes slideIn {
@@ -574,9 +627,9 @@
         }
 
         .footer {
-            background: var(--gradient-primary);
+            background: var(--footer-dark);
             color: var(--white);
-            padding: 3rem 2rem 1rem;
+            padding: 5rem 2rem 2rem;
             text-align: center;
             margin-top: auto;
             font-size: 0.95rem;
@@ -915,13 +968,28 @@
             }
             .lookup-container {
                 margin: 1rem;
-                padding: 1.5rem;
+                padding: 2rem 1rem;
+            }
+            .lookup-container h2 {
+                font-size: 1.8rem;
+            }
+            .lookup-container .subtitle {
+                font-size: 0.95rem;
+                margin-bottom: 1.5rem;
+            }
+            .ticket-details {
+                padding: 1rem;
+                margin-top: 1.5rem;
+            }
+            .ticket-summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
             }
             .form-group input[type="text"] {
-                width: calc(100% - 1.5rem);
+                width: 100%;
             }
-            .footer {
-                padding: 2rem 1rem 1rem;
+            .lookup-button {
+                width: 100%;
             }
             .footer-content {
                 grid-template-columns: 1fr;
@@ -944,10 +1012,27 @@
                 flex-direction: column;
                 gap: 10px; /* Space out buttons */
             }
+            .ticket-summary-grid div {
+                padding: 0.75rem;
+            }
+            .ticket-summary-grid span {
+                font-size: 0.95rem;
+            }
             .download-button, .send-email-button {
                 width: 100%; /* Full width buttons */
                 margin-left: 0; /* Remove left margin */
             }
+        }
+
+        @media (max-width: 480px) {
+            .ticket-summary-grid {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+            .lookup-container h2 {
+                font-size: 1.6rem;
+            }
+            .lookup-container { padding: 1.5rem 0.75rem; }
         }
     </style>
 </head>
@@ -996,6 +1081,7 @@
                 <div><label>Travel Date</label><span id="travelDate"></span></div>
                 <div><label>Seat</label><span id="seatNumber"></span></div>
                 <div><label>Status</label><span id="status"></span></div>
+                <div id="receiptRow" style="display: none;"><label>Receipt No</label><span id="receiptNoDisplay"></span></div>
             </div>
             <p class="summary-footer">Full details are available on the downloaded PDF ticket.</p>
 
@@ -1003,6 +1089,17 @@
             <input type="hidden" id="passengerEmail">
             <input type="hidden" id="bookingRef">
             
+            <div id="paymentSection" style="display: none;">
+                <div class="message warning" style="width: 100%; margin: 0 0 1.5rem 0; text-align: center;">
+                    ⚠️ <strong>Payment Required:</strong> Please pay to confirm your ticket.
+                </div>
+                <p id="amountToPay" style="font-size: 1.2rem; font-weight: 700; color: var(--text-dark); margin-bottom: 1rem;"></p>
+                <button id="payNowBtn" class="pay-stack-btn">
+                    <i class="fas fa-lock"></i> Secure Payment with Paystack
+                </button>
+                <span class="payment-security-notice"><i class="fas fa-shield-alt" style="color: var(--success);"></i> Verified & Secured by Paystack</span>
+            </div>
+
             <div class="button-group-ticket"> <!-- New container for ticket action buttons -->
                 <button id="downloadTicketBtn" class="download-button"><i class="fas fa-download"></i> Download Ticket (PDF)</button>
                 <button id="sendEmailBtn" class="send-email-button"><i class="fas fa-envelope"></i> Send Ticket to Email</button>
@@ -1017,6 +1114,7 @@
             const lookupTicketBtn = document.getElementById('lookupTicketBtn');
             const messageElem = document.getElementById('message');
             const ticketDetailsSection = document.getElementById('ticketDetailsSection');
+            const paymentSection = document.getElementById('paymentSection');
             const downloadTicketBtn = document.getElementById('downloadTicketBtn');
             const sendEmailBtn = document.getElementById('sendEmailBtn'); // Get the new button
             const mobileMenuToggle = document.getElementById('mobile-menu'); // Get hamburger icon
@@ -1034,6 +1132,11 @@
             lookupTicketBtn.addEventListener('click', loadBookingDetails);
             downloadTicketBtn.addEventListener('click', downloadTicket);
             sendEmailBtn.addEventListener('click', sendTicketToEmail); // Attach event listener for new button
+
+            const payBtn = document.getElementById('payNowBtn');
+            if (payBtn) {
+                payBtn.addEventListener('click', payWithPaystack);
+            }
 
             // Hamburger menu toggle logic
             if (mobileMenuToggle && mainNav) {
@@ -1065,6 +1168,7 @@
                 messageElem.textContent = ''; // Clear previous messages
                 messageElem.className = 'message'; // Reset message classes
                 ticketDetailsSection.style.display = 'none'; // Hide details section initially
+                paymentSection.style.display = 'none';
                 fetchedBookingData = null; // Clear previous data
 
                 if (!bookingRef) {
@@ -1103,9 +1207,28 @@
                         document.getElementById('passengerEmail').value = data.passenger_email || '';
                         document.getElementById('bookingRef').value = data.booking_ref || '';
                         
+                        const status = (data.status || 'pending').toLowerCase();
+                        if (status === 'pending') {
+                            paymentSection.style.display = 'flex';
+                            document.getElementById('amountToPay').textContent = `Amount to Pay: KES ${Number(data.price || 0).toLocaleString()}`;
+                            downloadTicketBtn.style.display = 'none';
+                            sendEmailBtn.style.display = 'none';
+                            messageElem.textContent = '✅ Ticket found successfully!';
+                            messageElem.className = 'message success';
+                        } else {
+                            paymentSection.style.display = 'none';
+                            downloadTicketBtn.style.display = 'inline-block';
+                            sendEmailBtn.style.display = 'inline-block';
+                            messageElem.textContent = '✅ Ticket found successfully!';
+                            messageElem.className = 'message success';
+                        }
+
                         ticketDetailsSection.style.display = 'block'; // Show the details section
-                        messageElem.textContent = '✅ Ticket found successfully!';
-                        messageElem.className = 'message success';
+
+                        // Scroll to the ticket details section automatically
+                        setTimeout(() => {
+                            ticketDetailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 100);
                     } else {
                         messageElem.textContent = '❌ Booking not found. Please check your reference ID.';
                         messageElem.className = 'message error';
@@ -1517,8 +1640,8 @@
                                             <p>Nairobi, Kenya | Prince Alex Travel Services</p>
                                         </div>
                                     </div>
-                                </body>
-                                </html>
+                                <\/body>
+                                <\/html>`
                             `,
                             attachments: [
                                 {
@@ -1572,6 +1695,104 @@
             function isValidEmail(email) {
                 const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
                 return re.test(String(email).toLowerCase());
+            }
+
+            // Paystack Functions
+            function payWithPaystack() {
+                if (!fetchedBookingData) {
+                    showCustomAlert("Booking data missing.", 'error');
+                    return;
+                }
+
+                let handler = PaystackPop.setup({
+                    key: 'pk_live_534321af1df8706853f3f560a599307c289c56df',
+                    email: fetchedBookingData.passenger_email,
+                    phone: fetchedBookingData.passenger_phone,
+                    amount: Math.round(fetchedBookingData.price * 100), // Ensure integer
+                    currency: 'KES',
+                    callback: function(response) {
+                        handlePaymentSuccess(response);
+                    },
+                    onClose: function() {
+                        showCustomAlert("Transaction cancelled.", 'warning');
+                    }
+                });
+
+                handler.openIframe();
+            }
+
+            async function handlePaymentSuccess(response) {
+                showCustomAlert("Payment Successful! Reference: " + response.reference, 'success');
+                try {
+                    const bookingDocRef = window.doc(window.firebaseDb, "bookings", fetchedBookingData.id);
+                    await window.updateDoc(bookingDocRef, {
+                        status: 'paid',
+                        paystack_ref: response.reference,
+                        receipt_number: response.reference,
+                        amount_paid: fetchedBookingData.price,
+                        payment_method: 'Paystack',
+                        paid_at: window.serverTimestamp()
+                    });
+
+                    // Generate and Send Professional Email
+                    const updatedData = { 
+                        ...fetchedBookingData, 
+                        status: 'paid', 
+                        paystack_ref: response.reference,
+                        receipt_number: response.reference 
+                    };
+                    
+                    const pdfDoc = await generatePdfContent(updatedData);
+                    const pdfBase64 = pdfDoc.output("datauristring").split(",")[1];
+
+                    const emailHtml = `
+                    <div style="font-family:  5px 0 0; opacity: 0.9; font-size: 16px;">Prince Alex Travel - Safe & Secure Journey</p>
+                        </div>
+                        <div style="padding: 30px; background: #ffffff;">
+                            <p style="font-size: 16px; margin-top: 0;">Hello <strong>${updatedData.passenger_name}</strong>,</p>
+                          g="-
+                                <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+                                    <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Booking Ref:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; color: #1e3a8a; border-bottom: 1px solid #f1f5f9;">${updatedData.booking_ref}</td></tr>
+                                    <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Route:</td><td style="padding: 1-
+                           <
+                            </div>
+                                
+                            <p style="margin-top: 25px;">Your official E-Ticket is attached as a PDF. You can present it on your phone during boarding.</p>
+                        </div>
+                        <div style="background: #f1f5f9; padding: 25px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #eee;">
+                            © 2025 Prince Alex Travel Services | Nairobi, Kenya<br>
+                            Support: senerwaalex@gmail.com | +254 717 384 875
+                        </div>
+                    </div>`;
+
+                    await window.addDoc(collection(window.firebaseDb, "mail"), {
+                        to: [Da{
+                            subject: "Your Ticket is Confirmed! 🎫",
+                            html: emailHtml,
+                            attachments: [{
+                                filename: `Ticket_${updatedData.booking_ref}.pdf`,
+                             
+                        },
+                        createdAt: window.serverTimestamp()
+                    });
+
+                    try {
+                        fetch('https://your-n8n-instance.app/webhook/booking-confirmed', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                bookingRef: updatedData.booking_ref,
+                                paystackRef: response.reference,
+                                passengerEmail: updatedData.passenger_email,
+                                amount: updatedData.price
+                            })
+                        });
+                    } catch(e) {}
+
+                    setTimeout(() => loadBookingDetails(), 1500);
+                } catch (error) {
+                    console.error("Error updating booking:", error);
+                }
             }
 
         });
