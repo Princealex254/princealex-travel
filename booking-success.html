@@ -95,7 +95,6 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const bookingRef = urlParams.get('bookingRef');
-            console.log("Booking Reference from URL:", bookingRef);
 
             if (!bookingRef) {
                 document.getElementById('bookingDetails').innerHTML = `<p class="error-message">No booking reference provided. Please go back to the home page and try again.</p>`;
@@ -121,7 +120,6 @@
                 // Assuming bookingRef is unique, get the first document
                 const bookingDoc = querySnapshot.docs[0];
                 currentBookingData = { id: bookingDoc.id, ...bookingDoc.data() };
-                console.log("Fetched Booking Data:", currentBookingData);
 
                 // Populate details on the page
                 document.getElementById('passengerName').textContent = currentBookingData.passenger_name || 'N/A';
@@ -260,16 +258,17 @@
                 <div style="font-family: 'Segoe UI', Arial, sans-serif; border: 1px solid #eee; border-radius: 16px; overflow: hidden; max-width: 600px; margin: auto; color: #1e293b;">
                     <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 40px 20px; text-align: center;">
                         <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">🎫 Payment Confirmed!</h1>
-                        <p style="margin: 5px 0 0; opacity: 0.9; font-size: 16px;">Prince Alex Travel - Safe & Secure Journey</p>
+                        <p style="margin: 5px 0 0; opacity: 0.9; font-size: 16px;">Your E-Ticket & Receipt</p>
                     </div>
                     <div style="padding: 30px; background: #ffffff;">
                         <p style="font-size: 16px; margin-top: 0;">Hello <strong>${updatedData.passenger_name}</strong>,</p>
                         <p>Great news! Your payment has been received and your trip is now fully confirmed. We look forward to having you on board!</p>
                         
                         <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 25px 0; border: 1px solid #e2e8f0; border-left: 5px solid #1e3a8a;">
-                            <h3 style="margin: 0 0 15px 0; color: #1e3a8a; font-size: 18px;">Travel Summary</h3>
+                            <h3 style="margin: 0 0 15px 0; color: #1e3a8a; font-size: 18px;">Payment Receipt & Travel Summary</h3>
                             <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
                                 <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Booking Ref:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; color: #1e3a8a; border-bottom: 1px solid #f1f5f9;">${updatedData.booking_ref}</td></tr>
+                                <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Receipt No:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${updatedData.receipt_number}</td></tr>
                                 <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Route:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${updatedData.bus_route}</td></tr>
                                 <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Date & Time:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${updatedData.travel_date} @ ${updatedData.bus_time}</td></tr>
                                 <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Seat Number:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; color: #f59e0b; border-bottom: 1px solid #f1f5f9;">${updatedData.seat_number}</td></tr>
@@ -300,7 +299,6 @@
                             encoding: "base64"
                         }]
                     },
-                    createdAt: serverTimestamp()
                     createdAt: serverTimestamp()
                 });
 
@@ -415,8 +413,22 @@
                     }
                 };
 
-                await addDoc(collection(db, "mail"), emailDocPayload);
-                showCustomAlert("Ticket sent to your email successfully!", 'success');
+                // Define the payload for the Cloudflare worker, which is the modern way
+                const workerPayload = {
+                    toEmail: passengerEmail,
+                    toName: passengerName,
+                    subject: "Your E-Ticket - Prince Alex Travel 🎫",
+                    htmlContent: emailHtml,
+                    attachments: emailDocPayload.message.attachments
+                };
+
+                // Use the worker to send the email
+                const sent = await sendEmailWithWorker(workerPayload);
+                if (sent) {
+                    showCustomAlert("Ticket sent to your email successfully!", 'success');
+                } else {
+                    showCustomAlert("Failed to send ticket. Please try again.", 'error');
+                }
 
             } catch (error) {
                 console.error("Error sending ticket to email:", error);
@@ -444,6 +456,29 @@
             }
         }
 
+        // --- Cloudflare Worker Email Service (from ticket-lookup.html) ---
+        async function sendEmailWithWorker(payload) {
+            const url = "https://payroll.princealexdigital.workers.dev/";
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    return true;
+                } else {
+                    console.error("Worker failed to send email:", data.error, data.details);
+                    return false;
+                }
+            } catch (error) {
+                console.error("Network or parsing error when sending email via worker:", error);
+                return false;
+            }
+        }
         // Expose functions to the global window object so they can be called 
         // from other scripts or inline HTML event handlers (like onsubmit)
         window.updateAuthLinks = updateAuthLinks;
