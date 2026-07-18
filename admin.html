@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Prince Alex Travel Services</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Firebase SDKs and App Logic -->
+    <script type="module" src="admin.js"></script>
+    <style>
+        :root {
+            --primary: #0f172a;
+            --primary-light: #1e293b;
+            --primary-mid: #334155;
+            --accent: #f59e0b;
+            --accent-light: #fbbf24;
+            --accent-glow: rgba(245, 158, 11, 0.25);
+            --white: #ffffff;
+            --off-white: #f8fafc;
+            --gray-50: #f1f5f9;
+            --gray-100: #e2e8f0;
+            --gray-200: #cbd5e1;
+            --gray-300: #94a3b8;
+            --gray-400: #64748b;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --gradient-primary: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #3b82f6 100%);
+            --gradient-accent: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%);
+            --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.25);
+            --radius-sm: 8px;
+            --radius: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-2xl: 24px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--off-white);
+            color: var(--text);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== LOGIN PAGE ===== */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gradient-primary);
+            padding: 1rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 2000;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            width: 100%;
+            max-width: 420px;
+            padding: 2.5rem;
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-2xl);
+            animation: slideUp 0.5s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-header { text-align: center; margin-bottom: 2rem; }
+        .login-logo { height: 60px; margin-bottom: 1rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+        .login-title { font-size: 1.75rem; font-weight: 800; color: var(--text); margin-bottom: 0.5rem; letter-spacing: -0.025em; }
+        .login-subtitle { color: var(--text-light); font-size: 0.95rem; }
+        .login-form { display: flex; flex-direction: column; gap: 1.5rem; }
+        .input-group label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; color: var(--text); }
+        .input-wrapper { position: relative; }
+        .input-wrapper i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--gray-300); transition: var(--transition); }
+        .input-wrapper input {
+            width: 100%;
+            padding: 0.85rem 1rem 0.85rem 2.75rem;
+            border: 2px solid var(--gray-100);
+            border-radius: var(--radius);
+            font-size: 1rem;
+            transition: var(--transition);
+            background: var(--white);
+            color: var(--text);
+        }
+        .input-wrapper input:focus {
+            border-color: var(--primary);
+            background: var(--white);
+            box-shadow: 0 0 0 4px rgba(15,23,42,0.06);
+            outline: none;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: var(--gradient-primary);
+            border-radius: var(--radius);
+            color: var(--white);
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* ===== ADMIN LAYOUT ===== */
+        .admin-layout { min-height: 100vh; }
+        .sidebar {
+            width: 260px;
+            background: var(--primary);
+            color: var(--white);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            height: 100%;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+        }
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0,0,0,0.1);
+        }
+        .sidebar-header i { font-size: 1.5rem; color: var(--accent); }
+        .sidebar-header h2 { font-size: 1.2rem; font-weight: 700; color: var(--white); margin: 0; letter-spacing: 0.5px; }
+        .sidebar-menu { list-style: none; padding: 1rem 0; flex: 1; }
+        .sidebar-menu li { margin-bottom: 0.25rem; }
+        .sidebar-menu button {
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.8);
+            padding: 0.85rem 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid transparent;
+        }
+        .sidebar-menu button:hover {
+            background: rgba(255,255,255,0.05);
+            color: var(--white);
+            padding-left: 1.75rem;
+        }
+        .sidebar-menu button.active {
+            background: rgba(255,255,255,0.15);
+            color: var(--white);
+            border-left-color: var(--accent);
+            font-weight: 600;
+        }
+        .sidebar-menu button i { width: 20px; text-align: center; }
+        .sidebar-footer {
+            padding: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.1);
+        }
+        .sidebar-footer div { font-size: 0.8rem; opacity: 0.7; margin-bottom: 0.5rem; }
+        .admin-main {
+            margin-left: 260px;
+            padding: 2rem;
+            background: var(--off-white);
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+        .admin-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        .admin-topbar h1 { font-size: 1.8rem; font-weight: 700; color: var(--text); margin: 0; }
+
+        /* ===== MOBILE MENU ===== */
+        #mobileMenuBtn { display: none; }
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2999;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            backdrop-filter: blur(2px);
+        }
+        .sidebar-overlay.show { display: block; opacity: 1; }
+
+        /* ===== CARDS & TABLES ===== */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--gray-100);
+            transition: var(--transition);
+        }
+        .card:hover { box-shadow: var(--shadow-lg); }
+        .card h3 { font-size: 1.25rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; }
+        .card p { color: var(--text-light); font-size: 0.9rem; margin-top: 0.5rem; }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+        .table th, .table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--gray-100);
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .table th {
+            background: var(--gray-50);
+            font-weight: 600;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.8rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .table tbody tr:hover { background: var(--gray-50); transition: background-color 0.2s; }
+        .row-paid { background-color: #f0fdf4; }
+        .row-pending { background-color: #fffbeb; }
+        .table tbody tr.row-paid:hover { background-color: #dcfce7; }
+        .table tbody tr.row-pending:hover { background-color: #fef3c7; }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            background: var(--gradient-accent);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius);
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .btn.sm { padding: 0.5rem 1rem; font-size: 0.8rem; }
+        .btn.danger { background: var(--error); }
+        .btn.danger:hover { background: #dc2626; }
+        .btn.success { background: var(--success); }
+        .btn.success:hover { background: #059669; }
+
+        /* ===== FORMS ===== */
+        input, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--gray-100);
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            transition: var(--transition);
+            background: var(--white);
+            color: var(--text);
+            font-family: inherit;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(15,23,42,0.06);
+        }
+        label {
+            font-size: 0.85rem;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+            display: block;
+            font-weight: 600;
+        }
+
+        /* ===== GRID ===== */
+        .grid { display: grid; gap: 1rem; }
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-4 { grid-template-columns: repeat(4, 1fr); }
+        @media (max-width: 1024px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .grid-4 { grid-template-columns: 1fr; } }
+
+        /* ===== BADGES ===== */
+        .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: inline-block;
+        }
+        .badge.success { background: var(--success); color: var(--white); }
+        .badge.warn { background: var(--warning); color: var(--white); }
+
+        /* ===== STEP INDICATOR ===== */
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .step-indicator::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--gray-200);
+            z-index: 0;
+        }
+        .step {
+            position: relative;
+            z-index: 1;
+            background: var(--off-white);
+            padding: 0 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-light);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--gray-200);
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5px;
+            font-weight: 700;
+            transition: var(--transition);
+            border: 2px solid var(--off-white);
+        }
+        .step.active .step-circle {
+            background: var(--primary);
+            color: var(--white);
+            box-shadow: 0 0 0 3px rgba(15,23,42,0.2);
+        }
+        .step.completed .step-circle { background: var(--success); color: var(--white); }
+        .step.active { color: var(--primary); }
+        .step.completed { color: var(--success); }
+
+        /* ===== MODAL ===== */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        .modal .box {
+            background: var(--white);
+            max-width: 800px;
+            width: 95%;
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: var(--shadow-2xl);
+        }
+        #seatGrid {
+            display: grid;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            border: 2px dashed var(--gray-200);
+            border-radius: var(--radius);
+            background: var(--gray-50);
+        }
+        .seat-container {
+            position: relative;
+            width: 70px;
+            height: 70px;
+            border-radius: var(--radius);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 2px solid transparent;
+        }
+        .seat-container .seat-icon { font-size: 2.5em; color: var(--gray-300); transition: var(--transition); }
+        .seat-container .seat-number { font-size: 0.8em; font-weight: 700; color: var(--text-light); margin-top: 0.25rem; transition: var(--transition); }
+        .seat-container.selected {
+            background: var(--accent-light);
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }
+        .seat-container.selected .seat-icon, .seat-container.selected .seat-number { color: var(--accent); }
+        .seat-container.booked {
+            cursor: not-allowed;
+            background: #fee2e2;
+            border-color: #fca5a5;
+        }
+        .seat-container.booked .seat-icon, .seat-container.booked .seat-number { color: var(--error); }
+        .seat-container.booked::after {
+            content: "✕";
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            color: var(--white);
+            background: rgba(239,68,68,0.8);
+            border-radius: var(--radius);
+        }
+        .driver-area {
+            grid-column: 1 / -1;
+            text-align: center;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            color: var(--primary);
+            padding: 0.75rem;
+            border-bottom: 2px solid var(--gray-200);
+            background: var(--white);
+            border-radius: var(--radius);
+        }
+
+        /* ===== TOAST ===== */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 3000;
+            pointer-events: none;
+        }
+        .toast {
+            background: var(--white);
+            padding: 12px 20px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid var(--primary);
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.68,-0.55,0.27,1.55);
+            pointer-events: auto;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.success { border-left-color: var(--success); }
+        .toast.info { border-left-color: var(--primary); }
+
+        /* ===== UTILITY ===== */
+        .hidden { display: none !important; }
+
+        /* ===== LOADING ===== */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 15px;
+            backdrop-filter: blur(2px);
+        }
+        .spinner {
+            border: 5px solid var(--gray-200);
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            #mobileMenuBtn { display: block; }
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 3000;
+                width: 260px;
+                box-shadow: 4px 0 15px rgba(0,0,0,0.2);
+            }
+            .sidebar.open { transform: translateX(0); }
+            .admin-main { margin-left: 0; padding: 1rem; }
+            .grid-3 { grid-template-columns: repeat(2, 1fr); }
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .grid-3 { grid-template-columns: 1fr; }
+            .table { font-size: 0.8rem; }
+            .table th, .table td { padding: 0.75rem 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <main class="login-container" id="loginContainer">
+        <section id="loginCard" class="login-card">
+            <div class="login-header">
+                <img src="mylogo.png" alt="Prince Alex Logo" class="login-logo">
+                <h2 class="login-title">Welcome Back</h2>
+                <p class="login-subtitle">Sign in to access the admin panel</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="input-group">
+                    <label for="loginEmail">Email Address</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-envelope"></i>
+                        <input id="loginEmail" type="email" placeholder="admin@example.com" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="loginPassword">Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock"></i>
+                        <input id="loginPassword" type="password" placeholder="••••••••" required>
+                    </div>
+                </div>
+                <button class="login-btn" type="submit">Sign In <i class="fa-solid fa-arrow-right"></i></button>
+            </form>
+        </section>
+    </main>
+
+    <!-- Admin App -->
+    <section id="adminApp" class="hidden">
+        <div class="admin-layout">
+            <div id="sidebarOverlay" class="sidebar-overlay"></div>
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <i class="fa-solid fa-bus-simple"></i>
+                    <h2>Prince Alex</h2>
+                </div>
+                <ul class="sidebar-menu">
+                    <li><button class="tab-btn active" data-tab="tabDashboard" data-title="Dashboard"><i class="fa-solid fa-chart-pie"></i> Dashboard</button></li>
+                    <li><button class="tab-btn" data-tab="tabBuses" data-title="Manage Buses"><i class="fa-solid fa-bus"></i> Manage Buses</button></li>
+                    <li><button class="tab-btn" data-tab="tabBookings" data-title="Manage Bookings"><i class="fa-solid fa-ticket"></i> Manage Bookings</button></li>
+                    <li><button class="tab-btn" data-tab="tabMakeBooking" data-title="Make Booking"><i class="fa-solid fa-plus-circle"></i> Make Booking</button></li>
+                    <li><button class="tab-btn" data-tab="tabManifest" data-title="Bus Manifest"><i class="fa-solid fa-clipboard-list"></i> Bus Manifest</button></li>
+                </ul>
+                <div class="sidebar-footer">
+                    <div id="adminEmailDisplay">Admin</div>
+                    <button id="sidebarLogoutBtn" class="btn danger sm" style="width:100%; margin-top:0.5rem;">Logout</button>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="admin-main">
+                <div class="admin-topbar">
+                    <div style="display:flex; align-items:center; gap:10px">
+                        <button id="mobileMenuBtn" class="btn" style="background:transparent; color:var(--text); padding:0.5rem; font-size:1.2rem;"><i class="fa-solid fa-bars"></i></button>
+                        <h1 id="pageTitle" style="margin:0">Dashboard</h1>
+                    </div>
+                </div>
+
+                <!-- Dashboard Tab -->
+                <section id="tabDashboard" class="tab-panel">
+                    <div class="grid grid-4">
+                        <div class="card" style="padding:1.5rem; text-align:center;">
+                            <div style="font-size:2rem; font-weight:bold; color:var(--primary)" id="statTotalBuses">0</div>
+                            <div style="font-size:0.9rem; color:var(--text-light); font-weight:600">Total Buses</div>
+                        </div>
+                        <div class="card" style="padding:1.5rem; text-align:center;">
+                            <div style="font-size:2rem; font-weight:bold; color:var(--accent)" id="statTodayBookings">0</div>
+                            <div style="font-size:0.9rem; color:var(--text-light); font-weight:600">Today's Bookings</div>
+                        </div>
+                        <div class="card" style="padding:1.5rem; text-align:center;">
+                            <div style="font-size:2rem; font-weight:bold; color:var(--success)" id="statPaidPending">0 / 0</div>
+                            <div style="font-size:0.9rem; color:var(--text-light); font-weight:600">Paid / Pending</div>
+                        </div>
+                        <div class="card" style="padding:1.5rem; text-align:center;">
+                            <div style="font-size:2rem; font-weight:bold; color:var(--text)" id="statSeatsAvailable">0</div>
+                            <div style="font-size:0.9rem; color:var(--text-light); font-weight:600">Seats Avail. (Today)</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Manage Buses -->
+                <section id="tabBuses" class="tab-panel hidden">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:10px;">
+                            <div>
+                                <h3 style="margin:0;">Fleet Management</h3>
+                                <p style="color:var(--text-light); font-size:0.9rem; margin-top:4px;">View and manage all bus schedules</p>
+                            </div>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <div style="position:relative;">
+                                    <i class="fa-solid fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-light);"></i>
+                                    <input id="busSearch" placeholder="Search buses..." style="padding-left:35px; width:250px;">
+                                </div>
+                                <button class="btn" id="openAddBusModalBtn"><i class="fa-solid fa-plus"></i> Add Bus</button>
+                            </div>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="table">
+                                <thead><tr><th>Bus Info</th><th>Route</th><th>Schedule</th><th>Seats (Avail/Total)</th><th>Price</th><th>Actions</th></tr></thead>
+                                <tbody id="busTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Manage Bookings -->
+                <section id="tabBookings" class="tab-panel hidden">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:10px;">
+                            <div>
+                                <h3 style="margin:0;">Booking Management</h3>
+                                <p style="color:var(--text-light); font-size:0.9rem; margin-top:4px;">Track and manage passenger reservations</p>
+                            </div>
+                            <div style="position:relative;">
+                                <i class="fa-solid fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-light);"></i>
+                                <input id="bookingSearch" placeholder="Search bookings..." style="padding-left:35px; width:250px;">
+                            </div>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="table" style="margin-top:8px">
+                                <thead><tr><th>Passenger</th><th>Trip Details</th><th>Seat</th><th>Payment Info</th><th>Actions</th></tr></thead>
+                                <tbody id="bookingTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Make Booking -->
+                <section id="tabMakeBooking" class="tab-panel hidden">
+                    <div class="step-indicator">
+                        <div class="step active" id="step1"><div class="step-circle">1</div><span>Search</span></div>
+                        <div class="step" id="step2"><div class="step-circle">2</div><span>Select Bus</span></div>
+                        <div class="step" id="step3"><div class="step-circle">3</div><span>Seat</span></div>
+                        <div class="step" id="step4"><div class="step-circle">4</div><span>Details</span></div>
+                    </div>
+                    <div class="card">
+                        <h3>Find Bus</h3>
+                        <form id="adminBookingSearch" class="grid grid-3" style="margin-top:10px">
+                            <div><label>From (Origin)</label><select id="abFrom" required><option value="">Select Origin</option></select></div>
+                            <div><label>To (Destination)</label><select id="abTo" required><option value="">Select Destination</option></select></div>
+                            <div><label>Travel Date</label><input id="abDate" type="date" required></div>
+                            <div class="nowrap" style="grid-column: 1 / -1; text-align:right"><button class="btn" type="submit">Search</button></div>
+                        </form>
+                        <div id="abResults" class="grid" style="margin-top:10px; gap:14px"></div>
+                    </div>
+                    <div id="passengerDetailsCard" class="card hidden">
+                        <h3>Passenger Details</h3>
+                        <form id="adminConfirmBooking" class="grid grid-3" style="margin-top:10px">
+                            <div><label>Full Name</label><input id="abName" required></div>
+                            <div><label>Email</label><input id="abEmail" type="email"></div>
+                            <div><label>Phone</label><input id="abPhone"></div>
+                            <div><label>ID Number</label><input id="abID" required></div>
+                            <div><label>Gender</label><select id="abGender" required><option value="">Select Gender</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
+                            <div><label>Price (KES per seat)</label><input id="abPrice" type="number" min="0" readonly></div>
+                            <div><label>Selected Seat</label><input id="displayedSeatNumber" type="text" readonly></div>
+                            <input type="hidden" id="selectedSeatNumberAdmin">
+                            <div class="nowrap" style="grid-column: 1 / -1; text-align:right"><button class="btn" type="submit">Confirm Booking (Paid)</button></div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Bus Manifest -->
+                <section id="tabManifest" class="tab-panel hidden">
+                    <div class="card">
+                        <h3>Search Bus Manifest</h3>
+                        <div class="grid grid-2">
+                            <div><label>Enter Bus Code</label><div style="display:flex; gap:10px;"><input id="manifestBusCode" placeholder="e.g. BUS-123456"><button class="btn" id="btnSearchManifest">Search</button></div></div>
+                        </div>
+                    </div>
+                    <div id="manifestResults" class="hidden">
+                        <div class="card">
+                            <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:10px;">
+                                <div><h3 id="manBusName" style="margin-bottom:5px;">Bus Name</h3><p id="manBusRoute" style="color:var(--text-light); font-size:0.9rem; margin-bottom:2px;">Route</p><p id="manBusDate" style="color:var(--text-light); font-size:0.9rem;">Date</p></div>
+                                <div style="text-align:right;"><button class="btn success" id="btnDownloadManifestPDF"><i class="fa-solid fa-file-pdf"></i> Download PDF</button></div>
+                            </div>
+                            <div class="grid grid-4" style="margin-top:20px;">
+                                <div style="background:var(--gray-50); padding:15px; border-radius:8px; text-align:center;"><div style="font-size:0.8rem; color:var(--text-light);">Total Seats</div><div style="font-size:1.2rem; font-weight:bold;" id="manTotalSeats">0</div></div>
+                                <div style="background:var(--gray-50); padding:15px; border-radius:8px; text-align:center;"><div style="font-size:0.8rem; color:var(--text-light);">Booked</div><div style="font-size:1.2rem; font-weight:bold;" id="manBookedSeats">0</div></div>
+                                <div style="background:var(--gray-50); padding:15px; border-radius:8px; text-align:center;"><div style="font-size:0.8rem; color:var(--text-light);">Available</div><div style="font-size:1.2rem; font-weight:bold;" id="manAvailSeats">0</div></div>
+                                <div style="background:var(--gray-50); padding:15px; border-radius:8px; text-align:center;"><div style="font-size:0.8rem; color:var(--text-light);">Est. Revenue</div><div style="font-size:1.2rem; font-weight:bold; color:var(--success);" id="manRevenue">KES 0</div></div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3>Passenger List</h3>
+                            <table class="table">
+                                <thead><tr><th>Seat</th><th>Name</th><th>Phone</th><th>Gender</th><th>Ref</th><th>Status</th></tr></thead>
+                                <tbody id="manifestTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </section>
+
+    <!-- Add Bus Modal -->
+    <div id="addBusModal" class="modal hidden">
+        <div class="box">
+            <h3>Add New Bus</h3>
+            <form id="addBusForm" class="grid grid-3" style="margin-top:10px">
+                <div><label>Bus Name</label><input id="busCompany" placeholder="e.g. Express Bus" required></div>
+                <div><label>From (Origin)</label><input id="busFrom" required></div>
+                <div><label>To (Destination)</label><input id="busTo" required></div>
+                <div><label>Travel Date</label><input id="busTravelDate" type="date" required></div>
+                <div><label>Departure Time</label><input id="busTime" placeholder="e.g. 08:00 AM" required></div>
+                <div><label>Price (KES)</label><input id="busPrice" type="number" min="0" required></div>
+                <div><label>Total Seats</label><input id="busSeats" type="number" min="1" value="32" required></div>
+                <div style="grid-column: span 2;"><label>Image URL (Optional)</label><input id="busImage" type="text" placeholder="https://example.com/bus.png"></div>
+                <div class="nowrap" style="grid-column:1/-1; text-align:right; display:flex; gap:8px; justify-content:flex-end">
+                    <button type="button" class="btn" id="addBusCancel">Cancel</button>
+                    <button class="btn" type="submit">Add Bus</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Bus Modal -->
+    <div id="editBusModal" class="modal hidden">
+        <div class="box">
+            <h3>Edit Bus</h3>
+            <form id="editBusForm" class="grid grid-3" style="margin-top:10px">
+                <input type="hidden" id="editBusId">
+                <div><label>Bus Name</label><input id="editBusCompany" placeholder="e.g. Express Bus" required></div>
+                <div><label>From (Origin)</label><input id="editBusFrom" required></div>
+                <div><label>To (Destination)</label><input id="editBusTo" required></div>
+                <div><label>Travel Date</label><input id="editBusTravelDate" type="date" required></div>
+                <div><label>Departure Time</label><input id="editBusTime" required></div>
+                <div><label>Price (KES)</label><input id="editBusPrice" type="number" required></div>
+                <div><label>Total Seats</label><input id="editBusSeats" type="number" min="1" required></div>
+                <div style="grid-column: span 2;"><label>Image URL (Optional)</label><input id="editBusImage" type="text" placeholder="https://example.com/bus.png"></div>
+                <div class="nowrap" style="grid-column:1/-1; text-align:right; display:flex; gap:8px; justify-content:flex-end">
+                    <button type="button" class="btn" id="editBusCancel">Cancel</button>
+                    <button class="btn" type="submit">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Seat Modal -->
+    <div id="seatModal" class="modal hidden">
+        <div class="box">
+            <h3>Select Seat for <span id="selectedBusInfoAdmin"></span></h3>
+            <div id="seatGrid"></div>
+            <div style="text-align:right; display:flex; gap:8px; justify-content:flex-end">
+                <button class="btn" id="seatCancel">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div style="font-weight:bold; color:var(--primary);">Processing...</div>
+    </div>
+</body>
+</html>
