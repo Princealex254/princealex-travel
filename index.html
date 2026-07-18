@@ -1409,6 +1409,44 @@
 
         .hidden { display: none !important; }
 
+        /* ===== SPIN LOADER ===== */
+        .search-loader-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 9998;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .search-loader-overlay.show { display: flex; }
+        .spinner {
+            width: 64px;
+            height: 64px;
+            border: 5px solid rgba(255, 255, 255, 0.15);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .search-loader-text {
+            color: var(--white);
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: 0.3px;
+        }
+        .search-loader-text span {
+            display: block;
+            font-size: 13px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.65);
+            margin-top: 6px;
+        }
+
         /* ===== RESPONSIVE ===== */
         @media (max-width: 1024px) {
             .hero-content { grid-template-columns: 1fr; gap: 40px; text-align: center; }
@@ -1508,7 +1546,7 @@
                 <h1>Travel with <span class="highlight">Comfort</span> & <span class="highlight">Confidence</span></h1>
                 <p>Experience premium bus travel across Kenya. Book your tickets online in seconds and enjoy a seamless journey with Prince Alex Travel Services.</p>
                 <div class="hero-actions">
-                    <button class="btn btn-primary" onclick="scrollToBooking()">
+                    <button class="btn btn-primary" onclick="document.getElementById('find-bus-form').scrollIntoView({behavior: 'smooth'})">
                         <i class="fas fa-ticket-alt"></i> Book Now
                     </button>
                     <button class="btn btn-secondary" onclick="scrollToContact()">
@@ -1531,7 +1569,7 @@
                 </div>
             </div>
             <div class="hero-right">
-                <div class="hero-card">
+                <div class="hero-card" id="find-bus-form">
                     <h3>Find Your Bus</h3>
                     <p>Enter your route and date to see available options.</p>
                     <form onsubmit="event.preventDefault(); searchResults();">
@@ -1583,6 +1621,14 @@
             <span id="liveBookingText">Someone just booked a trip!</span>
         </div>
     </section>
+
+    <div id="searchLoader" class="search-loader-overlay">
+        <div class="spinner"></div>
+        <div class="search-loader-text">
+            Searching for buses
+            <span>Please wait while we find the best options for you...</span>
+        </div>
+    </div>
 
     <div id="loadingSpinner" class="hidden">
         <div class="skeleton-card">
@@ -1943,13 +1989,18 @@
             const date = document.getElementById('travelDate').value;
             const resultsContainer = document.getElementById('results');
             const loadingSpinner = document.getElementById('loadingSpinner');
-            if (!resultsContainer || !loadingSpinner) return;
+            const searchLoader = document.getElementById('searchLoader');
+            if (!resultsContainer || !loadingSpinner || !searchLoader) return;
             resultsContainer.innerHTML = '';
             closePopup();
-            loadingSpinner.classList.remove('hidden');
-            resultsContainer.classList.add('active');
+            loadingSpinner.classList.add('hidden');
+            searchLoader.classList.add('show');
+            resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
             updateGlobalStep(2);
-            if (from === to) { loadingSpinner.classList.add('hidden'); displayCustomMessage('Please choose different origin and destination.'); return; }
+            if (from === to) { searchLoader.classList.remove('show'); displayCustomMessage('Please choose different origin and destination.'); return; }
+
+            const startTime = Date.now();
+            const minLoaderMs = 5000;
 
             const busesRef = window.collection(window.firebaseDb, "buses");
             const q = window.query(busesRef, window.where("origin", "==", from), window.where("destination", "==", to), window.where("travelDate", "==", date));
@@ -1957,11 +2008,14 @@
                 const querySnapshot = await window.getDocs(q);
                 const buses = [];
                 querySnapshot.forEach((doc) => buses.push({ id: doc.id, ...doc.data() }));
+                const elapsed = Date.now() - startTime;
+                if (elapsed < minLoaderMs) await new Promise(r => setTimeout(r, minLoaderMs - elapsed));
+                searchLoader.classList.remove('show');
                 if (buses.length === 0) {
-                    loadingSpinner.classList.add('hidden');
                     showPopup('🚌 No Buses Found', `Sorry, there are no buses available from ${from} to ${to} on ${date}. Please try a different date or route.`, 'warning');
                     return;
                 }
+                resultsContainer.classList.add('active');
                 const successHeader = document.createElement('div');
                 successHeader.className = 'results-header';
                 successHeader.innerHTML = `<h3>🎉 We found ${buses.length} bus${buses.length === 1 ? '' : 'es'} available</h3><p>Choose your preferred option below to proceed.</p>`;
@@ -2016,11 +2070,12 @@
                     resultsContainer.appendChild(card);
                 });
                 attachBookNowListeners();
-                loadingSpinner.classList.add('hidden');
                 setTimeout(() => resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
             } catch (error) {
                 console.error('Error fetching buses:', error);
-                loadingSpinner.classList.add('hidden');
+                const elapsed = Date.now() - startTime;
+                if (elapsed < minLoaderMs) await new Promise(r => setTimeout(r, minLoaderMs - elapsed));
+                searchLoader.classList.remove('show');
                 resultsContainer.innerHTML = `<div class="results-header"><h3>❌ Search Error</h3><p>Sorry, there was an error. Please try again.</p></div>`;
             }
         }
