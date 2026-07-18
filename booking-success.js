@@ -66,35 +66,64 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('price').textContent = `KES ${Number(currentBookingData.price || 0).toLocaleString()}`;
 
         const paymentStatusElement = document.getElementById('status');
-        const successMsgElement = document.querySelector('.success-message');
-        const status = (currentBookingData.status || 'pending').toLowerCase();
+        const successMsgElement = document.querySelector('.success-subtitle'); // Corrected selector
+        const status = (currentBookingData.status || 'pending').toLowerCase().trim();
+        console.log('Booking status:', status, '| Raw status:', currentBookingData.status);
         if (paymentStatusElement) paymentStatusElement.textContent = status.toUpperCase();
 
+        console.log('Checking status condition...');
         if (status === 'paid') {
-            paymentStatusElement.classList.add('status-paid');
-            document.getElementById('paymentSection').classList.add('hidden');
+            console.log('Status is PAID - hiding payment section');
+            if (paymentStatusElement) paymentStatusElement.classList.add('status-paid');
+            const paymentSection = document.getElementById('paymentSection');
+            console.log('Payment section element:', paymentSection);
+            if (paymentSection) {
+                paymentSection.classList.add('hidden');
+                console.log('Added hidden class to payment section');
+            }
             updateSuccessStep(6);
-            if (successMsgElement) successMsgElement.textContent = "Your booking is confirmed!";
-            document.getElementById('qrCodeSection').classList.remove('hidden');
-            document.getElementById('downloadTicketBtn').classList.remove('hidden');
-            document.getElementById('sendEmailBtn').classList.remove('hidden');
+            if (successMsgElement) successMsgElement.textContent = "Your booking is confirmed! Your e-ticket has been sent to your email."; // This will now run correctly
+            const qrCodeSection = document.getElementById('qrCodeSection');
+            if (qrCodeSection) qrCodeSection.classList.remove('hidden');
+            const downloadTicketBtn = document.getElementById('downloadTicketBtn');
+            if (downloadTicketBtn) downloadTicketBtn.classList.remove('hidden');
+            const sendEmailBtn = document.getElementById('sendEmailBtn');
+            if (sendEmailBtn) sendEmailBtn.classList.remove('hidden');
             generateQRCode(currentBookingData.booking_ref);
             const confirmMsg = document.createElement('p');
             confirmMsg.classList.add('email-confirmation-message');
-            confirmMsg.innerHTML = `✅ Your final e-ticket has been sent to <strong>${currentBookingData.passenger_email || 'your email'}</strong>`;
-            document.getElementById('bookingDetails').after(confirmMsg);
-        } else {
-            paymentStatusElement.classList.add('status-pending');
+            confirmMsg.innerHTML = `✅ Confirmation sent to <strong>${currentBookingData.passenger_email || 'your email'}</strong>`;
+            const bookingDetails = document.getElementById('bookingDetails');
+            if (bookingDetails) bookingDetails.after(confirmMsg);
+        } else if (status === 'pending') {
+            if (paymentStatusElement) paymentStatusElement.classList.add('status-pending');
             updateSuccessStep(5);
             if (successMsgElement) {
-                successMsgElement.innerHTML = `Your booking has been successfully placed!<br><span style="font-size:0.95rem;font-weight:500;color:var(--warning);">Please pay to confirm your ticket.</span>`;
+                successMsgElement.innerHTML = `Your booking is reserved!<br><span style="font-size:0.95rem;font-weight:500;color:var(--warning);">Please complete payment to confirm your ticket.</span>`;
             }
-            document.getElementById('paymentSection').classList.remove('hidden');
+            const paymentSection = document.getElementById('paymentSection');
+            if (paymentSection) paymentSection.classList.remove('hidden');
             const receiptRow = document.getElementById('receiptNo');
-            if (receiptRow) receiptRow.parentElement.classList.add('hidden');
-            document.getElementById('amountToPay').textContent = `Amount to Pay: KES ${Number(currentBookingData.price || 0).toLocaleString()}`;
-            document.getElementById('downloadTicketBtn').classList.add('hidden');
-            document.getElementById('sendEmailBtn').classList.add('hidden');
+            if (receiptRow && receiptRow.parentElement) receiptRow.parentElement.classList.add('hidden');
+            const amountToPay = document.getElementById('amountToPay');
+            if (amountToPay) amountToPay.textContent = `Amount to Pay: KES ${Number(currentBookingData.price || 0).toLocaleString()}`;
+            const downloadTicketBtn = document.getElementById('downloadTicketBtn');
+            if (downloadTicketBtn) downloadTicketBtn.classList.add('hidden');
+            const sendEmailBtn = document.getElementById('sendEmailBtn');
+            if (sendEmailBtn) sendEmailBtn.classList.add('hidden');
+        } else {
+            // For any other status (cancelled, etc.), hide payment section
+            if (paymentStatusElement) paymentStatusElement.classList.add('status-' + status);
+            updateSuccessStep(5);
+            if (successMsgElement) {
+                successMsgElement.innerHTML = `Your booking status: <strong>${status.toUpperCase()}</strong>`;
+            }
+            const paymentSection = document.getElementById('paymentSection');
+            if (paymentSection) paymentSection.classList.add('hidden');
+            const downloadTicketBtn = document.getElementById('downloadTicketBtn');
+            if (downloadTicketBtn) downloadTicketBtn.classList.add('hidden');
+            const sendEmailBtn = document.getElementById('sendEmailBtn');
+            if (sendEmailBtn) sendEmailBtn.classList.add('hidden');
         }
 
         document.getElementById('downloadTicketBtn').addEventListener('click', () => {
