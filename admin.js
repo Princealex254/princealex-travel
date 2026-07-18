@@ -475,8 +475,34 @@ function generateTicketPDF(booking) {
 
 async function sendEmailWithWorker(payload) {
     const url = "https://payroll.princealexdigital.workers.dev/";
-    try { const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); const d = await r.json(); if (r.ok) return true; else { console.error("Worker failed:", d.error, d.details); return false; } }
-    catch (e) { console.error("Network error:", e); return false; }
+    try {
+        // Extract email data from nested message structure or use flat structure
+        const to = payload.to || (payload.message && payload.message.to);
+        const subject = payload.subject || payload.message?.subject;
+        const html = payload.html || payload.message?.html;
+        const text = payload.text || payload.message?.text;
+        const attachments = payload.attachments || payload.message?.attachments;
+        
+        // Validate required fields
+        if (!to || !subject || (!html && !text)) {
+            console.error("Missing required email fields:", { to, subject, hasHtml: !!html, hasText: !!text });
+            return false;
+        }
+        
+        // Transform payload to match worker's expected format
+        const workerPayload = {
+            to: Array.isArray(to) ? to : [to],
+            subject: subject,
+            html: html,
+            text: text,
+            attachments: attachments
+        };
+        
+        const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(workerPayload) });
+        const d = await r.json();
+        if (r.ok) return true;
+        else { console.error("Worker failed:", d.error, d.details); return false; }
+    } catch (e) { console.error("Network error:", e); return false; }
 }
 
 // Event Listeners
