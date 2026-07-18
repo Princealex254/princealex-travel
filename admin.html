@@ -803,6 +803,27 @@
         </div>
     </div>
 
+    <!-- Edit Booking Modal -->
+    <div id="editBookingModal" class="modal hidden">
+        <div class="box">
+            <h3>Edit Booking</h3>
+            <form id="editBookingForm" class="grid grid-3" style="margin-top:10px">
+                <input type="hidden" id="editBookingId">
+                <div><label>Full Name</label><input id="editBookingName" required></div>
+                <div><label>Email</label><input id="editBookingEmail" type="email"></div>
+                <div><label>Phone</label><input id="editBookingPhone"></div>
+                <div><label>ID Number</label><input id="editBookingID" required></div>
+                <div><label>Gender</label><select id="editBookingGender" required><option value="">Select Gender</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
+                <div><label>Seat Number</label><input id="editBookingSeat" placeholder="e.g. S12"></div>
+                <div><label>Price (KES)</label><input id="editBookingPrice" type="number" min="0"></div>
+                <div class="nowrap" style="grid-column:1/-1; text-align:right; display:flex; gap:8px; justify-content:flex-end">
+                    <button type="button" class="btn" id="editBookingCancel">Cancel</button>
+                    <button class="btn" type="submit">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Seat Modal -->
     <div id="seatModal" class="modal hidden">
         <div class="box">
