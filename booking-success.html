@@ -186,6 +186,9 @@
             line-height: 1.6;
         }
 
+        /* ===== UTILITY ===== */
+        .hidden { display: none !important; }
+
         /* ===== MAIN CONTENT ===== */
         .main-wrap {
             flex: 1;
@@ -286,7 +289,6 @@
             padding: 24px;
             margin: 20px 0;
             text-align: center;
-            display: none;
         }
         #paymentSection .amount {
             font-size: 20px;
@@ -377,19 +379,25 @@
         .btn-home:hover { box-shadow: var(--shadow-md); }
 
         .email-confirmation-message {
-            font-size: 1.1rem;
-            color: var(--success);
-            margin: 1.5rem auto;
+            font-size: 1rem;
+            color: #065f46;
+            margin: 1rem auto;
             font-weight: 600;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            padding: 1rem 1.5rem;
-            background: #dcfce7;
+            padding: 0.875rem 1.25rem;
+            background: #d1fae5;
             border-radius: var(--radius);
-            border-left: 5px solid var(--success);
-            max-width: 80%;
+            border-left: 4px solid #10b981;
+            max-width: 90%;
+            box-shadow: var(--shadow-sm);
+            line-height: 1.5;
+        }
+        .email-confirmation-message strong {
+            color: #047857;
+            font-weight: 700;
         }
 
         /* ===== FOOTER ===== */
@@ -545,7 +553,7 @@
             </div>
             <p class="summary-footer">Full ticket details are available on the downloaded PDF.</p>
 
-            <div id="paymentSection" class="hidden">
+            <div id="paymentSection" class="hidden" style="margin-top: 24px;">
                 <p id="amountToPay" style="font-size: 1.3rem; font-weight: 700; color: var(--text); margin-bottom: 1rem;"></p>
                 <button id="payNowBtn" class="pay-stack-btn">
                     <i class="fas fa-lock"></i> Secure Payment with Paystack
