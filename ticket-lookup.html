@@ -3,1047 +3,573 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retrieve Ticket - Prince Alex Travel Services</title>
+    <title>Retrieve Ticket — Prince Alex Travel Services</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode.js/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://js.paystack.co/v1/inline.js"></script>
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
-            authDomain: "princealextravel.firebaseapp.com",
-            projectId: "princealextravel",
-            storageBucket: "princealextravel.firebasestorage.app",
-            messagingSenderId: "947577729462",
-            appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // Make Firebase instances and functions globally accessible
-        window.firebaseAuth = auth;
-        window.firebaseDb = db;
-        window.onAuthStateChanged = onAuthStateChanged;
-        window.signOutFirebase = signOut;
-
-        // Global variable for current user, populated by onAuthStateChanged
-        window.currentUser = null;
-
-        // Listen for authentication state changes
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                // User is signed in
-                window.currentUser = user;
-            } else {
-                // User is signed out
-                window.currentUser = null;
-            }
-            updateAuthLinks(); // Update navigation links based on auth state
-        });
-        window.doc = doc;
-        window.getDoc = getDoc;
-        // Expose new functions for querying
-        window.collection = collection;
-        window.query = query;
-        window.where = where;
-        window.getDocs = getDocs; // Make getDocs available globally
-        window.addDoc = addDoc; // Make addDoc available globally for the mail collection
-        window.updateDoc = updateDoc;
-        window.serverTimestamp = serverTimestamp;
-    </script>
+    <!-- Firebase SDKs and App Logic -->
+    <script type="module" src="ticket-lookup.js"></script>
     <style>
-        /* Modern CSS Variables for Enhanced Design */
         :root {
-            --primary-color: #1e3a8a; /* Modern deep blue */
-            --primary-light: #3b82f6; /* Lighter blue for accents */
-            --accent-color: #f59e0b; /* Modern amber/gold */
-            --accent-light: #fbbf24; /* Light amber */
-            --light-bg: #f8fafc; /* Clean light background */
+            --primary: #0f172a;
+            --primary-light: #1e293b;
+            --primary-mid: #334155;
+            --accent: #f59e0b;
+            --accent-light: #fbbf24;
+            --accent-glow: rgba(245, 158, 11, 0.25);
             --white: #ffffff;
-            --text-dark: #1e293b;
-            --text-light: #ffffff;
-            --text-muted: #64748b;
+            --off-white: #f8fafc;
+            --gray-50: #f1f5f9;
+            --gray-100: #e2e8f0;
+            --gray-200: #cbd5e1;
+            --gray-300: #94a3b8;
+            --gray-400: #64748b;
+            --text: #1e293b;
+            --text-light: #64748b;
             --success: #10b981;
             --error: #ef4444;
             --warning: #f59e0b;
-            --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
-            --gradient-accent: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%);
-            --footer-dark: #0f172a;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            --border-radius: 12px;
-            --border-radius-lg: 16px;
+            --gradient-primary: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #3b82f6 100%);
+            --gradient-accent: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%);
+            --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.25);
+            --radius-sm: 8px;
+            --radius: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-2xl: 24px;
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: var(--light-bg);
-            color: var(--text-dark);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--off-white);
+            color: var(--text);
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
-            position: relative;
+            -webkit-font-smoothing: antialiased;
         }
-        
-        body::before {
-            content: '';
+
+        /* ===== NAVBAR ===== */
+        .navbar {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            padding: 0;
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;            
-            pointer-events: none;
-            z-index: -1;
-        }
-        .navbar {
-            background: var(--gradient-primary);
-            padding: 1rem 0;
-            box-shadow: var(--shadow-lg);
-            position: sticky;
-            top: 0;
+            right: 0;
             z-index: 1000;
-            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            height: 72px;
         }
         .navbar-container {
-            max-width: 1200px;
-            margin: auto;
-            padding: 0 1.5rem;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: relative;
+            height: 100%;
         }
         .logo {
-            background: var(--white);
-            padding: 0.75rem 1rem;
-            border-radius: var(--border-radius-lg);
-            box-shadow: var(--shadow-md);
-            transition: var(--transition);
-        }
-        .logo:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-        }
-        .logo img {
-            height: 50px;
-            display: block;
-        }
-        .nav-links {
             display: flex;
-            gap: 2rem;
             align-items: center;
-        }
-        .nav-links a {
-            color: var(--text-light);
+            gap: 12px;
             text-decoration: none;
-            font-weight: 600;
-            font-size: 0.95rem;
-            position: relative;
-            padding: 0.5rem 0;
+        }
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--gradient-accent);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--primary);
+            font-weight: 800;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .logo-text strong { font-size: 16px; color: var(--white); font-weight: 700; letter-spacing: -0.3px; line-height: 1.2; }
+        .logo-text span { font-size: 11px; color: var(--accent-light); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+        .nav-links { display: flex; align-items: center; gap: 4px; }
+        .nav-links a {
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
             transition: var(--transition);
         }
-        .nav-links a:hover {
-            color: var(--accent-light);
-            transform: translateY(-1px);
-        }
-        .nav-links a::after {
-            content: '';
-            display: block;
-            width: 0;
-            height: 2px;
-            background: var(--accent-color);
-            transition: var(--transition);
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            border-radius: 1px;
-        }
-        .nav-links a:hover::after {
-            width: 100%;
-        }
+        .nav-links a:hover { color: var(--white); background: rgba(255,255,255,0.08); }
+        .nav-links a.nav-cta { background: var(--gradient-accent); color: var(--primary); font-weight: 600; padding: 8px 20px; }
+        .nav-links a.nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 15px var(--accent-glow); }
 
-        /* Hamburger Menu Icon */
         .menu-toggle {
             display: none;
             flex-direction: column;
-            justify-content: space-around;
-            width: 30px;
-            height: 25px;
+            justify-content: center;
+            gap: 5px;
+            width: 32px;
+            height: 32px;
             cursor: pointer;
-            z-index: 10001;
             background: none;
             border: none;
             padding: 0;
+            z-index: 1001;
         }
+        .menu-toggle .bar { width: 100%; height: 2px; background: var(--white); border-radius: 2px; transition: var(--transition); }
+        .menu-toggle.open .bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .menu-toggle.open .bar:nth-child(2) { opacity: 0; }
+        .menu-toggle.open .bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
-        .menu-toggle .bar {
-            width: 100%;
-            height: 3px;
-            background-color: white;
-            border-radius: 5px;
-            transition: all 0.3s ease;
-            transform-origin: center;
-        }
-
-        /* Animation for hamburger to close icon */
-        .menu-toggle.open .bar:nth-child(1) {
-            transform: translateY(11px) rotate(45deg);
-        }
-        .menu-toggle.open .bar:nth-child(2) {
-            opacity: 0;
-        }
-        .menu-toggle.open .bar:nth-child(3) {
-            transform: translateY(-11px) rotate(-45deg);
-        }
-
-        /* Mobile Navigation */
-        @media (max-width: 768px) {
-            .menu-toggle {
-                display: flex;
-            }
-
-            .nav-links {
-                position: absolute;
-                top: 100%;
-                left: 0;
-                width: 100%;
-                background: var(--gradient-primary);
-                box-shadow: var(--shadow-lg);
-                flex-direction: column;
-                max-height: 0;
-                overflow: hidden;
-                transition: max-height 0.3s ease-in-out;
-                z-index: 9999;
-                border-radius: 0 0 1rem 1rem;
-            }
-
-            .nav-links.open {
-                max-height: 500px;
-            }
-
-            .nav-links a {
-                padding: 15px 20px;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
-                text-align: left;
-                width: 100%;
-                font-size: 1.1em;
-                display: block;
-            }
-            .nav-links a:last-child {
-                border-bottom: none;
-            }
-        }
-
-        .lookup-container {
-            flex-grow: 1;
-            max-width: 1000px;
-            margin: 3rem auto;
-            padding: 4rem 3rem;
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            border-radius: 24px;
-            box-shadow: 
-                0 20px 25px -5px rgba(0, 0, 0, 0.1),
-                0 10px 10px -5px rgba(0, 0, 0, 0.04),
-                0 0 0 1px rgba(255, 255, 255, 0.05);
-            text-align: center;
+        /* ===== LOOKUP PAGE ===== */
+        .page-hero {
+            padding-top: 72px;
+            background: var(--gradient-primary);
             position: relative;
             overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            backdrop-filter: blur(10px);
+            min-height: 320px;
+            display: flex;
+            align-items: center;
         }
-        
-        .lookup-container::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
-            background: var(--gradient-primary); /* Use theme gradient */
-            border-radius: 24px 24px 0 0;
-        }
-        
-        .lookup-container:hover {
-            transform: translateY(-8px);
-            box-shadow: 
-                0 32px 64px -12px rgba(0, 0, 0, 0.25),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
-        }
-        
-        .lookup-container h2 {
-            color: var(--primary-color);
-            background: none; /* Remove gradient background */
-            margin-bottom: 0.5rem;
-            font-size: clamp(2.5rem, 6vw, 3.5rem);
-            font-weight: 900;
-            letter-spacing: -0.02em;
-            line-height: 1.1;
-        }
-        
-        .lookup-container .subtitle {
-            color: var(--text-muted);
-            font-size: 1.1rem;
-            margin-bottom: 3rem;
-            font-weight: 500;
-        }
-        .form-group {
-            margin-bottom: 2rem;
-            position: relative;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.75rem;
-            font-weight: 700;
-            color: #1e293b;
-            font-size: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        
-        .form-group input[type="text"] {
-            width: 100%;
-            padding: 1rem 1.5rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 16px;
-            font-size: 1.1rem;
-            box-sizing: border-box;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: #ffffff;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            position: relative;
-        }
-        
-        .form-group input[type="text"]:focus {
-            border-color: var(--primary-color); /* Use theme color */
-            outline: none;
-            box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.1), /* Use theme color with opacity */
-                        0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transform: translateY(-2px);
-        }
-        
-        .form-group input[type="text"]:hover {
-            border-color: #cbd5e1;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        
-        .form-group input[type="text"]::placeholder {
-            color: #94a3b8;
-            font-weight: 500;
-        }
-        .lookup-button {
-            background: var(--gradient-primary); /* Use theme gradient */
-            color: var(--white);
-            padding: 1rem 3rem;
-            border: none;
-            border-radius: 16px;
-            cursor: pointer;
-            font-size: 1.1rem;
-            font-weight: 700;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.4), /* Use theme color */
-                        0 4px 6px -2px rgba(30, 58, 138, 0.05);
-            position: relative;
-            overflow: hidden;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            min-width: 200px;
-        }
-        
-        .lookup-button::before {
+        .page-hero::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: -100%;
+            inset: 0;
+            background: radial-gradient(ellipse 60% 50% at 80% 80%, rgba(245,158,11,0.15), transparent),
+                        radial-gradient(ellipse 50% 40% at 20% 60%, rgba(59,130,246,0.15), transparent);
+            pointer-events: none;
+        }
+        .page-hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 60px 24px;
+            text-align: center;
             width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
         }
-        
-        .lookup-button:hover {
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 20px 25px -5px rgba(30, 58, 138, 0.4), /* Use theme color */
-                        0 10px 10px -5px rgba(30, 58, 138, 0.04);
-        }
-        
-        .lookup-button:hover::before {
-            left: 100%;
-        }
-        
-        .lookup-button:active {
-            transform: translateY(-2px) scale(1.01);
-        }
-        
-        .lookup-button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .message {
-            margin-top: 2rem;
-            font-size: 1rem;
-            font-weight: 600;
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
-            border: none;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        .message.error {
-            color: #dc2626;
-            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-            border-left: 4px solid #dc2626;
-        }
-        
-        .message.success {
-            color: #059669;
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            border-left: 4px solid #059669;
-        }
-        
-        .message.loading {
-            color: #7c3aed;
-            background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-            border-left: 4px solid #7c3aed;
-        }
-
-        .message.warning {
-            color: #92400e;
-            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-            border-left: 4px solid #f59e0b;
-        }
-
-        /* Enhanced Paystack Button for Lookup */
-        #paymentSection {
-            background: #fef3c7;
-            border: 1px solid #fcd34d;
-            border-radius: var(--border-radius);
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .pay-stack-btn {
-            background: linear-gradient(135deg, #011b33 0%, #002d6b 100%);
+        .page-hero-content h1 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 800;
             color: var(--white);
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            font-size: 1.1rem;
-            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+        }
+        .page-hero-content h1 .highlight {
+            background: var(--gradient-accent);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .page-hero-content p {
+            font-size: 16px;
+            color: rgba(255,255,255,0.65);
+            max-width: 480px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-wrap {
+            flex: 1;
+            max-width: 800px;
+            margin: -60px auto 60px;
+            padding: 0 24px;
+            position: relative;
+            z-index: 3;
+            width: 100%;
+        }
+        .lookup-card {
+            background: var(--white);
+            border-radius: var(--radius-2xl);
+            padding: 48px;
+            box-shadow: var(--shadow-2xl);
+            border: 1px solid var(--gray-100);
             transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-            width: 100%;
-            max-width: 400px;
-        }
-        .pay-stack-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-        }
-        .payment-security-notice {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-top: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(124, 58, 237, 0.3);
-            border-radius: 50%;
-            border-top-color: #7c3aed;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 0.5rem;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .ticket-details {
-            text-align: left;
-            width: 100%;
-            margin: 3rem auto 0;
-            padding: 2.5rem;
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            border-radius: 20px;
-            box-shadow: 
-                0 20px 25px -5px rgba(0, 0, 0, 0.1),
-                0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            display: none;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
-        
-        .ticket-details::before {
+        .lookup-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(90deg, #10b981 0%, #059669 50%, #047857 100%);
+            background: var(--gradient-accent);
         }
-        
-        .ticket-details:hover {
-            transform: translateY(-4px);
-            box-shadow: 
-                0 32px 64px -12px rgba(0, 0, 0, 0.25),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
+        .lookup-card:hover {
+            box-shadow: 0 32px 64px -12px rgba(0,0,0,0.2);
+        }
+
+        .search-section {
+            text-align: center;
+            margin-bottom: 0;
+        }
+        .search-section .search-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--gray-50);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--primary);
+            margin: 0 auto 20px;
+        }
+        .search-section h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+        .search-section .subtitle {
+            color: var(--text-light);
+            font-size: 15px;
+            margin-bottom: 32px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .form-group .input-wrap {
+            position: relative;
+        }
+        .form-group .input-wrap i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-300);
+            font-size: 16px;
+        }
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 14px 16px 14px 44px;
+            border: 2px solid var(--gray-100);
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-family: inherit;
+            transition: var(--transition);
+            background: var(--white);
+            color: var(--text);
+        }
+        .form-group input[type="text"]:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(15,23,42,0.06);
+        }
+        .form-group input[type="text"]::placeholder { color: var(--gray-300); }
+
+        .btn-lookup {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px 32px;
+            background: var(--gradient-primary);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            letter-spacing: 0.3px;
+            box-shadow: 0 4px 15px rgba(15,23,42,0.2);
+        }
+        .btn-lookup:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(15,23,42,0.3);
+        }
+        .btn-lookup:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .message {
+            margin-top: 20px;
+            padding: 14px 20px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            display: none;
+            animation: fadeInUp 0.3s ease-out;
+        }
+        .message.show { display: block; }
+        .message.error { background: #fef2f2; color: #dc2626; border-left: 4px solid #dc2626; }
+        .message.success { background: #f0fdf4; color: #059669; border-left: 4px solid #059669; }
+        .message.loading { background: #faf5ff; color: #7c3aed; border-left: 4px solid #7c3aed; }
+        .message.warning { background: #fffbeb; color: #92400e; border-left: 4px solid #f59e0b; }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: var(--white);
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ===== TICKET DETAILS ===== */
+        .ticket-details {
+            margin-top: 32px;
+            padding: 32px;
+            background: var(--off-white);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--gray-100);
+            display: none;
+            animation: fadeInUp 0.4s ease-out;
+        }
+        .ticket-details.show { display: block; }
+        .ticket-details h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+            text-align: center;
+            margin-bottom: 24px;
         }
         .ticket-summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1.5rem;
-            margin: 2rem 0;
-            text-align: left;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
         }
         .ticket-summary-grid div {
-            background: #f8fafc;
-            padding: 1rem;
-            border-radius: var(--border-radius);
-            border-left: 4px solid var(--primary-light);
+            background: var(--white);
+            padding: 14px 16px;
+            border-radius: var(--radius);
+            border-left: 4px solid var(--primary);
+            box-shadow: var(--shadow-xs);
         }
         .ticket-summary-grid label {
             display: block;
-            font-size: 0.8rem;
+            font-size: 11px;
             font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 0.25rem;
+            color: var(--gray-300);
             text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 4px;
         }
         .ticket-summary-grid span {
-            font-size: 1.1rem;
+            font-size: 15px;
             font-weight: 700;
-            color: var(--text-dark);
+            color: var(--text);
         }
         .summary-footer {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-top: 1.5rem;
-        }
-        .ticket-details p {
-            margin-bottom: 1rem;
-            color: var(--text-dark);
-            font-size: 1rem;
-        }
-        .ticket-details strong {
-            color: var(--text-dark);
-            font-weight: 600;
-        }
-        .button-group-ticket {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        
-        .download-button {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: var(--white);
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 700;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 
-                0 10px 15px -3px rgba(16, 185, 129, 0.4),
-                0 4px 6px -2px rgba(16, 185, 129, 0.05);
-            position: relative;
-            overflow: hidden;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            min-width: 200px;
-        }
-        
-        .download-button:hover {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 
-                0 20px 25px -5px rgba(16, 185, 129, 0.4),
-                0 10px 10px -5px rgba(16, 185, 129, 0.04);
-        }
-        
-        .send-email-button {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: var(--white);
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 700;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 
-                0 10px 15px -3px rgba(245, 158, 11, 0.4),
-                0 4px 6px -2px rgba(245, 158, 11, 0.05);
-            position: relative;
-            overflow: hidden;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            min-width: 200px;
-        }
-        
-        .send-email-button:hover {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 
-                0 20px 25px -5px rgba(245, 158, 11, 0.4),
-                0 10px 10px -5px rgba(245, 158, 11, 0.04);
-        }
-
-        .footer {
-            background: var(--footer-dark);
-            color: var(--white);
-            padding: 5rem 2rem 2rem;
+            font-size: 13px;
+            color: var(--text-light);
             text-align: center;
-            margin-top: auto;
-            font-size: 0.95rem;
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
-        .footer-content {
-            max-width: 1200px;
-            margin: auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-            text-align: left;
-        }
-        .footer-section {
-            flex: 1;
-            min-width: 200px;
-        }
-        .footer-section h4 {
-            color: var(--accent-color);
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-        .footer-section a,
-        .footer-section p {
-            display: block;
-            color: var(--white);
-            margin: 0.5rem 0;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-        .footer-section a:hover {
-            color: var(--accent-color);
-            transform: translateX(4px);
-        }
-        .footer-bottom {
-            margin-top: 2rem;
-            padding-top: 1.5rem;
+
+        #paymentSection {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: var(--radius);
+            padding: 24px;
+            margin: 20px 0;
             text-align: center;
-            font-size: 0.9rem;
-            opacity: 0.8;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
         }
-
-        .contact-info p {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
+        #paymentSection .amount {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 16px;
         }
-
-        .contact-info i {
-            color: var(--accent-color);
-            width: 16px;
-        }
-
-        .quick-contact {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .contact-btn {
+        .pay-stack-btn {
+            background: linear-gradient(135deg, #011b33 0%, #002d6b 100%);
+            color: var(--white);
+            padding: 14px 28px;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 700;
+            transition: var(--transition);
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 25px;
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
+            justify-content: center;
+            gap: 10px;
+            font-family: inherit;
+            width: 100%;
+            max-width: 400px;
         }
+        .pay-stack-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+        .payment-security-notice { font-size: 12px; color: var(--text-light); margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-        .contact-btn.whatsapp {
-            background: #25D366;
-            color: white;
-        }
-
-        .contact-btn.whatsapp:hover {
-            background: #1ea952;
-            transform: translateY(-2px);
-        }
-
-        .contact-btn.call {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .contact-btn.call:hover {
-            background: #001c44;
-            transform: translateY(-2px);
-        }
-
-        .social-links {
+        .button-group-ticket {
             display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
         }
-
-        .social-link {
-            display: flex;
+        .btn-ticket-action {
+            display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem;
-            border-radius: 8px;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            color: var(--text-light);
-        }
-
-        .social-link:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateX(5px);
-        }
-
-        .social-link.facebook:hover {
-            color: #1877F2;
-        }
-
-        .social-link.instagram:hover {
-            color: #E4405F;
-        }
-
-        .social-link.twitter:hover {
-            color: #1DA1F2;
-        }
-
-        .newsletter-form {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-
-        .newsletter-form input {
-            flex: 1;
-            padding: 0.75rem;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--white);
-            font-size: 0.9rem;
-        }
-
-        .newsletter-form input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .newsletter-form button {
-            padding: 0.75rem 1rem;
-            background: var(--accent-color);
-            color: var(--white);
+            gap: 8px;
+            padding: 12px 28px;
             border: none;
-            border-radius: 8px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 700;
             cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            transition: var(--transition);
+            font-family: inherit;
+            letter-spacing: 0.3px;
         }
+        .btn-ticket-action:hover { transform: translateY(-2px); }
+        .btn-download { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: var(--white); box-shadow: 0 4px 15px rgba(16,185,129,0.3); }
+        .btn-download:hover { box-shadow: 0 8px 25px rgba(16,185,129,0.4); }
+        .btn-email { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: var(--white); box-shadow: 0 4px 15px rgba(245,158,11,0.3); }
+        .btn-email:hover { box-shadow: 0 8px 25px rgba(245,158,11,0.4); }
 
-        .newsletter-form button:hover {
-            background: #d4b800;
-            transform: translateY(-2px);
+        /* ===== FOOTER ===== */
+        .footer {
+            background: var(--primary);
+            color: var(--white);
+            padding: 80px 24px 32px;
+            margin-top: auto;
         }
+        .footer-content {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1.5fr;
+            gap: 48px;
+        }
+        .footer-brand p { color: rgba(255,255,255,0.5); font-size: 14px; line-height: 1.7; margin-top: 16px; max-width: 320px; }
+        .footer-section h4 { color: var(--accent-light); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 20px; }
+        .footer-section a, .footer-section p { display: block; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; margin: 8px 0; transition: var(--transition); }
+        .footer-section a:hover { color: var(--accent-light); transform: translateX(4px); }
+        .contact-info p { display: flex; align-items: center; gap: 8px; }
+        .contact-info i { color: var(--accent); width: 16px; }
+        .quick-contact { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+        .contact-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 100px; text-decoration: none; font-size: 13px; font-weight: 500; transition: var(--transition); }
+        .contact-btn.whatsapp { background: #25D366; color: white; }
+        .contact-btn.whatsapp:hover { background: #1ea952; transform: translateY(-2px); }
+        .contact-btn.call { background: var(--primary-light); color: white; }
+        .contact-btn.call:hover { background: var(--primary-mid); transform: translateY(-2px); }
+        .social-links { display: flex; flex-direction: column; gap: 8px; }
+        .social-link { display: flex; align-items: center; gap: 8px; padding: 6px 0; text-decoration: none; transition: var(--transition); color: rgba(255,255,255,0.6); }
+        .social-link:hover { color: var(--accent-light); transform: translateX(4px); }
+        .newsletter-form { display: flex; gap: 8px; margin-top: 12px; }
+        .newsletter-form input { flex: 1; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: var(--radius-sm); background: rgba(255,255,255,0.08); color: var(--white); font-size: 13px; font-family: inherit; }
+        .newsletter-form input::placeholder { color: rgba(255,255,255,0.4); }
+        .newsletter-form button { padding: 10px 16px; background: var(--accent); color: var(--primary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-size: 13px; transition: var(--transition); font-family: inherit; }
+        .newsletter-form button:hover { background: var(--accent-light); transform: translateY(-2px); }
+        .footer-bottom { max-width: 1280px; margin: 48px auto 0; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center; font-size: 13px; color: rgba(255,255,255,0.4); }
 
-        /* Custom Popup Modal */
+        /* ===== POPUP ===== */
         .popup-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 10000;
-            backdrop-filter: blur(5px);
+            padding: 20px;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.3s ease;
+            transition: var(--transition);
         }
-
-        .popup-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-
+        .popup-overlay.show { opacity: 1; visibility: visible; }
         .popup-modal {
             background: var(--white);
-            border-radius: var(--border-radius-lg);
-            padding: 2rem;
+            border-radius: var(--radius-2xl);
+            padding: 32px;
             max-width: 400px;
-            width: 90%;
+            width: 100%;
             text-align: center;
-            box-shadow: var(--shadow-xl);
-            transform: scale(0.8) translateY(20px);
-            transition: all 0.3s ease;
+            box-shadow: var(--shadow-2xl);
+            transform: scale(0.9) translateY(20px);
+            transition: var(--transition);
             position: relative;
-            overflow: hidden;
         }
+        .popup-overlay.show .popup-modal { transform: scale(1) translateY(0); }
+        .popup-icon { font-size: 48px; margin-bottom: 16px; display: block; }
+        .popup-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: var(--text); }
+        .popup-message { font-size: 14px; color: var(--text-light); margin-bottom: 24px; line-height: 1.6; }
+        .popup-buttons { display: flex; gap: 12px; justify-content: center; }
+        .popup-button { padding: 10px 24px; border: none; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: var(--transition); font-size: 14px; font-family: inherit; }
+        .popup-button.primary { background: var(--primary); color: var(--white); }
+        .popup-button.primary:hover { background: var(--primary-light); transform: translateY(-2px); }
+        .popup-button.secondary { background: var(--gray-50); color: var(--text); }
+        .popup-button.secondary:hover { background: var(--gray-100); }
+        .popup-close { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 24px; color: var(--text-light); cursor: pointer; transition: var(--transition); }
+        .popup-close:hover { color: var(--text); }
 
-        .popup-overlay.show .popup-modal {
-            transform: scale(1) translateY(0);
-        }
-
-        .popup-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
-        .popup-icon.success {
-            color: #10b981;
-        }
-
-        .popup-icon.error {
-            color: #ef4444;
-        }
-
-        .popup-icon.warning {
-            color: #f59e0b;
-        }
-
-        .popup-icon.info {
-            color: #3b82f6;
-        }
-
-        .popup-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: var(--text-dark);
-        }
-
-        .popup-message {
-            font-size: 1rem;
-            color: var(--text-light);
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-
-        .popup-buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-        }
-
-        .popup-button {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: var(--border-radius);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.95rem;
-        }
-
-        .popup-button.primary {
-            background: var(--primary-color);
-            color: var(--white);
-        }
-
-        .popup-button.primary:hover {
-            background: #001c44;
-            transform: translateY(-2px);
-        }
-
-        .popup-button.secondary {
-            background: #f1f5f9;
-            color: var(--text-dark);
-            border: 1px solid #e2e8f0;
-        }
-
-        .popup-button.secondary:hover {
-            background: #e2e8f0;
-            transform: translateY(-2px);
-        }
-
-        .popup-close {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: var(--text-light);
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-
-        .popup-close:hover {
-            color: var(--text-dark);
-        }
-
-        /* Responsive adjustments */
+        /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
-            .navbar-container {
-                flex-direction: row; /* Keep logo and hamburger on one row */
-                justify-content: space-between;
-                align-items: center;
-                position: relative; /* Needed for absolute positioning of nav-links */
-            }
+            .menu-toggle { display: flex; }
             .nav-links {
-                /* This is the mobile menu style */
-                flex-direction: column;
-                position: absolute; /* Position relative to .navbar-container */
-                top: 100%; /* Place it directly below the navbar */
-                left: 0;
-                width: 100%; /* Take full width of the container */
-                background: var(--gradient-primary);
-                box-shadow: var(--shadow-lg);
-                overflow: hidden; /* Crucial for max-height transition */
-                max-height: 0; /* Initially collapsed */
-                transition: max-height 0.3s ease-in-out; /* Smooth transition for height */
-                z-index: 9999; /* Ensure it's above other content */
-                display: flex; /* Ensure it's always flex on mobile */
-                border-radius: 0 0 1rem 1rem;
+                position: fixed; top: 0; right: 0; width: 280px; height: 100vh;
+                background: var(--primary); flex-direction: column; padding: 100px 24px 24px;
+                gap: 4px; transform: translateX(100%); transition: var(--transition);
+                z-index: 1000; box-shadow: -4px 0 20px rgba(0,0,0,0.3);
             }
-
-            .nav-links.open { /* This class will be toggled by JS */
-                max-height: 500px; /* Expand to show content (adjust as needed, ensure it's larger than actual content height) */
-            }
-
-            /* Ensure desktop nav-links are hidden on mobile */
-            /* This rule is no longer needed as max-height:0 with overflow:hidden handles it */
-            /* .navbar .nav-links:not(.open) {
-                display: none;
-            } */
-
-            .menu-toggle {
-                display: flex; /* Show hamburger icon */
-            }
-            .lookup-container {
-                margin: 1rem;
-                padding: 2rem 1rem;
-            }
-            .lookup-container h2 {
-                font-size: 1.8rem;
-            }
-            .lookup-container .subtitle {
-                font-size: 0.95rem;
-                margin-bottom: 1.5rem;
-            }
-            .ticket-details {
-                padding: 1rem;
-                margin-top: 1.5rem;
-            }
-            .ticket-summary-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0.75rem;
-            }
-            .form-group input[type="text"] {
-                width: 100%;
-            }
-            .lookup-button {
-                width: 100%;
-            }
-            .footer-content {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
-                text-align: center;
-            }
-            .footer-section h4 {
-                text-align: center;
-            }
-            .quick-contact {
-                justify-content: center;
-            }
-            .newsletter-form {
-                flex-direction: column;
-                gap: 0.75rem;
-            }
-
-            /* Adjust button layout for mobile */
-            .button-group-ticket {
-                flex-direction: column;
-                gap: 10px; /* Space out buttons */
-            }
-            .ticket-summary-grid div {
-                padding: 0.75rem;
-            }
-            .ticket-summary-grid span {
-                font-size: 0.95rem;
-            }
-            .download-button, .send-email-button {
-                width: 100%; /* Full width buttons */
-                margin-left: 0; /* Remove left margin */
-            }
+            .nav-links.open { transform: translateX(0); }
+            .nav-links a { width: 100%; padding: 12px 16px; font-size: 15px; }
+            .page-hero { min-height: 240px; }
+            .main-wrap { margin: -40px auto 40px; }
+            .lookup-card { padding: 28px 20px; }
+            .ticket-details { padding: 20px; }
+            .ticket-summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .button-group-ticket { flex-direction: column; }
+            .btn-ticket-action { width: 100%; justify-content: center; }
+            .footer-content { grid-template-columns: 1fr; gap: 32px; }
         }
-
         @media (max-width: 480px) {
-            .ticket-summary-grid {
-                grid-template-columns: 1fr;
-                gap: 0.5rem;
-            }
-            .lookup-container h2 {
-                font-size: 1.6rem;
-            }
-            .lookup-container { padding: 1.5rem 0.75rem; }
+            .lookup-card { padding: 24px 16px; }
+            .ticket-summary-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <header class="navbar">
         <div class="navbar-container">
-            <div class="logo">
-                <img src="mylogo.png" alt="Prince Alex Logo" />
-            </div>
-            <!-- Hamburger Menu Icon -->
-            <button class="menu-toggle" id="mobile-menu" aria-label="Toggle mobile menu">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">PA</div>
+                <div class="logo-text">
+                    <strong>Prince Alex Travel</strong>
+                    <span>Premium Bus Services</span>
+                </div>
+            </a>
+            <button class="menu-toggle" id="mobile-menu" aria-label="Toggle menu">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
@@ -1053,882 +579,96 @@
                 <a href="about-us.html">About Us</a>
                 <a href="#contact-us">Contact</a>
                 <a href="ticket-lookup.html">Print Ticket</a>
-                <a href="admin.html">Admin Login</a>
+                <a href="admin.html">Admin</a>
                 <a href="profile.html" id="myProfileLink" style="display:none;">My Profile</a>
-                <a href="login-register.html" id="loginRegisterLink">Login / Register</a>
+                <a href="login-register.html" id="loginRegisterLink" class="nav-cta">Login / Register</a>
                 <a href="#" id="logoutLink" style="display:none;">Logout</a>
             </nav>
         </div>
     </header>
 
-    <div class="lookup-container">
-        <h2>🎫 Retrieve Your Ticket</h2>
-        <p class="subtitle">Enter your booking reference to access your digital ticket</p>
-        <div class="form-group">
-            <label for="bookingRefInput">Booking Reference</label>
-            <input type="text" id="bookingRefInput" placeholder="e.g., PA-XYZ123" required>
+    <section class="page-hero">
+        <div class="page-hero-content">
+            <h1>Retrieve Your <span class="highlight">Ticket</span></h1>
+            <p>Enter your booking reference to access and download your digital ticket instantly.</p>
         </div>
-        <button id="lookupTicketBtn" class="lookup-button">
-            <i class="fas fa-search"></i> Retrieve Ticket
-        </button>
-        <p id="message" class="message"></p>
-
-        <div id="ticketDetailsSection" class="ticket-details" style="text-align:center;">
-            <h3>Ticket Summary</h3>
-            <div class="ticket-summary-grid">
-                <div><label>Passenger</label><span id="passengerName"></span></div>
-                <div><label>Route</label><span id="busRoute"></span></div>
-                <div><label>Travel Date</label><span id="travelDate"></span></div>
-                <div><label>Seat</label><span id="seatNumber"></span></div>
-                <div><label>Status</label><span id="status"></span></div>
-                <div id="receiptRow" style="display: none;"><label>Receipt No</label><span id="receiptNoDisplay"></span></div>
-            </div>
-            <p class="summary-footer">Full details are available on the downloaded PDF ticket.</p>
-
-            <!-- Hidden fields for PDF generation -->
-            <input type="hidden" id="passengerEmail">
-            <input type="hidden" id="bookingRef">
-            
-            <div id="paymentSection" style="display: none;">
-                <div class="message warning" style="width: 100%; margin: 0 0 1.5rem 0; text-align: center;">
-                    ⚠️ <strong>Payment Required:</strong> Please pay to confirm your ticket.
-                </div>
-                <p id="amountToPay" style="font-size: 1.2rem; font-weight: 700; color: var(--text-dark); margin-bottom: 1rem;"></p>
-                <button id="payNowBtn" class="pay-stack-btn">
-                    <i class="fas fa-lock"></i> Secure Payment with Paystack
-                </button>
-                <span class="payment-security-notice"><i class="fas fa-shield-alt" style="color: var(--success);"></i> Verified & Secured by Paystack</span>
-            </div>
-
-            <div class="button-group-ticket"> <!-- New container for ticket action buttons -->
-                <button id="downloadTicketBtn" class="download-button"><i class="fas fa-download"></i> Download Ticket (PDF)</button>
-                <button id="sendEmailBtn" class="send-email-button"><i class="fas fa-envelope"></i> Send Ticket to Email</button>
-            </div>
-        </div>
-    </div>
-
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const bookingRefInput = document.getElementById('bookingRefInput');
-            const lookupTicketBtn = document.getElementById('lookupTicketBtn');
-            const messageElem = document.getElementById('message');
-            const ticketDetailsSection = document.getElementById('ticketDetailsSection');
-            const paymentSection = document.getElementById('paymentSection');
-            const downloadTicketBtn = document.getElementById('downloadTicketBtn');
-            const sendEmailBtn = document.getElementById('sendEmailBtn'); // Get the new button
-            const mobileMenuToggle = document.getElementById('mobile-menu'); // Get hamburger icon
-            const mainNav = document.getElementById('main-nav'); // Get nav links container
-
-            // Variable to store the fetched booking data, including its Firestore document ID
-            let fetchedBookingData = null;
-
-            // Maximum allowed size for Base64 PDF content in bytes (approx 800KB for safety, Firestore limit is 1MB)
-            // Base64 encoding increases size by about 33%, so 1MB / 1.33 = ~750KB.
-            // Keeping it slightly lower to account for other document fields.
-            const MAX_PDF_BASE64_SIZE_BYTES = 800 * 1024; // 800KB
-
-
-            lookupTicketBtn.addEventListener('click', loadBookingDetails);
-            downloadTicketBtn.addEventListener('click', downloadTicket);
-            sendEmailBtn.addEventListener('click', sendTicketToEmail); // Attach event listener for new button
-
-            const payBtn = document.getElementById('payNowBtn');
-            if (payBtn) {
-                payBtn.addEventListener('click', payWithPaystack);
-            }
-
-            // Hamburger menu toggle logic
-            if (mobileMenuToggle && mainNav) {
-                mobileMenuToggle.addEventListener('click', function () {
-                    this.classList.toggle('open');
-                    mainNav.classList.toggle('open');
-                });
-
-                // Close mobile menu when a link is clicked
-                mainNav.querySelectorAll('a').forEach(link => {
-                    link.addEventListener('click', () => {
-                        mobileMenuToggle.classList.remove('open');
-                        mainNav.classList.remove('open');
-                    });
-                });
-
-                // Close mobile menu when clicking outside
-                document.addEventListener('click', function(event) {
-                    if (!mobileMenuToggle.contains(event.target) && !mainNav.contains(event.target)) {
-                        mobileMenuToggle.classList.remove('open');
-                        mainNav.classList.remove('open');
-                    }
-                });
-            }
-
-
-            async function loadBookingDetails() {
-                const bookingRef = bookingRefInput.value.trim();
-                messageElem.textContent = ''; // Clear previous messages
-                messageElem.className = 'message'; // Reset message classes
-                ticketDetailsSection.style.display = 'none'; // Hide details section initially
-                paymentSection.style.display = 'none';
-                fetchedBookingData = null; // Clear previous data
-
-                if (!bookingRef) {
-                    messageElem.textContent = 'Please enter a booking reference.';
-                    messageElem.className = 'message error';
-                    return;
-                }
-
-                // Show loading state
-                lookupTicketBtn.disabled = true;
-                lookupTicketBtn.innerHTML = '<div class="loading-spinner"></div> Searching...';
-                messageElem.textContent = 'Searching for your ticket...';
-                messageElem.className = 'message loading';
-
-                try {
-                    // Query the 'bookings' collection for a document where 'booking_ref' field matches the input
-                    const bookingsCollectionRef = collection(firebaseDb, "bookings");
-                    // Use where clause to search by the 'booking_ref' field
-                    const q = query(bookingsCollectionRef, where("booking_ref", "==", bookingRef));
-                    const querySnapshot = await getDocs(q); // Use getDocs for a query
-
-                    if (!querySnapshot.empty) {
-                        // Assuming booking_ref is unique, there should be only one document
-                        const docSnap = querySnapshot.docs[0];
-                        const data = docSnap.data();
-                        fetchedBookingData = { id: docSnap.id, ...data }; // Store the document ID along with data
-
-                        // Populate the UI with fetched data
-                        document.getElementById('passengerName').textContent = data.passenger_name;
-                        document.getElementById('busRoute').textContent = data.bus_route;
-                        document.getElementById('travelDate').textContent = data.travel_date;
-                        document.getElementById('seatNumber').textContent = data.seat_number;
-                        document.getElementById('status').textContent = data.status ? data.status.toUpperCase() : 'N/A';
-
-                        // Populate hidden fields needed for PDF/email actions
-                        document.getElementById('passengerEmail').value = data.passenger_email || '';
-                        document.getElementById('bookingRef').value = data.booking_ref || '';
-                        
-                        const status = (data.status || 'pending').toLowerCase();
-                        if (status === 'pending') {
-                            paymentSection.style.display = 'flex';
-                            document.getElementById('amountToPay').textContent = `Amount to Pay: KES ${Number(data.price || 0).toLocaleString()}`;
-                            downloadTicketBtn.style.display = 'none';
-                            sendEmailBtn.style.display = 'none';
-                            messageElem.textContent = '✅ Ticket found successfully!';
-                            messageElem.className = 'message success';
-                        } else {
-                            paymentSection.style.display = 'none';
-                            downloadTicketBtn.style.display = 'inline-block';
-                            sendEmailBtn.style.display = 'inline-block';
-                            messageElem.textContent = '✅ Ticket found successfully!';
-                            messageElem.className = 'message success';
-                        }
-
-                        ticketDetailsSection.style.display = 'block'; // Show the details section
-
-                        // Scroll to the ticket details section automatically
-                        setTimeout(() => {
-                            ticketDetailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }, 100);
-                    } else {
-                        messageElem.textContent = '❌ Booking not found. Please check your reference ID.';
-                        messageElem.className = 'message error';
-                    }
-                } catch (error) {
-                    console.error("An unexpected error occurred during Firestore fetch:", error); // Log the actual error for debugging
-                    messageElem.textContent = '❌ An unexpected error occurred. Please try again later.';
-                    messageElem.className = 'message error';
-                } finally {
-                    // Reset button state
-                    lookupTicketBtn.disabled = false;
-                    lookupTicketBtn.innerHTML = '<i class="fas fa-search"></i> Retrieve Ticket';
-                }
-            }
-
-            // Function to generate PDF (for both download and email)
-            async function generatePdfContent(booking) { // Changed to async to support image loading
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' });
-
-                // Define modern color scheme
-                const primaryColor = '#1e3a8a'; // Modern deep blue
-                const accentColor = '#f59e0b'; // Modern amber/gold
-                const darkTextColor = '#1f2937'; // Dark gray
-                const lightTextColor = '#6b7280'; // Light gray
-                const whiteColor = '#ffffff';
-                const lightBgColor = '#f8fafc';
-
-                const status = (booking.status ?? "pending").toUpperCase();
-                const statusColor = status === 'PAID' ? '#10b981' : '#f59e0b';
-
-                // --- 1. MAIN TICKET BODY (as a rounded rectangle) ---
-                doc.setFillColor(whiteColor);
-                doc.setDrawColor(primaryColor);
-                doc.setLineWidth(0.5);
-                doc.roundedRect(5, 5, 200, 138, 5, 5, 'FD'); // Main ticket container
-
-                // --- 2. HEADER SECTION ---
-                doc.setFillColor(primaryColor);
-                doc.roundedRect(5, 5, 200, 30, 5, 5, 'F');
-
-                // Company logo placeholder
-                doc.setFillColor(whiteColor);
-                doc.circle(20, 20, 8, 'F');
-                doc.setTextColor(primaryColor);
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "bold");
-                doc.text("PA", 18, 22);
-
-                // Company name & "Boarding Pass"
-                doc.setTextColor(whiteColor);
-                doc.setFontSize(22);
-                doc.setFont("helvetica", "bold");
-                doc.text("Prince Alex Travel", 35, 18);
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "normal");
-                doc.text("BOARDING PASS", 35, 26);
-
-                // Status Badge in Header (Moved to the top)
-                const statusBadgeWidth = 35;
-                const statusBadgeX = 205 - statusBadgeWidth - 10; // Positioned on the right
-                doc.setFillColor(statusColor);
-                doc.roundedRect(statusBadgeX, 15, statusBadgeWidth, 10, 3, 3, 'F');
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(whiteColor);
-                doc.text(status, statusBadgeX + (statusBadgeWidth / 2), 21.5, { align: 'center' });
-
-                // --- 3. MAIN CONTENT AREA (Boarding Pass Layout) ---
-                const mainContentY = 40;
-                const stubX = 145; // X position for the right-side "stub"
-
-                // Dashed line for "tear-off" effect
-                doc.setLineDashPattern([2, 2], 0);
-                doc.setDrawColor(lightTextColor);
-                doc.line(stubX, mainContentY - 2, stubX, 130);
-                doc.setLineDashPattern([], 0);
-
-                // --- LEFT SIDE (MAIN DETAILS) ---
-                let yPos = mainContentY + 8;
-                const leftMargin = 15;
-                const leftColumnWidth = stubX - leftMargin - 5; // Max width for text on the left
-
-                // Passenger Name
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(lightTextColor);
-                doc.text("PASSENGER NAME", leftMargin, yPos);
-                yPos += 8;
-                doc.setFontSize(18);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(darkTextColor);
-                doc.text(booking.passenger_name ?? "-", leftMargin, yPos, { maxWidth: leftColumnWidth });
-                yPos += 12; // Reduced space
-
-                // Route (From -> To)
-                const [origin, destination] = (booking.bus_route ?? '- to -').split(' to ');
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(lightTextColor);
-                doc.text("FROM", leftMargin, yPos);
-                doc.text("TO", leftMargin + 60, yPos);
-                yPos += 10;
-                doc.setFontSize(24);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(primaryColor);
-                doc.text(origin.trim(), leftMargin, yPos, { maxWidth: 40 });
-                doc.text("→", leftMargin + 45, yPos);
-                doc.text(destination.trim(), leftMargin + 60, yPos, { maxWidth: 65 });
-                yPos += 12; // Reduced space
-
-                // Date, Time, Seat in a row
-                const detailY = yPos;
-                const detailItems = [
-                    { label: "TRAVEL DATE", value: booking.travel_date ?? "-" },
-                    { label: "DEPARTURE", value: booking.bus_time ?? "-" },
-                    { label: "SEAT", value: booking.seat_number ?? "-" }
-                ];
-                detailItems.forEach((item, index) => {
-                    const xPos = leftMargin + (index * 45);
-                    doc.setFontSize(10);
-                    doc.setFont("helvetica", "normal");
-                    doc.setTextColor(lightTextColor);
-                    doc.text(item.label, xPos, detailY);
-                    doc.setFontSize(16);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(darkTextColor);
-                    doc.text(item.value, xPos, detailY + 8, { maxWidth: 40 });
-                });
-                yPos += 20; // Reduced space
-
-                // Important Notice
-                doc.setFillColor(lightBgColor);
-                doc.roundedRect(leftMargin - 5, yPos, leftColumnWidth + 5, 20, 3, 3, 'F');
-                doc.setFontSize(8);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(primaryColor);
-                doc.text("IMPORTANT REMINDERS:", leftMargin, yPos + 6);
-                doc.setFontSize(8);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(darkTextColor);
-                doc.text("• Arrive at the terminal 15 minutes before departure.", leftMargin, yPos + 11);
-                doc.text("• Present this ticket (digital or printed) to the driver.", leftMargin, yPos + 16);
-
-                
-                // --- RIGHT SIDE (STUB) ---
-                yPos = mainContentY + 8;
-                const rightMargin = stubX + 8;
-                const rightColumnWidth = 205 - rightMargin - 5;
-
-                // Booking Reference
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(lightTextColor);
-                doc.text("BOOKING REFERENCE", rightMargin, yPos);
-                yPos += 8;
-                doc.setFontSize(16);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(accentColor);
-                doc.text(booking.booking_ref ?? booking.id, rightMargin, yPos, { maxWidth: rightColumnWidth });
-                yPos += 12;
-
-                // QR Code
-                const qrCodeData = booking.booking_ref ?? booking.id;
-                const qrCodeContainer = document.createElement('div');
-                qrCodeContainer.style.display = 'none';
-                document.body.appendChild(qrCodeContainer);
-
-                let qrCodeImgData = '';
-                try {
-                    new QRCode(qrCodeContainer, {
-                        text: qrCodeData,
-                        width: 128,
-                        height: 128,
-                        colorDark: darkTextColor,
-                        colorLight: "#ffffff",
-                        correctLevel: QRCode.CorrectLevel.H
-                    });
-                    await new Promise(resolve => setTimeout(resolve, 50)); // Wait for QR code to render
-                    const canvas = qrCodeContainer.querySelector('canvas');
-                    if (canvas) qrCodeImgData = canvas.toDataURL('image/png');
-                } catch (e) {
-                    console.error("QR Code generation failed", e);
-                } finally {
-                    document.body.removeChild(qrCodeContainer);
-                }
-
-                if (qrCodeImgData) {
-                    doc.addImage(qrCodeImgData, 'PNG', rightMargin + 3, yPos, 40, 40);
-                }
-                yPos += 45; // Reduced space after QR code to move content up
-
-                // Bus Name
-                doc.setFontSize(9);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(lightTextColor);
-                doc.text("BUS NAME", rightMargin, yPos);
-                yPos += 5;
-                doc.setFontSize(11);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(darkTextColor);
-                doc.text(booking.bus_name ?? "-", rightMargin, yPos, { maxWidth: rightColumnWidth });
-                yPos += 8; // Reduced space
-
-                // Price
-                doc.setFontSize(9);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(lightTextColor);
-                doc.text("PRICE PAID", rightMargin, yPos);
-                yPos += 5;
-                doc.setFontSize(11);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(darkTextColor);
-                doc.text(`KES ${Number(booking.price ?? 0).toLocaleString()}`, rightMargin, yPos);
-                yPos += 8; // Reduced space
-
-                // --- 4. FOOTER ---
-                const footerY = 132;
-                doc.setDrawColor(primaryColor);
-                doc.setLineWidth(0.2);
-                doc.line(10, footerY, 200, footerY);
-                
-                const footerTextY = footerY + 5;
-                doc.setFontSize(7);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(lightTextColor);
-
-                // Left-aligned text
-                doc.text("© 2025 Prince Alex Travel Services", 10, footerTextY);
-                doc.text("This is an official e-ticket. Terms and conditions apply.", 10, footerTextY + 4);
-
-                // Right-aligned text
-                const rightAlignX = 205 - 10; // Right edge of ticket minus margin
-                doc.text("senerwaalex@gmail.com", rightAlignX, footerTextY, { align: 'right' });
-                doc.text("+254 717 384 875", rightAlignX, footerTextY + 4, { align: 'right' });
-
-                return doc;
-            }
-
-            async function downloadTicket() {
-                if (!fetchedBookingData) {
-                    showCustomAlert("No ticket details available to download. Please search for a ticket first.");
-                    return;
-                }
-
-                const booking = fetchedBookingData;
-
-                if (booking.status !== 'paid') {
-                    showCustomAlert('Ticket can only be downloaded after payment is confirmed.');
-                    return;
-                }
-                
-                try {
-                    const doc = await generatePdfContent(booking);
-                    doc.save(`PrinceAlex_Ticket_${booking.booking_ref}.pdf`);
-                    console.log("PDF download initiated successfully.");
-                } catch (error) {
-                    console.error("Error downloading PDF:", error);
-                    showCustomAlert("Failed to download ticket. Please try again.", 'error');
-                }
-            }
-
-            async function sendTicketToEmail() {
-                if (!fetchedBookingData) {
-                    showCustomAlert("No ticket details available to send. Please search for a ticket first.");
-                    return;
-                }
-
-                const booking = fetchedBookingData;
-
-                if (booking.status !== 'paid') {
-                    showCustomAlert('Ticket can only be sent after payment is confirmed.');
-                    return;
-                }
-
-                const passengerEmail = booking.passenger_email;
-                const bookingId = booking.booking_ref;
-                const passengerName = booking.passenger_name || 'Valued Customer'; // Default value
-                
-                if (!passengerEmail || !isValidEmail(passengerEmail)) {
-                    showCustomAlert("Invalid or missing passenger email address.", 'error');
-                    return;
-                }
-
-                showCustomAlert("Preparing and sending your ticket...", 'info');
-
-                try {
-                    const pdfDoc = await generatePdfContent(booking);
-                    const pdfDataUri = pdfDoc.output("datauristring");
-                    const pdfBase64 = pdfDataUri.split(",")[1]; // Get just the Base64 part
-
-                    if (!pdfBase64 || typeof pdfBase64 !== 'string') {
-                        showCustomAlert("Failed to generate PDF for email. PDF content is invalid.", 'error');
-                        return;
-                    }
-
-                    // Calculate the size of the Base64 string in bytes (each char is 1 byte in ASCII)
-                    const pdfBase64SizeBytes = new TextEncoder().encode(pdfBase64).length;
-
-                    if (pdfBase64SizeBytes > MAX_PDF_BASE64_SIZE_BYTES) {
-                        showCustomAlert(`The generated ticket PDF is too large (${(pdfBase64SizeBytes / 1024).toFixed(2)} KB). It exceeds the allowed size of ${(MAX_PDF_BASE64_SIZE_BYTES / 1024).toFixed(2)} KB for email attachments via Firestore. Please try to download it locally instead.`, 'error');
-                        console.error(`Email send failed: PDF Base64 content size (${pdfBase64SizeBytes} bytes) exceeds limit (${MAX_PDF_BASE64_SIZE_BYTES} bytes).`);
-                        return;
-                    }
-
-
-                    const emailDocPayload = {
-                        to: passengerEmail,
-                        message: {
-                            subject: "Your E-Ticket - Prince Alex Travel 🎫",
-                            text: `Hello ${passengerName},\n\nYour Prince Alex Travel ticket for booking reference ${bookingId} is attached as a PDF file.\n\nThank you for choosing Prince Alex Travel.`,
-                            html: `
-                                <!DOCTYPE html>
-                                <html>
-                                <head>
-                                    <meta charset="utf-8">
-                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                    <title>E-Ticket - Prince Alex Travel</title>
-                                    <style>
-                                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-                                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                                        .header { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-                                        .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
-                                        .ticket-info { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1e3a8a; }
-                                        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
-                                        .detail-label { font-weight: bold; color: #374151; }
-                                        .detail-value { color: #1f2937; }
-                                        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-                                        .attachment-notice { background: #d1fae5; padding: 15px; border-radius: 5px; border-left: 4px solid #10b981; margin: 20px 0; }
-                                        .status-paid { background: #d1fae5; color: #065f46; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-                                    </style>
-                                </head>
-                                <body>
-                                    <div class="container">
-                                        <div class="header">
-                                            <h1>🎫 Your E-Ticket is Ready!</h1>
-                                            <p>Prince Alex Travel - Digital Ticket Delivery</p>
-                                        </div>
-                                        <div class="content">
-                                            <h2>Hello ${passengerName}!</h2>
-                                            <p>Thank you for choosing <strong>Prince Alex Travel Services</strong>. Your e-ticket is ready and attached to this email!</p>
-                                            
-                                            <div class="ticket-info">
-                                                <h3 style="margin-top: 0; color: #1e3a8a;">🎫 Ticket Information</h3>
-                                                <div class="detail-row">
-                                                    <span class="detail-label">Booking Reference:</span>
-                                                    <span class="detail-value"><strong>${bookingId}</strong></span>
-                                                </div>
-                                                <div class="detail-row">
-                                                    <span class="detail-label">Route:</span>
-                                                    <span class="detail-value">${booking.bus_route}</span>
-                                                </div>
-                                                <div class="detail-row">
-                                                    <span class="detail-label">Seat Number:</span>
-                                                    <span class="detail-value"><strong>${booking.seat_number}</strong></span>
-                                                </div>
-                                                <div class="detail-row">
-                                                    <span class="detail-label">Travel Date:</span>
-                                                    <span class="detail-value">${booking.travel_date}</span>
-                                                </div>
-                                                <div class="detail-row">
-                                                    <span class="detail-label">Departure Time:</span>
-                                                    <span class="detail-value">${booking.bus_time}</span>
-                                                </div>
-                                                <div class="detail-row">
-                                                    <span class="detail-label">Price:</span>
-                                                    <span class="detail-value"><strong>Ksh ${booking.price.toLocaleString()}</strong></span>
-                                                </div>
-                                                <div class="detail-row">
-                                                    <span class="detail-label">Status:</span>
-                                                    <span class="detail-value">
-                                                        <span class="status-paid">PAID</span>
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div class="attachment-notice">
-                                                <h4 style="margin-top: 0; color: #065f46;">📎 Ticket Attached</h4>
-                                                <p style="margin-bottom: 0; color: #065f46;">Your e-ticket PDF is attached to this email. You can download it and present it at the bus terminal.</p>
-                                            </div>
-
-                                            <div style="background: #fef3c7; padding: 15px; border-radius: 5px; border-left: 4px solid #f59e0b; margin: 20px 0;">
-                                                <h4 style="margin-top: 0; color: #92400e;">📱 Important Reminders</h4>
-                                                <ul style="margin-bottom: 0; color: #92400e;">
-                                                    <li>Arrive at the terminal 15 minutes before departure</li>
-                                                    <li>Present your e-ticket (digital or printed) to the driver</li>
-                                                    <li>Keep your booking reference handy</li>
-                                                </ul>
-                                            </div>
-
-                                            <p><strong>📱 Need Help?</strong></p>
-                                            <p>If you have any questions or need assistance, please don't hesitate to contact us:</p>
-                                            <p><strong>📧 Email:</strong> senerwaalex@gmail.com<br>
-                                            <strong>📞 Phone:</strong> +254 717 384 875</p>
-                                        </div>
-                                        <div class="footer">
-                                            <p>© 2025 Prince Alex Digital. All rights reserved.</p>
-                                            <p>Nairobi, Kenya | Prince Alex Travel Services</p>
-                                        </div>
-                                    </div>
-                                <\/body>
-                                <\/html>`
-                            },
-                    attachments: [
-                        {
-                            name: `Ticket_${bookingId}.pdf`,
-                            content: pdfBase64
-                        }
-                    ]
-                };
-
-
-                    // Define the payload for the Cloudflare worker
-                    const workerPayload = {
-                        toEmail: passengerEmail,
-                        toName: passengerName,
-                        subject: "Your E-Ticket - Prince Alex Travel 🎫",
-                        htmlContent: emailDocPayload.message.html, // Use the HTML from the other payload
-                        attachments: emailDocPayload.attachments
-                    };
-
-                    const sent = await sendEmailWithWorker(workerPayload);
-                    if(sent) showCustomAlert("Ticket sent to your email successfully!", 'success');
-                    else showCustomAlert("Failed to send ticket. Please try again.", 'error');
-
-                } catch (error) {
-                    console.error("Error sending ticket to email:", error);
-                    // Provide more specific error details if possible
-                    if (error.code) {
-                        showCustomAlert(`Failed to send ticket to email: Firebase error - ${error.code}. Please try again.`, 'error');
-                    } else {
-                        showCustomAlert("Failed to send ticket to email. Please check console for details.", 'error');
-                    }
-                }
-            }
-
-            // --- Cloudflare Worker Email Service ---
-            async function sendEmailWithWorker(payload) {
-                const url = "https://payroll.princealexdigital.workers.dev/";
-                try {
-                    const response = await fetch(url, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload),
-                    });
-
-                    const data = await response.json();
-
-                    if (response.ok) {
-                        console.log("Email sent successfully via worker! Message ID:", data.messageId);
-                        return true;
-                    } else {
-                        console.error("Worker failed to send email:", data.error, data.details);
-                        return false;
-                    }
-                } catch (error) {
-                    console.error("Network or parsing error when sending email via worker:", error);
-                    return false;
-                }
-            }
-            // Custom Alert (replaces browser's alert)
-            function showCustomAlert(message, type = 'info', callback = null) {
-                const modal = document.createElement('div');
-                modal.style.cssText = `
-                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                    background-color: rgba(0,0,0,0.7); display: flex; justify-content: center;
-                    align-items: center; z-index: 1001;
-                `;
-                const bgColor = type === 'error' ? '#dc3545' : (type === 'success' ? '#28a745' : '#002d6b');
-                modal.innerHTML = `
-                    <div style="background: ${bgColor}; color: white; padding: 25px; border-radius: 8px; text-align: center; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                        <p style="margin-bottom: 20px; font-size: 1.1em;">${message}</p>
-                        <button style="background-color: white; color: ${bgColor}; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;"
-                                onclick="this.parentNode.parentNode.remove(); if(typeof window.alertCallback === 'function') window.alertCallback();">OK</button>
+    </section>
+
+    <div class="main-wrap">
+        <div class="lookup-card">
+            <div class="search-section">
+                <div class="search-icon"><i class="fas fa-ticket-alt"></i></div>
+                <h2>Find Your Booking</h2>
+                <p class="subtitle">Type your booking reference below to retrieve your ticket details.</p>
+                <div class="form-group">
+                    <label>Booking Reference</label>
+                    <div class="input-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="bookingRefInput" placeholder="e.g., PA-XYZ123" required>
                     </div>
-                `;
-                document.body.appendChild(modal);
-                window.alertCallback = callback; // Store callback globally
-            }
+                </div>
+                <button id="lookupTicketBtn" class="btn-lookup">
+                    <i class="fas fa-search"></i> Retrieve Ticket
+                </button>
+                <div id="message" class="message"></div>
+            </div>
 
-            // Helper function for email validation (used by sendTicketToEmail)
-            function isValidEmail(email) {
-                const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-                return re.test(String(email).toLowerCase());
-            }
+            <div id="ticketDetailsSection" class="ticket-details">
+                <h3>🎫 Ticket Summary</h3>
+                <div class="ticket-summary-grid">
+                    <div><label>Passenger</label><span id="passengerName"></span></div>
+                    <div><label>Route</label><span id="busRoute"></span></div>
+                    <div><label>Travel Date</label><span id="travelDate"></span></div>
+                    <div><label>Seat</label><span id="seatNumber"></span></div>
+                    <div><label>Status</label><span id="status"></span></div>
+                    <div id="receiptRow" style="display:none;"><label>Receipt No</label><span id="receiptNoDisplay"></span></div>
+                </div>
+                <p class="summary-footer">Full details are available on the downloaded PDF ticket.</p>
 
-            // Paystack Functions
-            function payWithPaystack() {
-                if (!fetchedBookingData) {
-                    showCustomAlert("Booking data missing.", 'error');
-                    return;
-                }
+                <input type="hidden" id="passengerEmail">
+                <input type="hidden" id="bookingRef">
 
-                let handler = PaystackPop.setup({
-                    key: 'pk_live_534321af1df8706853f3f560a599307c289c56df',
-                    email: fetchedBookingData.passenger_email,
-                    phone: fetchedBookingData.passenger_phone,
-                    amount: Math.round(fetchedBookingData.price * 100), // Ensure integer
-                    currency: 'KES',
-                    callback: function(response) {
-                        handlePaymentSuccess(response);
-                    },
-                    onClose: function() {
-                        showCustomAlert("Transaction cancelled.", 'warning');
-                    }
-                });
+                <div id="paymentSection">
+                    <div class="message warning show" style="margin-top:0;">
+                        ⚠️ <strong>Payment Required:</strong> Please pay to confirm your ticket.
+                    </div>
+                    <p class="amount" id="amountToPay"></p>
+                    <button id="payNowBtn" class="pay-stack-btn">
+                        <i class="fas fa-lock"></i> Secure Payment with Paystack
+                    </button>
+                    <p class="payment-security-notice"><i class="fas fa-shield-alt" style="color:var(--success);"></i> Verified & Secured by Paystack</p>
+                </div>
 
-                handler.openIframe();
-            }
-
-            async function handlePaymentSuccess(response) {
-                showCustomAlert("Payment Successful! Reference: " + response.reference, 'success');
-                try {
-                    const bookingDocRef = window.doc(window.firebaseDb, "bookings", fetchedBookingData.id);
-                    await window.updateDoc(bookingDocRef, {
-                        status: 'paid',
-                        paystack_ref: response.reference,
-                        receipt_number: response.reference,
-                        amount_paid: fetchedBookingData.price,
-                        payment_method: 'Paystack',
-                        paid_at: window.serverTimestamp()
-                    });
-
-                    // Generate and Send Professional Email
-                    const updatedData = { 
-                        ...fetchedBookingData, 
-                        status: 'paid', 
-                        paystack_ref: response.reference,
-                        receipt_number: response.reference 
-                    };
-                    
-                    const pdfDocForEmail = await generatePdfContent(updatedData);
-                    const pdfBase64 = pdfDocForEmail.output("datauristring").split(",")[1];
-
-                    const workerPayload = {
-                        toEmail: updatedData.passenger_email,
-                        toName: updatedData.passenger_name,
-                        subject: "Your Ticket is Confirmed! 🎫",
-                        htmlContent: `
-                    <div style="font-family: 'Segoe UI', Arial, sans-serif; border: 1px solid #eee; border-radius: 16px; overflow: hidden; max-width: 600px; margin: auto; color: #1e293b;">
-                        <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 40px 20px; text-align: center;">
-                            <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">🎫 Payment Confirmed!</h1>
-                            <p style="margin: 5px 0 0; opacity: 0.9; font-size: 16px;">Prince Alex Travel - Safe & Secure Journey</p>
-                        </div>
-                        <div style="padding: 30px; background: #ffffff;">
-                            <p style="font-size: 16px; margin-top: 0;">Hello <strong>${updatedData.passenger_name}</strong>,</p>
-                            <p>Great news! Your payment has been received and your trip is now fully confirmed. We look forward to having you on board!</p>
-                            
-                            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 25px 0; border: 1px solid #e2e8f0; border-left: 5px solid #1e3a8a;">
-                                <h3 style="margin: 0 0 15px 0; color: #1e3a8a; font-size: 18px;">Travel Summary</h3>
-                                <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-                                    <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Booking Ref:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; color: #1e3a8a; border-bottom: 1px solid #f1f5f9;">${updatedData.booking_ref}</td></tr>
-                                    <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Route:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${updatedData.bus_route}</td></tr>
-                                    <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Date & Time:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${updatedData.travel_date} @ ${updatedData.bus_time}</td></tr>
-                                    <tr><td style="padding: 10px 0; color: #64748b; border-bottom: 1px solid #f1f5f9;">Seat Number:</td><td style="padding: 10px 0; text-align: right; font-weight: bold; color: #f59e0b; border-bottom: 1px solid #f1f5f9;">${updatedData.seat_number}</td></tr>
-                                    <tr><td style="padding: 10px 0; color: #64748b;">Amount Paid:</td><td style="padding: 10px 0; text-align: right; font-weight: bold;">KES ${Number(updatedData.price).toLocaleString()}</td></tr>
-                                </table>
-                            </div>
-
-                            <div style="background: #fdf2f2; padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444; color: #991b1b; font-size: 13px;">
-                                <strong>Important:</strong> Please arrive at the terminal at least 15 minutes before your scheduled departure.
-                            </div>
-                                
-                            <p style="margin-top: 25px;">Your official E-Ticket is attached as a PDF. You can present it on your phone during boarding.</p>
-                        </div>
-                        <div style="background: #f1f5f9; padding: 25px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #eee;">
-                            © 2025 Prince Alex Travel Services | Nairobi, Kenya<br>
-                            Support: senerwaalex@gmail.com | +254 717 384 875
-                        </div>
-                    </div>`
-                    };
-                    workerPayload.attachments = [{
-                        name: `Ticket_${updatedData.booking_ref}.pdf`,
-                        content: pdfBase64
-                    }];
-
-                    await sendEmailWithWorker(workerPayload);
-
-                    try {
-                        fetch('https://your-n8n-instance.app/webhook/booking-confirmed', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                bookingRef: updatedData.booking_ref,
-                                paystackRef: response.reference,
-                                passengerEmail: updatedData.passenger_email,
-                                amount: updatedData.price
-                            })
-                        });
-                    } catch(e) {}
-
-                    setTimeout(() => loadBookingDetails(), 1500);
-                } catch (error) {
-                    console.error("Error updating booking:", error);
-                }
-            }
-
-        });
-
-        // Newsletter subscription function
-        function subscribeNewsletter() {
-            const emailInput = document.querySelector('.newsletter-form input');
-            const email = emailInput.value.trim();
-            
-            if (!email) {
-                showPopup('Email Required', 'Please enter your email address to subscribe to our newsletter.', 'warning');
-                return;
-            }
-            
-            // Simulate newsletter subscription
-            showPopup(
-                '🎉 Welcome to Our Newsletter!',
-                'Thank you for subscribing! You\'ll now receive updates about our latest offers, travel news, and special promotions directly to your inbox.',
-                'success'
-            );
-            emailInput.value = '';
-        }
-
-        // Custom Popup Functions
-        function showPopup(title, message, type = 'info', buttons = null) {
-            const overlay = document.getElementById('popupOverlay');
-            const icon = document.getElementById('popupIcon');
-            const titleEl = document.getElementById('popupTitle');
-            const messageEl = document.getElementById('popupMessage');
-            const buttonsEl = document.getElementById('popupButtons');
-
-            // Set icon based on type
-            const icons = {
-                success: '✅',
-                error: '❌',
-                warning: '⚠️',
-                info: 'ℹ️'
-            };
-            icon.textContent = icons[type] || icons.info;
-            icon.className = `popup-icon ${type}`;
-
-            // Set content
-            titleEl.textContent = title;
-            messageEl.textContent = message;
-
-            // Set buttons
-            if (buttons) {
-                buttonsEl.innerHTML = buttons;
-            } else {
-                buttonsEl.innerHTML = '<button class="popup-button primary" onclick="closePopup()">Got it!</button>';
-            }
-
-            // Show popup
-            overlay.classList.add('show');
-        }
-
-        function closePopup() {
-            const overlay = document.getElementById('popupOverlay');
-            overlay.classList.remove('show');
-        }
-
-        // Close popup when clicking outside (Wrapped in DOMContentLoaded to prevent null error)
-        document.addEventListener('DOMContentLoaded', () => {
-            const popupOverlay = document.getElementById('popupOverlay');
-            if (popupOverlay) {
-                popupOverlay.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        closePopup();
-                    }
-                });
-            }
-        });
-    </script>
-
-    <!-- Custom Popup Modal -->
-    <div id="popupOverlay" class="popup-overlay">
-        <div class="popup-modal">
-            <button class="popup-close" onclick="closePopup()">&times;</button>
-            <div class="popup-icon" id="popupIcon"></div>
-            <h3 class="popup-title" id="popupTitle"></h3>
-            <p class="popup-message" id="popupMessage"></p>
-            <div class="popup-buttons" id="popupButtons">
-                <button class="popup-button primary" onclick="closePopup()">Got it!</button>
+                <div class="button-group-ticket">
+                    <button id="downloadTicketBtn" class="btn-ticket-action btn-download"><i class="fas fa-download"></i> Download Ticket (PDF)</button>
+                    <button id="sendEmailBtn" class="btn-ticket-action btn-email"><i class="fas fa-envelope"></i> Send Ticket to Email</button>
+                </div>
             </div>
         </div>
     </div>
 
     <footer class="footer">
         <div class="footer-content">
+            <div class="footer-brand">
+                <div class="logo" style="background:none;padding:0;">
+                    <div class="logo-icon" style="width:40px;height:40px;font-size:16px;">PA</div>
+                    <div class="logo-text">
+                        <strong style="color:var(--white);">Prince Alex Travel</strong>
+                        <span style="color:var(--accent-light);">Premium Bus Services</span>
+                    </div>
+                </div>
+                <p>Your trusted partner for comfortable and reliable bus travel across Kenya.</p>
+            </div>
             <div class="footer-section" id="contact-us">
-                <h4>Contact Us</h4>
+                <h4>Contact</h4>
                 <div class="contact-info">
                     <p><i class="fas fa-envelope"></i> senerwaalex@gmail.com</p>
                     <p><i class="fas fa-phone"></i> +254 717 384 875</p>
                     <p><i class="fas fa-map-marker-alt"></i> Nairobi, Kenya</p>
                 </div>
                 <div class="quick-contact">
-                    <a href="tel:+254717384875" class="contact-btn whatsapp">
-                        <i class="fab fa-whatsapp"></i>
-                        Call Now
-                    </a>
-                    <a href="https://wa.me/254717384875" class="contact-btn call" target="_blank">
-                        <i class="fas fa-phone"></i>
-                        WhatsApp
-                    </a>
+                    <a href="tel:+254717384875" class="contact-btn whatsapp"><i class="fab fa-whatsapp"></i> Call Now</a>
+                    <a href="https://wa.me/254717384875" class="contact-btn call" target="_blank"><i class="fas fa-phone"></i> WhatsApp</a>
                 </div>
             </div>
             <div class="footer-section">
@@ -1941,80 +681,34 @@
             <div class="footer-section">
                 <h4>Follow Us</h4>
                 <div class="social-links">
-                    <a href="#" class="social-link facebook">
-                        <i class="fab fa-facebook-f"></i>
-                        Facebook
-                    </a>
-                    <a href="#" class="social-link instagram">
-                        <i class="fab fa-instagram"></i>
-                        Instagram
-                    </a>
-                    <a href="#" class="social-link twitter">
-                        <i class="fab fa-twitter"></i>
-                        Twitter
-                    </a>
+                    <a href="#" class="social-link facebook"><i class="fab fa-facebook-f"></i> Facebook</a>
+                    <a href="#" class="social-link instagram"><i class="fab fa-instagram"></i> Instagram</a>
+                    <a href="#" class="social-link twitter"><i class="fab fa-twitter"></i> Twitter</a>
                 </div>
-            </div>
-            <div class="footer-section">
-                <h4>Newsletter</h4>
-                <p>Stay updated with our latest offers and travel news!</p>
+                <h4 style="margin-top:24px;">Newsletter</h4>
                 <form class="newsletter-form" onsubmit="event.preventDefault(); subscribeNewsletter();">
-                    <input type="email" placeholder="Enter your email" required>
-                    <button type="submit">
-                        <i class="fas fa-paper-plane"></i>
-                        Subscribe
-                    </button>
+                    <input type="email" placeholder="Your email" required>
+                    <button type="submit"><i class="fas fa-paper-plane"></i></button>
                 </form>
             </div>
         </div>
         <div class="footer-bottom">
-            &copy; 2025 Prince Alex Digital. All rights reserved.
+            &copy; 2025 Prince Alex Digital. All rights reserved. Nairobi, Kenya.
         </div>
     </footer>
 
-<script>
-
-
-  // --- Update Authentication Links ---
-  function updateAuthLinks() {
-      const myProfileLink = document.getElementById('myProfileLink');
-      const loginRegisterLink = document.getElementById('loginRegisterLink');
-      const logoutLink = document.getElementById('logoutLink');
-
-      if (window.currentUser) {
-          // User is logged in
-          loginRegisterLink.style.display = 'none';
-          myProfileLink.style.display = 'block';
-          logoutLink.style.display = 'block';
-      } else {
-          // User is not logged in
-          loginRegisterLink.style.display = 'block';
-          myProfileLink.style.display = 'none';
-          logoutLink.style.display = 'none';
-      }
-  }
-
-  // --- Logout Function ---
-  async function logout() {
-      try {
-          await window.signOutFirebase(window.firebaseAuth);
-          window.location.href = 'index.html';
-      } catch (error) {
-          console.error('Logout error:', error);
-      }
-  }
-
-  // Add logout event listener
-  document.addEventListener('DOMContentLoaded', () => {
-      const logoutLink = document.getElementById('logoutLink');
-      if (logoutLink) {
-          logoutLink.addEventListener('click', async (e) => {
-              e.preventDefault();
-              await logout();
-          });
-      }
-  });
-</script>
+    <!-- Custom Popup Modal -->
+    <div id="popupOverlay" class="popup-overlay">
+        <div class="popup-modal">
+            <button class="popup-close" onclick="closePopup()">&times;</button>
+            <span class="popup-icon" id="popupIcon"></span>
+            <h3 class="popup-title" id="popupTitle"></h3>
+            <p class="popup-message" id="popupMessage"></p>
+            <div class="popup-buttons" id="popupButtons">
+                <button class="popup-button primary" onclick="closePopup()">Got it!</button>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>
