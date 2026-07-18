@@ -65,10 +65,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('bookingRef').textContent = currentBookingData.booking_ref || 'N/A';
         document.getElementById('price').textContent = `KES ${Number(currentBookingData.price || 0).toLocaleString()}`;
 
-        const paymentStatusElement = document.getElementById('paymentStatusDisplay');
+        const paymentStatusElement = document.getElementById('status');
         const successMsgElement = document.querySelector('.success-message');
         const status = (currentBookingData.status || 'pending').toLowerCase();
-        paymentStatusElement.textContent = status.toUpperCase();
+        if (paymentStatusElement) paymentStatusElement.textContent = status.toUpperCase();
 
         if (status === 'paid') {
             paymentStatusElement.classList.add('status-paid');
