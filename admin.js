@@ -315,7 +315,7 @@ function renderBookingTable(items) {
             <td><div style="font-weight:600;">${b.bus_route ?? "-"}</div><div style="font-size:0.85em; color:var(--text-light); margin-top:2px;"><i class="fa-regular fa-calendar"></i> ${b.travel_date ?? "-"} ${b.bus_time ? '<span style="margin-left:5px;"><i class="fa-regular fa-clock"></i> ' + b.bus_time + '</span>' : ""}</div><span class="badge warn" style="font-size:0.65em; margin-top:4px; display:inline-block;">${b.bus_code ?? "-"}</span></td>
             <td style="text-align:center;"><div style="font-weight:bold; font-size:1.2em; color:var(--primary-color);">${b.seat_number ?? "-"}</div></td>
             <td><div style="font-weight:bold;">${b.price ? "KES " + Number(b.price).toLocaleString() : "-"}</div><div style="margin-top:4px;"><span class="badge ${paid ? "success" : "warn"}" style="font-size:0.7em; padding:0.3em 0.6em;">${paid ? "PAID" : "PENDING"}</span></div><div style="font-size:0.75em; color:var(--text-light); margin-top:4px; font-family:monospace;">Ref: ${b.booking_ref ?? b.reference ?? b.ref ?? "-"}</div></td>
-            <td class="nowrap">${paid ? "" : `<button class="btn sm success" data-action="markpaid" data-id="${b.id}" title="Mark Paid"><i class="fa-solid fa-check"></i></button>`} <button class="btn sm" data-action="ticket" data-id="${b.id}" title="Download Ticket"><i class="fa-solid fa-ticket"></i></button> <button class="btn sm danger" data-action="del" data-id="${b.id}" title="Delete"><i class="fa-solid fa-trash"></i></button></td>
+            <td class="nowrap">${paid ? "" : `<button class="btn sm success" data-action="markpaid" data-id="${b.id}" title="Mark Paid"><i class="fa-solid fa-check"></i></button>`} <button class="btn sm" data-action="editbooking" data-id="${b.id}" title="Edit Booking"><i class="fa-solid fa-pen-to-square"></i></button> <button class="btn sm" data-action="ticket" data-id="${b.id}" title="Download Ticket"><i class="fa-solid fa-ticket"></i></button> <button class="btn sm danger" data-action="del" data-id="${b.id}" title="Delete"><i class="fa-solid fa-trash"></i></button></td>
         `;
         body.appendChild(tr);
     }
@@ -476,29 +476,7 @@ function generateTicketPDF(booking) {
 async function sendEmailWithWorker(payload) {
     const url = "https://payroll.princealexdigital.workers.dev/";
     try {
-        // Extract email data from nested message structure or use flat structure
-        const to = payload.to || (payload.message && payload.message.to);
-        const subject = payload.subject || payload.message?.subject;
-        const html = payload.html || payload.message?.html;
-        const text = payload.text || payload.message?.text;
-        const attachments = payload.attachments || payload.message?.attachments;
-        
-        // Validate required fields
-        if (!to || !subject || (!html && !text)) {
-            console.error("Missing required email fields:", { to, subject, hasHtml: !!html, hasText: !!text });
-            return false;
-        }
-        
-        // Transform payload to match worker's expected format
-        const workerPayload = {
-            to: Array.isArray(to) ? to : [to],
-            subject: subject,
-            html: html,
-            text: text,
-            attachments: attachments
-        };
-        
-        const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(workerPayload) });
+        const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         const d = await r.json();
         if (r.ok) return true;
         else { console.error("Worker failed:", d.error, d.details); return false; }
@@ -536,16 +514,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (addBusModal) addBusModal.classList.add('hidden'); 
                 showCustomAlert("New bus added successfully! 🚌", "success"); 
                 populateRouteDropdowns();
-                // Send new bus notification email to admin
-                await sendEmailWithWorker({
-                    to: ["senerwaalex@gmail.com"],
-                    message: {
-                        subject: "New Bus Added - Prince Alex Travel Admin 🚌",
-                        text: `Dear Admin,\n\nA new bus has been added to the system.\n\nBus Details:\nBus Name: ${data.busName}\nBus Code: ${busCode}\nRoute: ${data.origin} to ${data.destination}\nTravel Date: ${data.travelDate}\nDeparture Time: ${data.departureTime}\nPrice: KES ${data.price.toLocaleString()}\nTotal Seats: ${data.totalSeats}\n\nThis action was performed by: ${currentAdmin?.email ?? "Unknown"}\n\nBest regards,\nPrince Alex Travel System`,
-                        html: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>New Bus Added - Prince Alex Travel</title><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#10b981,#059669);color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f8fafc;padding:30px;border-radius:0 0 10px 10px}.bus-details{background:white;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #1e3a8a}.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb}.detail-label{font-weight:bold;color:#374151}.detail-value{color:#1f2937}.footer{text-align:center;margin-top:30px;color:#666;font-size:14px}</style></head><body><div class="container"><div class="header"><h1>🚌 New Bus Added</h1><p>Prince Alex Travel - Admin Notification</p></div><div class="content"><h2>Dear Admin,</h2><p>A new bus has been added to the system. Please review the details below:</p><div class="bus-details"><h3 style="margin-top:0;color:#1e3a8a;">🚌 New Bus Details</h3><div class="detail-row"><span class="detail-label">Bus Name:</span><span class="detail-value">${data.busName}</span></div><div class="detail-row"><span class="detail-label">Bus Code:</span><span class="detail-value">${busCode}</span></div><div class="detail-row"><span class="detail-label">Route:</span><span class="detail-value">${data.origin} to ${data.destination}</span></div><div class="detail-row"><span class="detail-label">Travel Date:</span><span class="detail-value">${data.travelDate}</span></div><div class="detail-row"><span class="detail-label">Departure Time:</span><span class="detail-value">${data.departureTime}</span></div><div class="detail-row"><span class="detail-label">Price:</span><span class="detail-value">KES ${data.price.toLocaleString()}</span></div><div class="detail-row"><span class="detail-label">Total Seats:</span><span class="detail-value">${data.totalSeats}</span></div><div class="detail-row"><span class="detail-label">Added By:</span><span class="detail-value">${currentAdmin?.email ?? "Unknown"}</span></div></div><p><strong>✅ Action Complete:</strong></p><p>The bus is now available for booking in the system.</p><p><strong>📧 Email:</strong> senerwaalex@gmail.com<br><strong>📞 Phone:</strong> +254 717 384 875</p></div><div class="footer"><p>© 2025 Prince Alex Digital. All rights reserved.</p><p>Nairobi, Kenya | Prince Alex Travel Services</p></div></div></body></html>`
-                    },
-                    createdAt: serverTimestamp()
-                });
             } catch (err) { 
                 showCustomAlert("Failed to add bus: " + getFriendlyErrorMessage(err), "error"); 
             } finally { 
@@ -569,18 +537,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             await deleteDoc(doc(db, "buses", id)); 
                             showCustomAlert("Bus deleted successfully.", "success"); 
                             populateRouteDropdowns();
-                            // Send bus deletion notification email to admin
-                            if (busData) {
-                                await sendEmailWithWorker({
-                                    to: ["senerwaalex@gmail.com"],
-                                    message: {
-                                        subject: "Bus Deleted - Prince Alex Travel Admin 🚌",
-                                        text: `Dear Admin,\n\nA bus has been deleted from the system.\n\nBus Details:\nBus Name: ${busData.busName ?? "N/A"}\nBus Code: ${busData.busCode ?? "N/A"}\nRoute: ${busData.origin ?? "N/A"} to ${busData.destination ?? "N/A"}\nTravel Date: ${busData.travelDate ?? "N/A"}\n\nThis action was performed by: ${currentAdmin?.email ?? "Unknown"}\n\nPlease review if this deletion was intentional.\n\nBest regards,\nPrince Alex Travel System`,
-                                        html: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bus Deleted - Prince Alex Travel</title><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#ef4444,#dc2626);color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f8fafc;padding:30px;border-radius:0 0 10px 10px}.bus-details{background:white;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #1e3a8a}.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb}.detail-label{font-weight:bold;color:#374151}.detail-value{color:#1f2937}.footer{text-align:center;margin-top:30px;color:#666;font-size:14px}</style></head><body><div class="container"><div class="header"><h1>🚌 Bus Deleted</h1><p>Prince Alex Travel - Admin Notification</p></div><div class="content"><h2>Dear Admin,</h2><p>A bus has been deleted from the system. Please review the details below:</p><div class="bus-details"><h3 style="margin-top:0;color:#1e3a8a;">🚌 Deleted Bus Details</h3><div class="detail-row"><span class="detail-label">Bus Name:</span><span class="detail-value">${busData.busName ?? "N/A"}</span></div><div class="detail-row"><span class="detail-label">Bus Code:</span><span class="detail-value">${busData.busCode ?? "N/A"}</span></div><div class="detail-row"><span class="detail-label">Route:</span><span class="detail-value">${busData.origin ?? "N/A"} to ${busData.destination ?? "N/A"}</span></div><div class="detail-row"><span class="detail-label">Travel Date:</span><span class="detail-value">${busData.travelDate ?? "N/A"}</span></div><div class="detail-row"><span class="detail-label">Departure Time:</span><span class="detail-value">${busData.departureTime ?? "N/A"}</span></div><div class="detail-row"><span class="detail-label">Price:</span><span class="detail-value">KES ${busData.price ? Number(busData.price).toLocaleString() : "N/A"}</span></div><div class="detail-row"><span class="detail-label">Deleted By:</span><span class="detail-value">${currentAdmin?.email ?? "Unknown"}</span></div></div><p><strong>⚠️ Action Required:</strong></p><p>If this deletion was not intentional, please contact support immediately.</p><p><strong>📧 Email:</strong> senerwaalex@gmail.com<br><strong>📞 Phone:</strong> +254 717 384 875</p></div><div class="footer"><p>© 2025 Prince Alex Digital. All rights reserved.</p><p>Nairobi, Kenya | Prince Alex Travel Services</p></div></div></body></html>`
-                                    },
-                                    createdAt: serverTimestamp()
-                                });
-                            }
                         } catch (err) { 
                             showCustomAlert("Delete failed: " + getFriendlyErrorMessage(err), "error"); 
                         } finally { 
@@ -631,17 +587,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (editBusModal) editBusModal.classList.add('hidden'); 
                 showCustomAlert("Bus details updated successfully!", "success"); 
                 populateRouteDropdowns();
-                // Send bus edit notification email to admin
-                const oldBusData = oldBusDoc.exists() ? oldBusDoc.data() : null;
-                await sendEmailWithWorker({
-                    to: ["senerwaalex@gmail.com"],
-                    message: {
-                        subject: "Bus Details Updated - Prince Alex Travel Admin 🚌",
-                        text: `Dear Admin,\n\nBus details have been updated in the system.\n\n${oldBusData ? 'Previous Details:' : 'New Bus Details:'}\nBus Name: ${oldBusData?.busName ?? "N/A"} → ${updatedData.busName}\nBus Code: ${oldBusData?.busCode ?? "N/A"}\nRoute: ${oldBusData?.origin ?? "N/A"} to ${oldBusData?.destination ?? "N/A"} → ${updatedData.origin} to ${updatedData.destination}\nTravel Date: ${oldBusData?.travelDate ?? "N/A"} → ${updatedData.travelDate}\nDeparture Time: ${oldBusData?.departureTime ?? "N/A"} → ${updatedData.departureTime}\nPrice: KES ${oldBusData?.price ? Number(oldBusData.price).toLocaleString() : "N/A"} → KES ${updatedData.price.toLocaleString()}\nTotal Seats: ${oldBusData?.totalSeats ?? "N/A"} → ${updatedData.totalSeats}\n\nThis action was performed by: ${currentAdmin?.email ?? "Unknown"}\n\nBest regards,\nPrince Alex Travel System`,
-                        html: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bus Updated - Prince Alex Travel</title><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f8fafc;padding:30px;border-radius:0 0 10px 10px}.bus-details{background:white;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #1e3a8a}.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb}.detail-label{font-weight:bold;color:#374151}.detail-value{color:#1f2937}.old-value{text-decoration:line-through;color:#ef4444;margin-right:8px}.new-value{color:#10b981;font-weight:600}.footer{text-align:center;margin-top:30px;color:#666;font-size:14px}</style></head><body><div class="container"><div class="header"><h1>🚌 Bus Details Updated</h1><p>Prince Alex Travel - Admin Notification</p></div><div class="content"><h2>Dear Admin,</h2><p>Bus details have been updated in the system. Please review the changes below:</p><div class="bus-details"><h3 style="margin-top:0;color:#1e3a8a;">🚌 Updated Bus Information</h3><div class="detail-row"><span class="detail-label">Bus Name:</span><span class="detail-value">${updatedData.busName}</span></div><div class="detail-row"><span class="detail-label">Bus Code:</span><span class="detail-value">${oldBusData?.busCode ?? "N/A"}</span></div><div class="detail-row"><span class="detail-label">Route:</span><span class="detail-value">${updatedData.origin} to ${updatedData.destination}</span></div><div class="detail-row"><span class="detail-label">Travel Date:</span><span class="detail-value">${updatedData.travelDate}</span></div><div class="detail-row"><span class="detail-label">Departure Time:</span><span class="detail-value">${updatedData.departureTime}</span></div><div class="detail-row"><span class="detail-label">Price:</span><span class="detail-value">KES ${updatedData.price.toLocaleString()}</span></div><div class="detail-row"><span class="detail-label">Total Seats:</span><span class="detail-value">${updatedData.totalSeats}</span></div><div class="detail-row"><span class="detail-label">Updated By:</span><span class="detail-value">${currentAdmin?.email ?? "Unknown"}</span></div></div><p><strong>⚠️ Note:</strong></p><p>If you did not make this change, please contact support immediately.</p><p><strong>📧 Email:</strong> senerwaalex@gmail.com<br><strong>📞 Phone:</strong> +254 717 384 875</p></div><div class="footer"><p>© 2025 Prince Alex Digital. All rights reserved.</p><p>Nairobi, Kenya | Prince Alex Travel Services</p></div></div></body></html>`
-                    },
-                    createdAt: serverTimestamp()
-                });
             } catch (err) { 
                 showCustomAlert("Update failed: " + getFriendlyErrorMessage(err), "error"); 
             } finally { 
@@ -689,13 +634,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (item.passenger_email) {
                                 const cancellationHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Booking Cancelled - Prince Alex Travel</title><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#ef4444,#dc2626);color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f8fafc;padding:30px;border-radius:0 0 10px 10px}.cancellation-notice{background:#fee2e2;padding:15px;border-radius:5px;border-left:4px solid #ef4444;margin:20px 0}.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb}.detail-label{font-weight:bold;color:#374151}.detail-value{color:#1f2937}.footer{text-align:center;margin-top:30px;color:#666;font-size:14px}</style></head><body><div class="container"><div class="header"><h1>❌ Booking Cancelled</h1><p>Prince Alex Travel - Booking Cancellation Notice</p></div><div class="content"><h2>Dear ${item.passenger_name ?? "Customer"},</h2><p>We regret to inform you that your booking has been cancelled by our admin team.</p><div class="cancellation-notice"><h4 style="margin-top:0;color:#dc2626;">⚠️ Cancellation Details</h4><p style="margin-bottom:0;color:#dc2626;">Your ticket is no longer valid. Please do not travel with this booking.</p></div><div style="background:white;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #1e3a8a"><h3 style="margin-top:0;color:#1e3a8a;">🎫 Original Booking Details</h3><div class="detail-row"><span class="detail-label">Booking Reference:</span><span class="detail-value">${item.booking_ref ?? id}</span></div><div class="detail-row"><span class="detail-label">Route:</span><span class="detail-value">${item.bus_route ?? "-"}</span></div><div class="detail-row"><span class="detail-label">Travel Date:</span><span class="detail-value">${item.travel_date ?? "-"}</span></div><div class="detail-row"><span class="detail-label">Seat:</span><span class="detail-value">${item.seat_number ?? "-"}</span></div></div><p><strong>📱 Need Help?</strong></p><p>If you have any questions or need assistance, please don't hesitate to contact us:</p><p><strong>📧 Email:</strong> senerwaalex@gmail.com<br><strong>📞 Phone:</strong> +254 717 384 875</p></div><div class="footer"><p>© 2025 Prince Alex Digital. All rights reserved.</p><p>Nairobi, Kenya | Prince Alex Travel Services</p></div></div></body></html>`;
                                 await sendEmailWithWorker({
-                                    to: [item.passenger_email],
-                                    message: {
-                                        subject: "Booking Cancellation Notice - Prince Alex Travel ❌",
-                                        text: `Dear ${item.passenger_name ?? "Customer"},\n\nWe regret to inform you that your booking has been cancelled by our admin team.\n\nOriginal Booking Details:\nBooking Reference: ${item.booking_ref ?? id}\nRoute: ${item.bus_route ?? "-"}\nTravel Date: ${item.travel_date ?? "-"}\nSeat: ${item.seat_number ?? "-"}\n\nYour ticket is no longer valid. Please do not travel with this booking.\n\nIf you have any questions or need assistance, please contact us:\n📧 Email: senerwaalex@gmail.com\n📞 Phone: +254 717 384 875\n\nBest regards,\nPrince Alex Travel Team`,
-                                        html: cancellationHtml
-                                    },
-                                    createdAt: serverTimestamp()
+                                    toEmail: item.passenger_email,
+                                    toName: item.passenger_name ?? "Customer",
+                                    subject: "Booking Cancellation Notice - Prince Alex Travel ❌",
+                                    htmlContent: cancellationHtml
                                 });
                             }
                             showCustomAlert("Booking deleted successfully. Cancellation email sent.", "success"); 
@@ -720,19 +662,111 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (pdfBase64SizeBytes > MAX_PDF_BASE64_SIZE_BYTES) {
                             console.warn(`PDF for email is too large (${(pdfBase64SizeBytes / 1024).toFixed(2)} KB). Skipping email attachment.`);
                             showCustomAlert(`Marked as PAID. Note: Ticket PDF was too large for email attachment. Please download it locally.`, 'warning');
-                            await addDoc(collection(db, "mail"), { to: [item.passenger_email], message: { subject: "Your Prince Alex Travel Booking Confirmation", text: `Dear ${item.passenger_name ?? "Customer"},\n\nThank you for booking a ticket with us!.\nYour ticket has been booked successfully. \n\nYour Ticket details:\nBooking Reference: ${item.booking_ref ?? id}\nRoute: ${item.bus_route ?? "-"}\nTravel Date: ${item.travel_date ?? "-"}\nDeparture Time: ${item.bus_time ?? "-"}\nSeat: ${item.seat_number ?? "-"}\nPrice: KES ${item.price ? Number(item.price).toLocaleString() : "-"}`, html: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payment Confirmed - Prince Alex Travel</title><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f8fafc;padding:30px;border-radius:0 0 10px 10px}.footer{text-align:center;margin-top:30px;color:#666;font-size:14px}</style></head><body><div class="container"><div class="header"><h1>💳 Payment Confirmed!</h1><p>Prince Alex Travel - Payment Successfully Processed</p></div><div class="content"><h2>Dear ${item.passenger_name ?? "Customer"},</h2><p>Great news! Your payment has been successfully processed and your ticket is now confirmed!</p><p><strong>Your Ticket Details:</strong></p><ul><li><strong>Booking Reference:</strong> ${item.booking_ref ?? id}</li><li><strong>Route:</strong> ${item.bus_route ?? "-"}</li><li><strong>Travel Date:</strong> ${item.travel_date ?? "-"}</li><li><strong>Departure Time:</strong> ${item.bus_time ?? "-"}</li><li><strong>Seat:</strong> ${item.seat_number ?? "-"}</li><li><strong>Price:</strong> KES ${item.price ? Number(item.price).toLocaleString() : "-"}</li></ul><p><strong>📱 Need Help?</strong></p><p>If you have any questions or need assistance, please don't hesitate to contact us:</p><p><strong>📧 Email:</strong> senerwaalex@gmail.com<br><strong>📞 Phone:</strong> +254 717 384 875</p></div><div class="footer"><p>© 2025 Prince Alex Digital. All rights reserved.</p><p>Nairobi, Kenya | Prince Alex Travel Services</p></div></div></body></html>` }, createdAt: serverTimestamp() });
+                            await sendEmailWithWorker({
+                                toEmail: item.passenger_email,
+                                toName: item.passenger_name ?? "Customer",
+                                subject: "Your Prince Alex Travel Booking Confirmation",
+                                htmlContent: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payment Confirmed - Prince Alex Travel</title><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f8fafc;padding:30px;border-radius:0 0 10px 10px}.footer{text-align:center;margin-top:30px;color:#666;font-size:14px}</style></head><body><div class="container"><div class="header"><h1>💳 Payment Confirmed!</h1><p>Prince Alex Travel - Payment Successfully Processed</p></div><div class="content"><h2>Dear ${item.passenger_name ?? "Customer"},</h2><p>Great news! Your payment has been successfully processed and your ticket is now confirmed!</p><p><strong>Your Ticket Details:</strong></p><ul><li><strong>Booking Reference:</strong> ${item.booking_ref ?? id}</li><li><strong>Route:</strong> ${item.bus_route ?? "-"}</li><li><strong>Travel Date:</strong> ${item.travel_date ?? "-"}</li><li><strong>Departure Time:</strong> ${item.bus_time ?? "-"}</li><li><strong>Seat:</strong> ${item.seat_number ?? "-"}</li><li><strong>Price:</strong> KES ${item.price ? Number(item.price).toLocaleString() : "-"}</li></ul><p><strong>📱 Need Help?</strong></p><p>If you have any questions or need assistance, please don't hesitate to contact us:</p><p><strong>📧 Email:</strong> senerwaalex@gmail.com<br><strong>📞 Phone:</strong> +254 717 384 875</p></div><div class="footer"><p>© 2025 Prince Alex Digital. All rights reserved.</p><p>Nairobi, Kenya | Prince Alex Travel Services</p></div></div></body></html>`
+                            });
                         } else {
                             const paymentConfirmationHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payment Confirmed - Prince Alex Travel</title><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f8fafc;padding:30px;border-radius:0 0 10px 10px}.ticket-details{background:white;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #1e3a8a}.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb}.detail-label{font-weight:bold;color:#374151}.detail-value{color:#1f2937}.footer{text-align:center;margin-top:30px;color:#666;font-size:14px}.payment-success{background:#d1fae5;padding:15px;border-radius:5px;border-left:4px solid #10b981;margin:20px 0}.attachment-notice{background:#d1fae5;padding:15px;border-radius:5px;border-left:4px solid #10b981;margin:20px 0}.status-paid{background:#d1fae5;color:#065f46;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:bold}</style></head><body><div class="container"><div class="header"><h1>💳 Payment Confirmed!</h1><p>Prince Alex Travel - Payment Successfully Processed</p></div><div class="content"><h2>Hello ${item.passenger_name ?? "Customer"}!</h2><p>Great news! Your payment has been successfully processed and your ticket is now confirmed!</p><div class="payment-success"><h4 style="margin-top:0;color:#065f46;">✅ Payment Successful</h4><p style="margin-bottom:0;color:#065f46;">Your booking is now fully confirmed and your e-ticket is ready!</p></div><div class="ticket-details"><h3 style="margin-top:0;color:#1e3a8a;">🎫 Confirmed Ticket Details</h3><div class="detail-row"><span class="detail-label">Booking Reference:</span><span class="detail-value"><strong>${item.booking_ref ?? id}</strong></span></div><div class="detail-row"><span class="detail-label">Route:</span><span class="detail-value">${item.bus_route ?? "-"}</span></div><div class="detail-row"><span class="detail-label">Seat Number:</span><span class="detail-value"><strong>${item.seat_number ?? "-"}</strong></span></div><div class="detail-row"><span class="detail-label">Travel Date:</span><span class="detail-value">${item.travel_date ?? "-"}</span></div><div class="detail-row"><span class="detail-label">Departure Time:</span><span class="detail-value">${item.bus_time ?? "-"}</span></div><div class="detail-row"><span class="detail-label">Price Paid:</span><span class="detail-value"><strong>KES ${item.price ? Number(item.price).toLocaleString() : "-"}</strong></span></div><div class="detail-row"><span class="detail-label">Status:</span><span class="detail-value"><span class="status-paid">PAID & CONFIRMED</span></span></div></div><div class="attachment-notice"><h4 style="margin-top:0;color:#065f46;">📎 E-Ticket Attached</h4><p style="margin-bottom:0;color:#065f46;">Your confirmed e-ticket PDF is attached to this email. You can download it and present it at the bus terminal.</p></div><div style="background:#fef3c7;padding:15px;border-radius:5px;border-left:4px solid #f59e0b;margin:20px 0;"><h4 style="margin-top:0;color:#92400e;">📱 Important Reminders</h4><ul style="margin-bottom:0;color:#92400e;"><li>Arrive at the terminal 15 minutes before departure</li><li>Present your e-ticket (digital or printed) to the driver</li><li>Keep your booking reference handy</li></ul></div><p><strong>📱 Need Help?</strong></p><p>If you have any questions or need assistance, please don't hesitate to contact us:</p><p><strong>📧 Email:</strong> senerwaalex@gmail.com<br><strong>📞 Phone:</strong> +254 717 384 875</p></div><div class="footer"><p>© 2025 Prince Alex Digital. All rights reserved.</p><p>Nairobi, Kenya | Prince Alex Travel Services</p></div></div></body></html>`;
-                            await addDoc(collection(db, "mail"), { to: [item.passenger_email], message: { subject: "Payment Confirmed - Your Ticket is Ready! 🎫", text: `Dear ${item.passenger_name ?? "Customer"},\n\nGreat news! Your payment has been successfully processed and your ticket is now confirmed!\n\nConfirmed Ticket Details:\nBooking Reference: ${item.booking_ref ?? id}\nRoute: ${item.bus_route ?? "-"}\nTravel Date: ${item.travel_date ?? "-"}\nDeparture Time: ${item.bus_time ?? "-"}\nSeat: ${item.seat_number ?? "-"}\nPrice Paid: KES ${item.price ? Number(item.price).toLocaleString() : "-"}\nStatus: PAID & CONFIRMED\n\nYour confirmed e-ticket PDF is attached to this email. You can download it and present it at the bus terminal.\n\nImportant Reminders:\n- Arrive at the terminal 15 minutes before departure\n- Present your e-ticket (digital or printed) to the driver\n- Keep your booking reference handy\n\nThank you for choosing Prince Alex Travel Services!\n\nBest regards,\nPrince Alex Travel Team`, html: paymentConfirmationHtml, attachments: [{ filename: `PrinceAlex_Ticket_${item.booking_ref ?? id}.pdf`, content: pdfBase64, encoding: "base64" }] }, createdAt: serverTimestamp() });
+                            await sendEmailWithWorker({
+                                toEmail: item.passenger_email,
+                                toName: item.passenger_name ?? "Customer",
+                                subject: "Payment Confirmed - Your Ticket is Ready! 🎫",
+                                htmlContent: paymentConfirmationHtml,
+                                attachments: [{ filename: `PrinceAlex_Ticket_${item.booking_ref ?? id}.pdf`, content: pdfBase64, encoding: "base64" }]
+                            });
                             showCustomAlert("Marked as PAID. Confirmation email with ticket sent! 📧", "success");
                         }
                     }
                 } catch (err) { showCustomAlert("Failed to mark paid or send email: " + getFriendlyErrorMessage(err), "error"); } finally { hideLoading(); }
+            } else if (btn.dataset.action === 'editbooking') {
+                // Open edit booking modal with current data
+                document.getElementById('editBookingId').value = id;
+                document.getElementById('editBookingName').value = item.passenger_name ?? '';
+                document.getElementById('editBookingEmail').value = item.passenger_email ?? '';
+                document.getElementById('editBookingPhone').value = item.passenger_phone ?? '';
+                document.getElementById('editBookingID').value = item.passenger_id ?? '';
+                document.getElementById('editBookingGender').value = item.passenger_gender ?? '';
+                document.getElementById('editBookingSeat').value = item.seat_number ?? '';
+                document.getElementById('editBookingPrice').value = item.price ?? '';
+                const editBookingModal = document.getElementById('editBookingModal');
+                if (editBookingModal) editBookingModal.classList.remove('hidden');
             } else if (btn.dataset.action === 'ticket') {
                 generateTicketPDF(item);
             }
         });
     }
+
+    const editBookingForm = document.getElementById('editBookingForm');
+    if (editBookingForm) {
+        editBookingForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editBookingId').value;
+            const item = bookingCache.find(x => x.id === id);
+            if (!item) { showCustomAlert("Booking not found.", "error"); return; }
+            
+            const updatedData = {
+                passenger_name: document.getElementById('editBookingName').value.trim(),
+                passenger_email: document.getElementById('editBookingEmail').value.trim(),
+                passenger_phone: document.getElementById('editBookingPhone').value.trim(),
+                passenger_id: document.getElementById('editBookingID').value.trim(),
+                passenger_gender: document.getElementById('editBookingGender').value,
+                seat_number: document.getElementById('editBookingSeat').value.trim(),
+                price: Number(document.getElementById('editBookingPrice').value)
+            };
+            
+            if (!updatedData.passenger_name || !updatedData.passenger_email || !updatedData.passenger_phone || !updatedData.passenger_id || !updatedData.passenger_gender || !updatedData.seat_number || isNaN(updatedData.price) || updatedData.price <= 0) {
+                showCustomAlert("Please fill all fields correctly.", "error");
+                return;
+            }
+            
+            showLoading();
+            try {
+                // If seat changed, check availability
+                if (updatedData.seat_number !== item.seat_number && item.bus_id && item.travel_date && item.status) {
+                    const seatCheckQ = query(collection(db, "bookings"),
+                        where("bus_id", "==", item.bus_id),
+                        where("travel_date", "==", item.travel_date),
+                        where("seat_number", "==", updatedData.seat_number),
+                        where("status", "in", ['pending', 'paid']));
+                    const seatCheckSnap = await getDocs(seatCheckQ);
+                    if (!seatCheckSnap.empty) {
+                        showCustomAlert(`Seat ${updatedData.seat_number} is already booked. Please choose another seat.`, "warn");
+                        hideLoading();
+                        return;
+                    }
+                }
+                
+                await updateDoc(doc(db, "bookings", id), updatedData);
+                const editBookingModal = document.getElementById('editBookingModal');
+                if (editBookingModal) editBookingModal.classList.add('hidden');
+                showCustomAlert("Booking updated successfully! 📋", "success");
+                
+                // Send update notification email to passenger
+                if (item.passenger_email) {
+                    const updateHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Booking Updated - Prince Alex Travel</title><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f8fafc;padding:30px;border-radius:0 0 10px 10px}.ticket-details{background:white;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #1e3a8a}.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb}.detail-label{font-weight:bold;color:#374151}.detail-value{color:#1f2937}.footer{text-align:center;margin-top:30px;color:#666;font-size:14px}.changes-notice{background:#fef3c7;padding:15px;border-radius:5px;border-left:4px solid #f59e0b;margin:20px 0}</style></head><body><div class="container"><div class="header"><h1>📋 Booking Updated</h1><p>Prince Alex Travel - Booking Modification Notice</p></div><div class="content"><h2>Hello ${updatedData.passenger_name}!</h2><p>Your booking has been updated by our admin team. Please review the changes below:</p><div class="changes-notice"><h4 style="margin-top:0;color:#92400e;">🔄 Updated Details</h4><p style="margin-bottom:0;color:#92400e;">Your booking details have been modified. Please check the updated information carefully.</p></div><div class="ticket-details"><h3 style="margin-top:0;color:#1e3a8a;">🎫 Updated Booking Details</h3><div class="detail-row"><span class="detail-label">Booking Reference:</span><span class="detail-value"><strong>${item.booking_ref ?? id}</strong></span></div><div class="detail-row"><span class="detail-label">Passenger Name:</span><span class="detail-value">${updatedData.passenger_name}</span></div><div class="detail-row"><span class="detail-label">Email:</span><span class="detail-value">${updatedData.passenger_email}</span></div><div class="detail-row"><span class="detail-label">Phone:</span><span class="detail-value">${updatedData.passenger_phone}</span></div><div class="detail-row"><span class="detail-label">Seat:</span><span class="detail-value"><strong>${updatedData.seat_number}</strong></span></div><div class="detail-row"><span class="detail-label">Price:</span><span class="detail-value"><strong>KES ${Number(updatedData.price).toLocaleString()}</strong></span></div><div class="detail-row"><span class="detail-label">Route:</span><span class="detail-value">${item.bus_route ?? "-"}</span></div><div class="detail-row"><span class="detail-label">Travel Date:</span><span class="detail-value">${item.travel_date ?? "-"}</span></div><div class="detail-row"><span class="detail-label">Departure:</span><span class="detail-value">${item.bus_time ?? "-"}</span></div></div><p><strong>📱 Need Help?</strong></p><p>If you have any questions, please contact us:</p><p><strong>📧 Email:</strong> senerwaalex@gmail.com<br><strong>📞 Phone:</strong> +254 717 384 875</p></div><div class="footer"><p>© 2025 Prince Alex Digital. All rights reserved.</p><p>Nairobi, Kenya | Prince Alex Travel Services</p></div></div></body></html>`;
+                    await sendEmailWithWorker({
+                        toEmail: item.passenger_email,
+                        toName: updatedData.passenger_name,
+                        subject: "Your Booking Has Been Updated - Prince Alex Travel 📋",
+                        htmlContent: updateHtml
+                    });
+                }
+            } catch (err) {
+                showCustomAlert("Update failed: " + getFriendlyErrorMessage(err), "error");
+            } finally {
+                hideLoading();
+            }
+        });
+    }
+
+    const editBookingCancel = document.getElementById('editBookingCancel');
+    if (editBookingCancel) editBookingCancel.addEventListener('click', () => {
+        const editBookingModal = document.getElementById('editBookingModal');
+        if (editBookingModal) editBookingModal.classList.add('hidden');
+    });
 
     const adminBookingSearch = document.getElementById('adminBookingSearch');
     if (adminBookingSearch) {
@@ -858,13 +892,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (pdfBase64SizeBytes > MAX_PDF_BASE64_SIZE_BYTES) {
                             console.warn(`PDF for email is too large (${(pdfBase64SizeBytes / 1024).toFixed(2)} KB). Skipping email attachment.`);
                             showCustomAlert(`Booking created & marked PAID. Note: Ticket PDF was too large for email attachment. Confirmation email sent without attachment.`, 'warning');
-                            mailPayload = { to: [passenger_email], message: { subject: "Your Ticket Confirmation - Prince Alex Travel 🎫", text: `Dear ${passenger_name},\n\nThank you for booking a ticket with Prince Alex Travel Services!\nYour ticket has been successfully booked and confirmed.\n\nTicket Details:\nBooking Reference: ${booking_ref}\nBus Name: ${selectedBusName}\nRoute: ${selectedBusRoute}\nTravel Date: ${selectedDate}\nDeparture Time: ${selectedDepartureTime}\nSeat: S${selectedSeatNumber}\nPrice: KES ${selectedBusPrice.toFixed(2)}\nStatus: PAID & CONFIRMED\n\nThank you for choosing Prince Alex Travel Services.\n\nBest regards,\nPrince Alex Travel Team`, html: professionalEmailHtml + noAttachmentNoticeHtml }, createdAt: serverTimestamp() };
+                            mailPayload = {
+                                toEmail: passenger_email,
+                                toName: passenger_name,
+                                subject: "Your Ticket Confirmation - Prince Alex Travel 🎫",
+                                htmlContent: professionalEmailHtml + noAttachmentNoticeHtml
+                            };
                         } else {
-                            mailPayload = { to: [passenger_email], message: { subject: "Your Ticket Confirmation - Prince Alex Travel 🎫", text: `Dear ${passenger_name},\n\nThank you for booking a ticket with Prince Alex Travel Services!\nYour ticket has been successfully booked and confirmed.\n\nTicket Details:\nBooking Reference: ${booking_ref}\nBus Name: ${selectedBusName}\nRoute: ${selectedBusRoute}\nTravel Date: ${selectedDate}\nDeparture Time: ${selectedDepartureTime}\nSeat: S${selectedSeatNumber}\nPrice: KES ${selectedBusPrice.toFixed(2)}\nStatus: PAID & CONFIRMED\n\nPlease find your e-Ticket attached as a PDF file.\n\nThank you for choosing Prince Alex Travel Services.\n\nBest regards,\nPrince Alex Travel Team`, html: professionalEmailHtml + attachmentNoticeHtml, attachments: [{ filename: `PrinceAlex_Ticket_${booking_ref}.pdf`, content: pdfBase64, encoding: "base64" }] }, createdAt: serverTimestamp() };
+                            mailPayload = {
+                                toEmail: passenger_email,
+                                toName: passenger_name,
+                                subject: "Your Ticket Confirmation - Prince Alex Travel 🎫",
+                                htmlContent: professionalEmailHtml + attachmentNoticeHtml,
+                                attachments: [{ filename: `PrinceAlex_Ticket_${booking_ref}.pdf`, content: pdfBase64, encoding: "base64" }]
+                            };
                             showCustomAlert("Booking created & marked PAID. Confirmation email with ticket sent! 🎫", "success");
                         }
-                        await addDoc(collection(db, "mail"), mailPayload);
-                        console.log("Admin-initiated booking confirmation email queued successfully in mail collection.");
+                        await sendEmailWithWorker(mailPayload);
+                        console.log("Admin-initiated booking confirmation email sent successfully via worker.");
                     } catch (pdfError) {
                         console.error("Error generating PDF or queuing email:", pdfError);
                         showCustomAlert("Booking created & marked PAID. Failed to generate ticket PDF or send email.", "error");
