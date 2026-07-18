@@ -1507,16 +1507,9 @@
                 const passengerEmail = booking.passenger_email;
                 const bookingId = booking.booking_ref;
                 const passengerName = booking.passenger_name || 'Valued Customer'; // Default value
-
-                console.log('Attempting to send email:');
-                console.log('Passenger Email:', passengerEmail);
-                console.log('Booking ID:', bookingId);
-                console.log('Passenger Name:', passengerName);
-
-
+                
                 if (!passengerEmail || !isValidEmail(passengerEmail)) {
                     showCustomAlert("Invalid or missing passenger email address.", 'error');
-                    console.error("Email send failed: Invalid or missing passenger email.");
                     return;
                 }
 
@@ -1529,15 +1522,11 @@
 
                     if (!pdfBase64 || typeof pdfBase64 !== 'string') {
                         showCustomAlert("Failed to generate PDF for email. PDF content is invalid.", 'error');
-                        console.error("Email send failed: PDF Base64 content is empty or not a string.");
                         return;
                     }
 
                     // Calculate the size of the Base64 string in bytes (each char is 1 byte in ASCII)
                     const pdfBase64SizeBytes = new TextEncoder().encode(pdfBase64).length;
-                    console.log("PDF Base64 content length (characters):", pdfBase64.length);
-                    console.log("PDF Base64 content size (bytes):", pdfBase64SizeBytes);
-                    console.log("PDF Base64 content type:", typeof pdfBase64);
 
                     if (pdfBase64SizeBytes > MAX_PDF_BASE64_SIZE_BYTES) {
                         showCustomAlert(`The generated ticket PDF is too large (${(pdfBase64SizeBytes / 1024).toFixed(2)} KB). It exceeds the allowed size of ${(MAX_PDF_BASE64_SIZE_BYTES / 1024).toFixed(2)} KB for email attachments via Firestore. Please try to download it locally instead.`, 'error');
@@ -1642,23 +1631,28 @@
                                     </div>
                                 <\/body>
                                 <\/html>`
-                            ,
-                            attachments: [
-                                {
-                                    filename: `Ticket_${bookingId}.pdf`,
-                                    content: pdfBase64,
-                                    encoding: "base64"
-                                }
-                            ]
+                            },
+                    attachments: [
+                        {
+                            name: `Ticket_${bookingId}.pdf`,
+                            content: pdfBase64
                         }
+                    ]
+                };
+
+
+                    // Define the payload for the Cloudflare worker
+                    const workerPayload = {
+                        toEmail: passengerEmail,
+                        toName: passengerName,
+                        subject: "Your E-Ticket - Prince Alex Travel 🎫",
+                        htmlContent: emailDocPayload.message.html, // Use the HTML from the other payload
+                        attachments: emailDocPayload.attachments
                     };
 
-                    console.log("Attempting to add email document to Firestore 'mail' collection with payload:", emailDocPayload);
-
-                    await window.addDoc(collection(window.firebaseDb, "mail"), emailDocPayload);
-
-                    showCustomAlert("Ticket sent to your email successfully!", 'success');
-                    console.log("Email document added to Firestore 'mail' collection successfully.");
+                    const sent = await sendEmailWithWorker(workerPayload);
+                    if(sent) showCustomAlert("Ticket sent to your email successfully!", 'success');
+                    else showCustomAlert("Failed to send ticket. Please try again.", 'error');
 
                 } catch (error) {
                     console.error("Error sending ticket to email:", error);
@@ -1671,6 +1665,30 @@
                 }
             }
 
+            // --- Cloudflare Worker Email Service ---
+            async function sendEmailWithWorker(payload) {
+                const url = "https://payroll.princealexdigital.workers.dev/";
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        console.log("Email sent successfully via worker! Message ID:", data.messageId);
+                        return true;
+                    } else {
+                        console.error("Worker failed to send email:", data.error, data.details);
+                        return false;
+                    }
+                } catch (error) {
+                    console.error("Network or parsing error when sending email via worker:", error);
+                    return false;
+                }
+            }
             // Custom Alert (replaces browser's alert)
             function showCustomAlert(message, type = 'info', callback = null) {
                 const modal = document.createElement('div');
@@ -1742,10 +1760,14 @@
                         receipt_number: response.reference 
                     };
                     
-                    const pdfDoc = await generatePdfContent(updatedData);
-                    const pdfBase64 = pdfDoc.output("datauristring").split(",")[1];
+                    const pdfDocForEmail = await generatePdfContent(updatedData);
+                    const pdfBase64 = pdfDocForEmail.output("datauristring").split(",")[1];
 
-                    const emailHtml = `
+                    const workerPayload = {
+                        toEmail: updatedData.passenger_email,
+                        toName: updatedData.passenger_name,
+                        subject: "Your Ticket is Confirmed! 🎫",
+                        htmlContent: `
                     <div style="font-family: 'Segoe UI', Arial, sans-serif; border: 1px solid #eee; border-radius: 16px; overflow: hidden; max-width: 600px; margin: auto; color: #1e293b;">
                         <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 40px 20px; text-align: center;">
                             <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">🎫 Payment Confirmed!</h1>
@@ -1776,21 +1798,14 @@
                             © 2025 Prince Alex Travel Services | Nairobi, Kenya<br>
                             Support: senerwaalex@gmail.com | +254 717 384 875
                         </div>
-                    </div>`;
+                    </div>`
+                    };
+                    workerPayload.attachments = [{
+                        name: `Ticket_${updatedData.booking_ref}.pdf`,
+                        content: pdfBase64
+                    }];
 
-                    await window.addDoc(collection(window.firebaseDb, "mail"), {
-                        to: [updatedData.passenger_email],
-                        message: {
-                            subject: "Your Ticket is Confirmed! 🎫",
-                            html: emailHtml,
-                            attachments: [{
-                                filename: `Ticket_${updatedData.booking_ref}.pdf`,
-                                content: pdfBase64,
-                                encoding: "base64"
-                            }]
-                        },
-                        createdAt: window.serverTimestamp()
-                    });
+                    await sendEmailWithWorker(workerPayload);
 
                     try {
                         fetch('https://your-n8n-instance.app/webhook/booking-confirmed', {
