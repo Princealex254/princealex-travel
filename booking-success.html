@@ -11,8 +11,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, updateDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, updateDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration (copied from index.html)
         const firebaseConfig = {
@@ -288,21 +287,21 @@
                     </div>
                 </div>`;
 
-                await addDoc(collection(db, "mail"), {
-                    to: [updatedData.passenger_email],
-                    message: {
-                        subject: `Confirmed: Ticket for ${updatedData.bus_route} 🎫`,
-                        html: emailHtml,
-                        attachments: [{
-                            filename: `Ticket_${updatedData.booking_ref}.pdf`,
-                            content: pdfBase64,
-                            encoding: "base64"
-                        }]
-                    },
-                    createdAt: serverTimestamp()
-                });
+                // 3. Send confirmation email via Cloudflare Worker instead of Firestore mail collection
+                const workerPayload = {
+                    toEmail: updatedData.passenger_email,
+                    toName: updatedData.passenger_name,
+                    subject: `Confirmed: Ticket for ${updatedData.bus_route} 🎫`,
+                    htmlContent: emailHtml,
+                    attachments: [{
+                        filename: `Ticket_${updatedData.booking_ref}.pdf`,
+                        content: pdfBase64,
+                        encoding: "base64"
+                    }]
+                };
+                await sendEmailWithWorker(workerPayload);
 
-                // 3. Trigger n8n Workflow (Optional additional notification)
+                // 4. Trigger n8n Workflow (Optional additional notification)
                 try {
                     fetch('https://your-n8n-instance.app/webhook/booking-confirmed', {
                         method: 'POST',
