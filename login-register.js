@@ -103,6 +103,28 @@ function switchToLogin() {
     showForm('login');
 }
 
+// ===== Button Loading Helper =====
+
+function setButtonLoading(button, isLoading, loadingText = 'Please wait...') {
+    if (!button) return;
+
+    if (!button.dataset.originalHtml) {
+        button.dataset.originalHtml = button.innerHTML;
+    }
+
+    if (isLoading) {
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.classList.add('loading');
+        button.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span><span>${loadingText}</span>`;
+    } else {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+        button.classList.remove('loading');
+        button.innerHTML = button.dataset.originalHtml;
+    }
+}
+
 // ===== Email Service =====
 
 async function sendEmailWithWorker(payload) {
@@ -202,8 +224,8 @@ async function sendWelcomeEmail(userEmail) {
 // ===== Auth Functions =====
 
 async function register() {
-    const registerButton = document.querySelector('#registerForm .btn-register');
-    registerButton.disabled = true;
+    const registerButton = document.getElementById('registerBtn');
+    setButtonLoading(registerButton, true, 'Creating account...');
 
     const email = document.getElementById('registerEmail').value.trim();
     const password = document.getElementById('registerPassword').value.trim();
@@ -249,22 +271,21 @@ async function register() {
 
         showPopup('Oops! Registration Failed', friendlyMessage, 'error');
     } finally {
-        registerButton.disabled = false;
+        setButtonLoading(registerButton, false);
     }
 }
 
 async function login() {
-    const loginButton = document.querySelector('#loginForm .btn-login');
-    loginButton.disabled = true;
-
+    const loginButton = document.getElementById('loginBtn');
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
 
     if (!validateEmail(email)) {
         showPopup('Invalid Email', 'Please enter a valid email address to continue.', 'warning');
-        loginButton.disabled = false;
         return;
     }
+
+    setButtonLoading(loginButton, true, 'Signing in...');
 
     try {
         await signInWithEmailAndPassword(auth, email, password);
@@ -295,11 +316,15 @@ async function login() {
         }
 
         showPopup('Login Failed', friendlyMessage, 'error');
-        loginButton.disabled = false;
+    } finally {
+        setButtonLoading(loginButton, false);
     }
 }
 
 async function googleLoginOnly() {
+    const googleButton = document.querySelector('#loginForm .btn-google');
+    setButtonLoading(googleButton, true, 'Signing in with Google...');
+
     try {
         const provider = new GoogleAuthProvider();
         const result = await signInWithPopup(auth, provider);
@@ -328,10 +353,15 @@ async function googleLoginOnly() {
         if (error.code !== "auth/popup-closed-by-user") {
             showPopup("Login Failed", error.message, "error");
         }
+    } finally {
+        setButtonLoading(googleButton, false);
     }
 }
 
 async function googleSignupOnly() {
+    const googleButton = document.querySelector('#registerForm .btn-google');
+    setButtonLoading(googleButton, true, 'Signing up with Google...');
+
     try {
         const provider = new GoogleAuthProvider();
         const result = await signInWithPopup(auth, provider);
@@ -366,20 +396,21 @@ async function googleSignupOnly() {
     } catch (error) {
         console.error(error);
         showPopup("Signup Failed", error.message, "error");
+    } finally {
+        setButtonLoading(googleButton, false);
     }
 }
 
 async function resetPassword() {
-    const resetButton = document.querySelector('#resetForm .btn-reset');
-    resetButton.disabled = true;
-
+    const resetButton = document.getElementById('resetBtn');
     const email = document.getElementById('resetEmail').value.trim();
 
     if (!validateEmail(email)) {
         showPopup('Invalid Email', 'Please enter a valid email address to continue.', 'warning');
-        resetButton.disabled = false;
         return;
     }
+
+    setButtonLoading(resetButton, true, 'Sending reset link...');
 
     try {
         await sendPasswordResetEmail(auth, email);
@@ -401,7 +432,7 @@ async function resetPassword() {
 
         showPopup('Reset Failed', friendlyMessage, 'error');
     } finally {
-        resetButton.disabled = false;
+        setButtonLoading(resetButton, false);
     }
 }
 
@@ -457,19 +488,25 @@ function validateEmail(email) {
 
 function subscribeNewsletter() {
     const emailInput = document.querySelector('.newsletter-form input');
+    const subscribeButton = document.querySelector('.newsletter-form button');
     const email = emailInput.value.trim();
-    
+
     if (!email) {
         showPopup('Email Required', 'Please enter your email address to subscribe to our newsletter.', 'warning');
         return;
     }
-    
-    showPopup(
-        '🎉 Welcome to Our Newsletter!',
-        'Thank you for subscribing! You\'ll now receive updates about our latest offers, travel news, and special promotions directly to your inbox.',
-        'success'
-    );
-    emailInput.value = '';
+
+    setButtonLoading(subscribeButton, true, 'Subscribing...');
+
+    setTimeout(() => {
+        setButtonLoading(subscribeButton, false);
+        showPopup(
+            '🎉 Welcome to Our Newsletter!',
+            'Thank you for subscribing! You\'ll now receive updates about our latest offers, travel news, and special promotions directly to your inbox.',
+            'success'
+        );
+        emailInput.value = '';
+    }, 800);
 }
 
 // ===== Event Binding =====
@@ -485,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         validateInput(this, 'email');
     });
     document.querySelector('#loginForm .btn-google').addEventListener('click', googleLoginOnly);
-    document.querySelector('#loginForm .btn-login').addEventListener('click', login);
+    document.getElementById('loginBtn').addEventListener('click', login);
     document.querySelector('#loginForm .forgot-password').addEventListener('click', function(e) {
         e.preventDefault();
         showForm('reset');
@@ -498,13 +535,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('registerPassword').addEventListener('input', checkPasswordStrength);
     document.getElementById('confirmPassword').addEventListener('input', checkPasswordMatch);
     document.querySelector('#registerForm .btn-google').addEventListener('click', googleSignupOnly);
-    document.querySelector('#registerForm .btn-register').addEventListener('click', register);
+    document.getElementById('registerBtn').addEventListener('click', register);
 
     // --- Reset form ---
     document.getElementById('resetEmail').addEventListener('input', function() {
         validateInput(this, 'email');
     });
-    document.querySelector('#resetForm .btn-reset').addEventListener('click', resetPassword);
+    document.getElementById('resetBtn').addEventListener('click', resetPassword);
 
     // --- Popup ---
     document.getElementById('popupOverlay').addEventListener('click', function(e) {
